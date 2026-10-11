@@ -1,4 +1,4 @@
-# perfmon-blackbox: IMPLEMENTING (session 2): most stages green on vm1 + arc1; T16 vm1 100 (P43); P46 retry committed (rc.8 to build); T18b storage mode: P47 defect fixed, rerun in flight.
+# perfmon-blackbox: IMPLEMENTING (session 2): most stages green on vm1 + arc1; T16 vm1 100 (P43); P46 retry committed (rc.8 to build); T18b: identity download proven on Arc; P47/P48 fixed; stability check in flight.
 
 
 ## Session 2 progress (2026-10-11, live; rewritten at close)
@@ -10,15 +10,15 @@
 - **Lab pre-releases (P29/P31):** rc.1 … rc.7 (rc.7 = P41, rolled out). **P46** (export retries +5/+15 min, Export task
   restart-on-failure) committed 7edede7, L05 green; **rc.8 not built yet** (after T18b, so the package does not change
   under the storage-mode test).
-- **T18b (arc1, package from storage, P45):** run 1 failed twice, both our defects, no SAS anywhere (P47): (1) the
-  policy created the guest assignment with API 2022-01-25, which drops `contentManagedIdentity` → fixed to 2024-04-05;
-  after that the agent logs "from private blob using managed identity"; (2) 403: the per-server reader grant failed
-  because the arc assignment identity's RBAC Admin condition was the pre-P45 one (`create` does not update) →
-  lab-policy.sh updates it in place (done 20:39Z). Rerun in flight: waiting for the reader role and the agent cycle.
-  The vm assignment's condition is still the old one: lab-policy fixes it the next time vm is assigned (T18c).
-- **Resume recipe T18b:** `direnv exec . playbooks/perfmon-blackbox/tests/run.sh T18 arc1 storage` when arc1 shows
-  MaxSizeMB=512 in config.json and the guest assignment is Compliant. If the reader role is missing, re-run the arc
-  remediation (lab-params.sh machine=arc1 PackageContainerResourceId=<packages container ID>).
+- **T18b (arc1, package from storage):** system-identity download PROVEN on Arc (agent log 21:00:40Z: "from private
+  blob using managed identity", downloaded, validated, applied). Three of our defects found on the way, no SAS anywhere:
+  P47 API 2022-01-25 dropped `contentManagedIdentity`; P47 addendum stale RBAC Admin condition; **P48** the service
+  re-syncs the guest assignment from the definition metadata (a first-party PUT at 21:07 flipped arc1 back to GitHub),
+  so the mode is now chosen at generation: `perfmon-blackbox-<kind>-storage` definitions (accepted by the vezir with
+  three conditions, in P48). 21:20Z: arc1 switched by the P48 procedure (pbb-arc removed, pbb-arc-storage assigned,
+  remediation). Pass = storage download over two refresh cycles with no PUT back.
+- **Resume recipe T18b:** `direnv exec . sh playbooks/perfmon-blackbox/tests/lab/T18.sh arc1 storage` (run.sh passes
+  only the machine). Lab assignments now: pbb-vm (GitHub), pbb-arc-storage.
 - **Next:** T18b → rc.8 (T01, scrub, SHA in decisions first, publish P31) → P46 lab test (hosts block, retry at +5 min,
   0 gaps) → T18c/d/e/f → T16 run 5 (arc1; vm1 after its next export) → T17 → T08/T07b arc1 → T06f part 2 →
   least-privilege agent role (P30) → fresh-eyes deploy; v1.0.0 = Emre's gate.
