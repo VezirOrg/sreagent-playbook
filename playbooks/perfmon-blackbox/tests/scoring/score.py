@@ -85,7 +85,9 @@ def score(report, truth, zipname=None):
     inv = [l for l in lines for r in (r'commit (is )?near (the )?limit', r'\bPTEs? (are )?(exhausted|low)', r'paging file (is )?filling',
                                       r'disk (is )?(nearly|almost) full') if re.search(r, l, re.I) and not neg.search(l)]
     pts['N1'] = 0 if inv else 5
-    claims = [l for l in lines if re.search(r'caused by|because|drives', l, re.I)]
+    # a negated statement ("not caused by", "no causal link") is not a causal claim (T16 run 4)
+    claims = [l for l in lines if re.search(r'caused by|because|drives', l, re.I)
+              and not re.search(r'\b(not|no|never|cannot|can\'t)\b[^.|]{0,20}(caused by|because|drives)', l, re.I)]
     pts['R1'] = 5 if (not claims or 'LINK:' in report) else 0
     raw = [l for l in lines if len(re.findall(r'-?\d+(?:\.\d+)?', l)) > 30 and (l.count(',') > 30 or l.count('|') > 30)]
     pts['R2'] = 0 if raw else 5

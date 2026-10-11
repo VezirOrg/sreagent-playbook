@@ -12,7 +12,8 @@ if [ "$step" = start ]; then
   nxt=$(v "$m" '$i = & schtasks.exe /query /tn \PerfmonBlackbox\Export /v /fo csv | ConvertFrom-Csv | Select-Object -First 1; [int](([datetime]::Parse($i."Next Run Time")) - (Get-Date)).TotalMinutes' | tr -d '\r' | tail -1)
   echo "next scheduled export in ${nxt:-?} min"
   [ "${nxt:-0}" -gt 80 ] || { echo "a scheduled export falls inside the T16 window: start right after it"; exit 1; }
-  v "$m" 'Get-ChildItem T:\bbio, C:\bbio -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; "cleaned leftover disk-plant files"'
+  # the disk plant's scratch volume T: (lab only) is reformatted: leftover space from earlier runs once filled it (run 4)
+  v "$m" 'Get-Process bb* -ErrorAction SilentlyContinue | Stop-Process -Force; if (Test-Path T:\) { $null = Format-Volume -DriveLetter T -FileSystem NTFS -NewFileSystemLabel bbdisk -Confirm:$false -Force; "T: reformatted, free $([int]((Get-PSDrive T).Free / 1MB)) MB" }; Remove-Item C:\bbio -Recurse -Force -ErrorAction SilentlyContinue'
   guest "$m" export-now.ps1 | tail -2
   guest "$m" make-trouble.ps1 -Start
   echo "planted load started; run 'T16.sh $m finish' after ~72 min"; exit 0

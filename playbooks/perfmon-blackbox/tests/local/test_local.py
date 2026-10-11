@@ -391,6 +391,10 @@ class L09Scorer(unittest.TestCase):
         r = self.score(self.GOOD + '\n6. Memory: commit near limit at 08:40.')
         self.assertEqual(r['points']['N1'], 0)
 
+    def test_negated_cause_is_not_a_claim(self):
+        r = self.score(self.GOOD.replace('LINK: consistent with Y driving X.', '') + '\nT: full. Not caused by the stress tests.')
+        self.assertEqual(r['points']['R1'], 5)
+
     def test_fine_line_is_not_invented(self):
         r = self.score(self.GOOD + '\n| - | Disk, Network, Paging File, PTEs | All within thresholds | fine |')
         self.assertEqual(r['points']['N1'], 5)

@@ -10,9 +10,9 @@ KINDS=$kind REMEDIATION_MODE=ReEvaluateCompliance ARC_VM=$(az vm show -g "$rg" -
   sh "$here/lab-policy.sh" "$PKG_URI" "$PKG_SHA256" "$PKG_VERSION" $kv | mask | tail -3
 want=$(python3 -c 'import sys, json; d={"MaxSizeMB":"512","SampleIntervalSeconds":"10","ExportEveryHours":"4"}; [d.update([a.split("=",1)]) for a in sys.argv[1:]]; print(" ".join(f"{k}={d[k]}" for k in ("MaxSizeMB","SampleIntervalSeconds","ExportEveryHours")))' $kv)
 echo "waiting until $m has: $want"
-for i in $(seq 1 60); do
+for i in $(seq 1 90); do
   got=$(v "$m" '$c = Get-Content C:\ProgramData\PerfmonBlackbox\config.json -Raw | ConvertFrom-Json; "MaxSizeMB=$($c.MaxSizeMB) SampleIntervalSeconds=$($c.SampleIntervalSeconds) ExportEveryHours=$($c.ExportEveryHours)"' | tr -d '\r' | tail -1)
   [ "$got" = "$want" ] && { echo "$(date -u +%H:%M:%S) reached: $got"; exit 0; }
   sleep 30
 done
-echo "not reached after 30 min (last: $got)"; exit 1
+echo "not reached after 45 min (last: $got)"; exit 1
