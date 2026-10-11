@@ -34,6 +34,7 @@ BAD_NAMES = [
     ('capture or data file', re.compile(r'\.(blg|etl|db|sqlite|sqlite3|zip|7z|bak)$', re.I)),
     ('mapping or denylist file', re.compile(r'(mapping|denylist)[^/]*\.(csv|txt)$', re.I)),
     ('az/azd config dir', re.compile(r'(^|/)\.(azure|azure-cli|azd-config)/')),
+    ('lab checkout of the private template (R14)', re.compile(r'^\.lab(/|$)')),
 ]
 CSV = re.compile(r'\.(csv|tsv)$', re.I)
 

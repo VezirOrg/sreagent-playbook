@@ -120,3 +120,7 @@ A playbook lab is built from the private lab template with `azd init -t <templat
 holds the private template, so it must never enter this public repo: it lives in `.lab/<playbook>/` (gitignored)
 and is driven with `direnv exec <repo root> azd …` (this repo's `.env` and local az/azd config dirs). The lab is
 registered in the template's lab register, in the template repo, in the same commit as its build or teardown.
+
+Addendum (2026-10-11): `azd init` ran `git add` in the parent repo and staged template scripts despite the
+gitignore; they were unstaged before any commit. The scrub check now refuses any path under `.lab/` (pre-commit and
+pre-push), so a forced add cannot slip through.
