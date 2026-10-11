@@ -32,3 +32,4 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
 - 2026-10-11: P34: OPEN-2 closed for v1.0.0 (no stall plant, rubric P5 dropped, disk rule tightened); wrap proven (BbWrap1/2); T16 run 1 evidence kept as run1.
 - 2026-10-11: rc.4 (P36: a resource's Test never throws; self-heals ACL-locked files).
 - 2026-10-11: rc.5 (P37: gaps and 'wrapped' judged per ring, bounded event text).
+- 2026-10-11: rc.6 (P40: a hole before a wrapped ring is reported as buffer_overrun).

@@ -484,3 +484,5 @@ rings the cause is now `buffer_overrun` when the later ring had wrapped, `machin
 a boot, else `collector_restart`. T06c/T06d are re-run with an export right after the change lands (at 1 s a 16–32 MB
 ring holds only 5–10 minutes). In rc.6.
 
+- **rc.6** (P40): `PerfmonBlackbox.zip` SHA-256 `5B4D37FF31E0013F8D9A4960045E90260CAE0FBAE6E443ED95BEADAAF6F9DFE3`
+  (L05 33/33, T01 green on dc; 12 files scrub-checked clean before the upload).
