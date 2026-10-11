@@ -15,5 +15,7 @@ while (((Get-Date) - $t0).TotalMinutes -lt $Minutes) {
 }
 $c = Get-BbCollector
 "MaxSizeMB $($cfg['MaxSizeMB']) interval $($cfg['SampleIntervalSeconds']) s; collector max $($c.MaxSizeMB) MB; peak $peak B; full at $(if ($fullAt) { $fullAt.ToString('HH:mm:ss') } else { 'never' }); now $((Get-Date).ToString('HH:mm:ss'))"
-$ok = ($peak -le $max) -and $fullAt -and ($c.MaxSizeMB -eq $cfg['MaxSizeMB']) -and ($peak -ge $MinMB * 1MB)
+# with -MinMB the criterion is 'grew past MinMB' (T06c), else 'reached the maximum' (T06b)
+$grew = $fullAt; if ($MinMB -gt 0) { $grew = ($peak -ge $MinMB * 1MB) }
+$ok = ($peak -le $max) -and $grew -and ($c.MaxSizeMB -eq $cfg['MaxSizeMB'])
 if ($ok) { 'RESULT: PASS' } else { 'RESULT: FAIL' }

@@ -506,3 +506,23 @@ plus a matching time is not enough. Before any T16 run is recorded green, the pl
 capture (the planted volume's `Avg. Disk sec/Write` really above 25 ms for minutes in the window); a run whose plant did
 not take effect is **invalid** for that item, not a pass or a fail. Run 4 is under this review; run 5 follows on a
 freshly formatted `T:` (rc.7).
+
+## P43: T16 plants only memory and CPU (Emre, 2026-10-11)
+
+"Disk gecikmesi analizi yapmamıza gerek yok, memory'yi ve CPU'yu bulması yeterli" and "CPU ve memory problemini
+yakalaması yeterli": T16 plants **only the memory leak and the CPU burst**. The disk plant and the network burst are
+removed entirely (not even as a control). A run **passes** when both are found, nothing is invented and the score is
+≥ 80; the scorer is re-weighted so the two required items carry the problem points. Test scope only: the skill keeps
+checking disk and network as it does. The plant-verification gate (P42) stays for leak and CPU. The lab18 data disks
+stay as they are. Run 4 is re-scored under this rule; run 5 (arc1, then vm1) is the clean demonstration.
+
+## P44: the skill analyses a time range across several zips when asked (Emre, 2026-10-11)
+
+"Skill defaultta son zipe baksın ama kullanıcı belirtirse belirli aralığı kapsasın, birden fazla zipteki verileri
+SQLite db'ye eklesin." Default unchanged (the latest zip). **Range mode**: when the user gives a time range, the skill
+fetches every zip that overlaps it, loads all their samples into one SQLite database (duplicate timestamps dropped),
+analyses only that range, shows the holes between zips as gaps (`export_roll`, a missing zip), says plainly which part
+of the range is not covered (before the oldest zip — 30-day lifecycle —, after the newest, or a missing zip), and the
+report's Capture section lists every zip used. A new analysis test plants leak + CPU across an export boundary and asks
+with a range spanning both zips (T17). New skill version (v2.2): the current skill is backed up (zip → Drive) before
+every upload; the package is not affected.
