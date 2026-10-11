@@ -4,7 +4,9 @@ measure-buffer.ps1: lab measurements for the PerfmonBlackbox circular .blg (deci
 Runs on the lab machine as an administrator (Windows PowerShell 5.1). Actions:
   setup   -IntervalSeconds <s> -MaxSizeMB <mb> [-SetName <n>] [-ExtraCounterFiles <f1,f2>]
           fill the template's placeholders, add the extra counter groups (if any), import the set, start it
-  sample  [-SetName <n>]     one CSV line: utc, file bytes, samples, first/last sample, processes, Process(*) instances, status
+  sample  [-SetName <n>]     one CSV line: utc, file bytes, processes, Process(*) instances, status (a running
+                             circular .blg cannot be read, so no sample count here)
+  readback [-SetName <n>]    stop the set and read the closed file: bytes, samples, first/last sample
   recorded [-SetName <n>]    counters recorded in the current .blg, counted per object
   detect                     which G3 (web) counter objects exist on this machine
   events  -Since <utc ISO>   new events since then, per log / provider / id / level (Application, System, PLA Operational)
@@ -14,7 +16,7 @@ Runs on the lab machine as an administrator (Windows PowerShell 5.1). Actions:
 Prints facts only.
 #>
 param(
-    [Parameter(Mandatory)][ValidateSet('setup', 'sample', 'recorded', 'detect', 'events', 'load', 'unload', 'stop')][string]$Action,
+    [Parameter(Mandatory)][ValidateSet('setup', 'sample', 'readback', 'recorded', 'detect', 'events', 'load', 'unload', 'stop')][string]$Action,
     [string]$SetName = 'PerfmonBlackbox',
     [string]$TemplatePath = 'C:\ProgramData\PerfmonBlackbox\PerfmonBlackbox.template.xml',
     [string[]]$ExtraCounterFiles = @(),
@@ -24,6 +26,8 @@ param(
     [string]$Since = ''
 )
 $ErrorActionPreference = 'Stop'
+# powershell -File passes 'a,b' as one string: split it
+$ExtraCounterFiles = @($ExtraCounterFiles | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $Root = Join-Path $env:ProgramData 'PerfmonBlackbox'
 $BlgDir = Join-Path $Root "blg-$SetName"
 
@@ -40,7 +44,7 @@ switch ($Action) {
             $add = ($extra | ForEach-Object { "`t`t<Counter>$([Security.SecurityElement]::Escape($_))</Counter>`r`n" }) -join ''
             $xml = $xml.Replace("`t</PerformanceCounterDataCollector>", "$add`t</PerformanceCounterDataCollector>")
         }
-        if ($xml -match '\{\{') { throw 'unfilled placeholder in the template' }
+        if ($xml -match '\{\{(MaxSizeMB|SampleIntervalSeconds)\}\}') { throw 'unfilled placeholder in the template' }
         $filled = Join-Path $env:TEMP "$SetName.filled.xml"
         # logman import reads the XML as written by PerfMon (UTF-16); same content, only the encoding differs
         $xml.Replace('encoding="UTF-8"', 'encoding="UTF-16"') | Out-File -FilePath $filled -Encoding Unicode
@@ -58,20 +62,27 @@ switch ($Action) {
         "pla: set=$SetName status=$($pla.Status) segmentMaxSizeMB=$($pla.SegmentMaxSize) duration=$($pla.Duration) logCircular=$($dc.LogCircular) logFileFormat=$($dc.LogFileFormat) sampleInterval=$($dc.SampleInterval) countersConfigured=$($dc.PerformanceCounters.Count) extraCounters=$($extra.Count)"
     }
     'sample' {
+        # A running circular .blg cannot be read (relog: "Unable to read counter information"), not even a copy:
+        # while it runs only its size is sampled; samples come from elapsed time / interval, checked by 'readback'.
         $f = Get-Blg
         $bytes = if ($f) { $f.Length } else { 0 }
-        $samples = ''; $first = ''; $last = ''
-        if ($f) {
-            foreach ($l in (& relog $f.FullName -q 2>&1)) {
-                if ($l -match '^\s*Samples:\s*(\d+)') { $samples = $Matches[1] }
-                elseif ($l -match '^\s*Begin:\s*(.+)$') { $first = $Matches[1].Trim() }
-                elseif ($l -match '^\s*End:\s*(.+)$') { $last = $Matches[1].Trim() }
-            }
-        }
         $procs = (Get-Process).Count
         $inst = ((Get-Counter '\Process(*)\ID Process' -ErrorAction SilentlyContinue).CounterSamples).Count
         $status = ((& logman query $SetName) -match '^Status:' | Select-Object -First 1) -replace '^Status:\s*', ''
-        '{0},{1},{2},{3},{4},{5},{6},{7},{8}' -f $SetName, (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'), $bytes, $samples, $first, $last, $procs, $inst, $status.Trim()
+        '{0},{1},{2},,,,{3},{4},{5}' -f $SetName, (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'), $bytes, $procs, $inst, $status.Trim()
+    }
+    'readback' {
+        # stop the set, then read the closed file: true samples, first and last sample (UTC on the lab VMs)
+        & logman stop $SetName 2>&1 | Out-Null
+        Start-Sleep 3
+        $f = Get-Blg
+        $samples = ''; $first = ''; $last = ''
+        foreach ($l in (& relog $f.FullName -q 2>&1)) {
+            if ($l -match '^\s*Samples:\s*(\d+)') { $samples = $Matches[1] }
+            elseif ($l -match '^\s*Begin:\s*(.+)$') { $first = $Matches[1].Trim() }
+            elseif ($l -match '^\s*End:\s*(.+)$') { $last = $Matches[1].Trim() }
+        }
+        '{0},{1},{2},{3},{4},{5},{6},{7},stopped' -f $SetName, (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'), $f.Length, $samples, $first, $last, (Get-Process).Count, ((Get-Counter '\Process(*)\ID Process' -ErrorAction SilentlyContinue).CounterSamples).Count
     }
     'recorded' {
         $f = Get-Blg
