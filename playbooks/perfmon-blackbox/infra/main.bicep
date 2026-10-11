@@ -123,6 +123,31 @@ resource writerRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
   }
 }
 
+// the policy assignment identity deploys the per-machine role assignment here (nested deployment): it needs
+// deployments only; every resource in that template is still checked against its own rights (RBAC Administrator
+// limited to the writer role by a delegation condition, assigned in tests/lab/lab-policy.sh / README)
+param deployerRoleName string = 'PerfMon Blackbox Deployer'
+resource deployerRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
+  name: guid(resourceGroup().id, deployerRoleName)
+  properties: {
+    roleName: deployerRoleName
+    description: 'perfmon-blackbox: the DINE policy identity deploys the per-machine writer role assignment in this resource group. Deployments only.'
+    type: 'CustomRole'
+    assignableScopes: [ resourceGroup().id ]
+    permissions: [
+      {
+        actions: [
+          'Microsoft.Resources/deployments/*'
+          'Microsoft.Resources/subscriptions/resourceGroups/read'
+        ]
+        notActions: []
+        dataActions: []
+        notDataActions: []
+      }
+    ]
+  }
+}
+
 var blobDataReader = '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1'
 
 resource readers 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for p in readerPrincipalIds: {
@@ -139,4 +164,5 @@ output storageAccountResourceId string = sa.id
 output storageAccountName string = sa.name
 output containerName string = container.name
 output writerRoleDefinitionId string = writerRole.id
+output deployerRoleDefinitionId string = deployerRole.id
 output blobEndpoint string = sa.properties.primaryEndpoints.blob

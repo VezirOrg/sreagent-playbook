@@ -298,5 +298,50 @@ class L07Template(unittest.TestCase):
         self.assertNotIn('\\Process(*)\\*', base | set(g1) | set(g2) | set(g3))
 
 
+class L08Policies(unittest.TestCase):
+    """policy/build_policies.py: two definitions, one resource type each, the same parameters mapped to
+    [BlackboxFiles]Files, contentUri/contentHash pinned, parameterHash in step with configurationParameter, and
+    the per-machine writer role assignment with the ABAC prefix condition."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, os.path.join(PB, 'policy'))
+        import build_policies as bp
+        cls.d = {k: bp.definition(k, 'https://example.invalid/PerfmonBlackbox.zip', 'AB' * 32, '1.0.0') for k in ('vm', 'arc')}
+
+    def test_one_type_each(self):
+        self.assertEqual(self.d['vm']['properties']['policyRule']['if']['allOf'][0]['equals'], 'Microsoft.Compute/virtualMachines')
+        self.assertEqual(self.d['arc']['properties']['policyRule']['if']['allOf'][0]['equals'], 'Microsoft.HybridCompute/machines')
+
+    def test_same_parameters(self):
+        pv, pa = self.d['vm']['properties']['parameters'], self.d['arc']['properties']['parameters']
+        self.assertEqual(pv, pa)
+        for p in ('MaxSizeMB', 'SampleIntervalSeconds', 'ExportEveryHours', 'StorageAccountResourceId', 'ContainerName', 'LocalKeepMB'):
+            self.assertIn(p, pv)
+        self.assertEqual((pv['MaxSizeMB']['defaultValue'], pv['SampleIntervalSeconds']['defaultValue'],
+                          pv['ExportEveryHours']['defaultValue']), ('512', '10', '4'))
+
+    def test_assignment_and_hash(self):
+        for d in self.d.values():
+            det = d['properties']['policyRule']['then']['details']
+            gc = det['deployment']['properties']['template']['resources'][0]['properties']['guestConfiguration']
+            self.assertEqual(gc['contentHash'], 'AB' * 32)
+            self.assertEqual(gc['assignmentType'], 'ApplyAndAutoCorrect')
+            names = [c['name'] for c in gc['configurationParameter']]
+            self.assertTrue(all(n.startswith('[BlackboxFiles]Files;') for n in names))
+            h = det['existenceCondition']['allOf'][1]['equals']
+            self.assertEqual(re.findall(r"'(\[BlackboxFiles\][^']+)'", h), names)
+
+    def test_writer_role_condition(self):
+        det = self.d['vm']['properties']['policyRule']['then']['details']
+        role = det['deployment']['properties']['template']['resources'][1]
+        self.assertEqual(role['resourceGroup'], "[split(parameters('StorageAccountResourceId'), '/')[4]]")
+        ra = role['properties']['template']['resources'][0]['properties']
+        self.assertEqual(ra['conditionVersion'], '2.0')
+        self.assertTrue(ra['condition'].endswith("StringStartsWith ''', parameters('prefix'), '/'))')]"))
+        self.assertIn('blobs/write', ra['condition'])
+        self.assertIn('toLower(', role['properties']['parameters']['prefix']['value'])
+
+
 if __name__ == '__main__':
     unittest.main()
