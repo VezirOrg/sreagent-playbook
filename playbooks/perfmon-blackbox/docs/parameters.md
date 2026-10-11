@@ -19,6 +19,9 @@
 | `LocalKeepMB` | 1024 | cap for closed rings and unsent zips on the server; the oldest go first and the loss is reported |
 | `WriterRoleDefinitionId` | required | the custom Writer role (infra output) |
 
+The package source (GitHub or your storage) is not a parameter: it is chosen when the definitions are generated, see
+[architecture.md](architecture.md#why-the-package-source-is-fixed-when-the-definitions-are-generated).
+
 A changed value reaches the server at the next evaluation (≤ 30 minutes after remediation). A change of
 `MaxSizeMB`, the interval or the counter set re-creates the collector; what was recorded is kept as a pending ring and
 exported, so nothing is lost.

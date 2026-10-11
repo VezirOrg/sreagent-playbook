@@ -59,7 +59,8 @@ done
 ## 2b. Where the servers get the package: GitHub or your storage (P45, P48)
 
 Two modes. The mode is part of the **policy definition** (Machine Configuration builds each server's guest assignment
-from the definition's metadata, so it cannot be an assignment parameter):
+from the definition's metadata, so it cannot be an assignment parameter; why, with the lab evidence:
+[architecture.md](architecture.md#why-the-package-source-is-fixed-when-the-definitions-are-generated)):
 
 | Mode | Definitions | The server downloads from | Needs |
 |---|---|---|---|

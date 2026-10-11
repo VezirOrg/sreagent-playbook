@@ -84,4 +84,73 @@ Both use only what ships with Windows: `logman`, `relog`, `schtasks`, `icacls`, 
    `machine_off`, `local_cap`, `missing_samples`); `complete` is false if there is any.
 4. **Zip** the CSV with `manifest.json`; **upload** with the server's identity; only then move `last_ts` forward.
 
+## Why the package source is fixed when the definitions are generated
+
+*Decision P48 (2026-10-11), found in test T18b on the Arc lab server arc1. Times are UTC.*
+
+**What we tried.** One pair of policy definitions, with the package source as an assignment parameter: empty meant the
+GitHub release asset, a blob container ID meant "download the same zip from that container with the machine's own
+system-assigned identity". The deployment in the definition computed `contentUri` and `contentManagedIdentity` from
+that parameter.
+
+**What happened.** With the parameter set to the lab's `packages` container:
+
+| Time | Source | What it shows |
+|---|---|---|
+| 20:58:37 | activity log | the policy assignment's identity PUTs the guest assignment (storage URI, `contentManagedIdentity: system`) |
+| 21:00:40 | agent log on arc1 | `Managed identity provided, generating an authorization header using bearer token …` → `Download assignment package for : PerfmonBlackbox from private blob using managed identity` → `Package downloaded` → `Assignment validated`; the server applies it |
+| 21:07:22 | activity log | a **second PUT of the same guest assignment, by a different application** (not the policy identity, not ours) |
+| 21:10:42 | agent log on arc1 | `Managed identity not provided, defaulting to sas uri token` → `Download assignment package for : PerfmonBlackbox from public blob` → the GitHub URI |
+
+The download with the machine identity worked; something else put the assignment back to the GitHub source within
+minutes.
+
+**Why.** The Machine Configuration service builds the guest assignment from the definition's
+`metadata.guestConfiguration`, for AuditIfNotExists and DeployIfNotExists definitions alike
+([concepts/assignments](https://learn.microsoft.com/azure/governance/machine-configuration/concepts/assignments),
+[create-policy-definition](https://learn.microsoft.com/azure/governance/machine-configuration/how-to/create-policy-definition)).
+Policy metadata is static text: it cannot take an assignment parameter. Ours named the GitHub URI and no identity, so the
+service's own write won over the deployment's. Microsoft's `New-GuestConfigurationPolicy -UseSystemAssignedIdentity`
+does the same thing we do now: it writes the storage URI and `contentManagedIdentity: "system"` into the definition,
+both into the metadata and into the deployment. The access options are described in
+[5-access-package](https://learn.microsoft.com/azure/governance/machine-configuration/how-to/develop-custom-package/5-access-package).
+
+**So:** the package source is chosen when the definitions are generated. `build_policies.py` without options gives
+`perfmon-blackbox-vm` / `-arc` (GitHub). With `--package-container-id <container ID>` it gives `perfmon-blackbox-vm-storage`
+/ `-arc-storage`: the storage URI and `system` are literals in both places, and each server gets Storage Blob Data Reader
+on that container. Both kinds write the same guest assignment `PerfmonBlackbox`, so **never assign both over the same
+machine**. To switch, unassign the old one, assign the new one, then remediate ([deploy.md](deploy.md)).
+
+| Fixed when the definitions are generated | An assignment parameter |
+|---|---|
+| package source: GitHub release asset, or your package container (with the system identity) | `StorageAccountResourceId`, `ContainerName` (where the captures are uploaded) |
+| `contentHash` (the release's SHA-256) and the package version | `MaxSizeMB`, `SampleIntervalSeconds`, `ExportEveryHours`, `LocalKeepMB` |
+| | `WriterRoleDefinitionId` |
+
+The upload storage *can* be a parameter: the configuration parameters (`configurationParameter`) are resolved from the
+assignment. Only the metadata fields that say where the package comes from and how it is fetched have to be fixed.
+
+**Two more traps on the way**, both silent:
+
+- **The API version drops the identity.** The guest assignment was created with `apiVersion 2022-01-25`.
+  `contentManagedIdentity` exists only from `2024-04-05`
+  ([change log](https://learn.microsoft.com/azure/templates/microsoft.guestconfiguration/change-log/guestconfigurationassignments)).
+  With the older version ARM accepted the property and dropped it without an error. The agent logged
+  `Managed identity not provided, defaulting to sas uri token`, and the private storage answered
+  `409 Public access is not permitted on this storage account`. Fixed by using 2024-04-05; a local test checks the
+  version.
+- **`az role assignment create` does not update a condition.** The policy identity may assign roles on the storage
+  account only through a delegation condition (Writer role only). Storage mode also needs Storage Blob Data Reader, so
+  the condition gained that role. Re-running `az role assignment create` with the new condition returned the existing
+  assignment unchanged, with the old condition. The per-server reader grant then failed ("does not have permission to
+  perform action roleAssignments/write"), and the agent got `403 This request is not authorized to perform this
+  operation using this permission`. Fix: compare the condition and `az role assignment update` it in place; deploy.md
+  warns anyone who upgrades.
+
+**No SAS, shared key disabled.** No SAS token is used anywhere: not for the package, not for uploads, not as a fallback.
+Every download and upload uses an Entra ID token: the machine's system identity (IMDS on Azure VMs, HIMDS on Arc) or the
+operator's `az … --auth-mode login`. The storage account has shared key access disabled and public network access off.
+Tests: T14 (storage settings), T18f (the whole chain with shared key disabled), T18b/T18c (package from storage on Arc
+and on an Azure VM).
+
 Details: [design.md](design.md), decisions in [../decisions.md](../decisions.md).
