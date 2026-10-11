@@ -425,3 +425,12 @@ next remediation moves it to the new package. This is the adopter upgrade path (
   dropped). BbWrap2 (identical twin) stopped 13:39:53Z: exactly 536,870,912 B, oldest 10:51:43 (later than BbWrap1's:
   the oldest moves forward), newest 13:39:43. **True time to 512 MB ≈ 2.81 h** (10,105 samples ≈ 53 KB each, ~117
   processes). The file never exceeds the maximum, the oldest samples are overwritten, the newest are present.
+
+## P35: adopter docs in `docs/` (Emre, 2026-10-11)
+
+The playbook gets adopter documentation in `docs/`, written between the lab's Azure waits (never delaying a test):
+`deploy.md`, `parameters.md`, `operations.md`, `security.md`, `cost.md`, `architecture.md`, `load-generation.md`
+(how the lab plants the T16 problems, with the critical code) and `tests.md` (every test in plain words, with a
+summary table whose status column is kept current). English, plain and concise, each file opening with a 3–5 line
+summary; marked "draft until v1.0.0" where details may still change; the README-only fresh-eyes deploy at release
+validates them. Linked from the playbook README; scrub-checked like everything else.
