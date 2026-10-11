@@ -162,8 +162,21 @@ loss, 3000s errors). Captures live at `perfmon/<subscriptionId>/<resourceGroup>/
 
 ## Cost
 
-Written per server and per deployment before v1.0.0 (Machine Configuration on Arc is billed per server; on Azure VMs
-it is free; storage and private endpoint are small and measured in the lab).
+Prices: Azure Retail Prices API (`prices.azure.com`), retail USD, queried 2026-10-11 (Sweden Central for storage).
+
+| Item | Price | Per server per month |
+|---|---|---|
+| Machine Configuration on an **Azure VM** | free | 0 |
+| Machine Configuration on an **Arc-enabled server** ("Guest Configuration Policy/Server") | 6.00 USD / server / month | **6.00 USD** |
+| Blob storage, Hot LRS | 0.0184 USD / GB / month | ≈ 0.01 USD (100 processes) to ≈ 0.03 USD (350 processes) |
+| Write operations | 0.05 USD / 10,000 | < 0.01 USD (6 exports a day) |
+| Private endpoint data processed | 0.01 USD / GB in and out | < 0.01 USD |
+
+Per deployment: the private endpoint, 0.01 USD / hour ≈ **7.30 USD / month**, plus the storage account itself (no fixed
+charge). Storage volume, measured in the lab: a zipped capture costs ≈ 1.9 KB per sample at ~117 processes and 10 s
+(≈ 16 MB a day, ≈ 0.5 GB held under the 30-day lifecycle rule); it grows with the process count like the buffer does.
+
+**So: an Azure VM costs ≈ 0.01–0.03 USD a month, an Arc server ≈ 6.03 USD, plus ≈ 7.30 USD a month per deployment.**
 
 ## Remove
 
