@@ -29,7 +29,8 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 |---|---|---|---|---|---|
 | 1 | rc.1 | 85 → FAIL | leak, CPU, NIC (+ a memory episode) | 30-s stalls; disk | stalls are below the skill's 5-min ceiling by design → OPEN-2 closed, stalls removed (P34); disk plant never ran (P39) |
 | 2 | rc.3 | 85 → FAIL | leak, CPU, NIC (+ the memory episode) | disk | the disk plant never ran (P39); the agent rightly reported the disk as fine |
-| 3 | rc.5 | running | | | first run with a working disk plant (179 ms writes measured) |
+| 3 | rc.5 | not valid | leak (622 MB/h), and a real full T: drive | CPU, disk, NIC | the server's own 4-hourly export ran at 16:07 between the plants and the finish, so the latest zip held only 16:07–16:24; the agent analysed that zip correctly. T16 now refuses a window cut by a scheduled export, and takes the longest agent message as the report |
+| 4 | rc.5 | running (16:33–17:45Z) | | | |
 
 ### Collection
 
@@ -47,8 +48,8 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T05 extension/agent, identity, no pwsh | | green | green (IMDS blocked) |
 | T06 collector running as configured | counters, format, size, interval | green | green |
 | T06b never exceeds, really wraps | 16 MB ring at 1 s | wrap proven by the 512 MB runs (P34) | green |
-| T06c changed MaxSizeMB reaches the server | 16 → 32 MB | pending | running |
-| T06d changed interval reaches the server | 10 → 1 s | pending | interval green; re-run on rc.5 for a clean manifest (P37) |
+| T06c changed MaxSizeMB reaches the server | 16 → 32 MB | pending | size part green (peak exactly 32 MB); re-run at 10 s for the re-create boundary (P40) |
+| T06d changed interval reaches the server | 10 → 1 s and back | pending | green (rc.6: 1 → 10 s, clean manifest, P37) |
 | T06e capacity misfit reported | R6 NonCompliant with the numbers | pending | green |
 | T06f G3 without IIS: no storm; auto-detect | | storm part green (dc, P27); auto-detect pending | pending |
 | T07 scheduled tasks | | green | green |
