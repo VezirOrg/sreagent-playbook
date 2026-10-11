@@ -92,6 +92,15 @@ class L01Converter(unittest.TestCase):
         self.assertEqual(ma['first_ts'], mb['first_ts'])
         self.assertEqual(ma['first_ts'][:19], truth['first_ts'])
 
+    def test_range_filter(self):
+        csv_path, truth = make(self.tmp, 'rng', '--hours', '1', '--procs', '4')
+        rc, meta, _ = convert(self.tmp, 'rng', csv_path, opts=('--from', '2026-10-01 08:10', '--to', '2026-10-01 08:20'))
+        self.assertEqual(rc, 0)
+        self.assertEqual(int(meta['rows']), 61)
+        self.assertEqual(meta['first_ts'][:19], '2026-10-01 08:10:00')
+        self.assertEqual(meta['last_ts'][:19], '2026-10-01 08:20:00')
+        self.assertEqual(int(meta['out_of_range_rows_skipped']), truth['rows'] - 61)
+
     def test_two_parts_with_overlap(self):
         p1, truth = make(self.tmp, 'p1', '--hours', '1', '--procs', '6', '--to-row', '200')
         p2, _ = make(self.tmp, 'p2', '--hours', '1', '--procs', '6', '--from-row', '180')
@@ -219,6 +228,25 @@ class L04FetchLatest(unittest.TestCase):
         got = fetch.pick_latest(self.blobs, self.fx['prefix'], 99)
         self.assertEqual(len(got), 3)
         self.assertTrue(all(g.startswith(self.fx['prefix'] + '/') for g in got))
+
+    def test_range_picks_overlapping_zips_in_order(self):
+        import datetime as dt
+        t = lambda x: dt.datetime.strptime(x, '%Y-%m-%d %H:%M')
+        got = fetch.pick_range(self.blobs, self.fx['prefix'], t('2026-10-01 17:00'), t('2026-10-01 23:00'))
+        self.assertEqual([g.split('_')[-2] for g in got], ['20261001-140000', '20261001-180000', '20261001-220000'])
+        self.assertTrue(all(g.startswith(self.fx['prefix'] + '/') for g in got))
+
+    def test_range_coverage(self):
+        import datetime as dt
+        t = lambda x: dt.datetime.strptime(x, '%Y-%m-%d %H:%M')
+        p = self.fx['prefix']
+        names = fetch.pick_range(self.blobs, p, t('2026-10-01 10:00'), t('2026-10-02 04:00'))
+        holes = fetch.coverage(names, t('2026-10-01 10:00'), t('2026-10-02 04:00'))
+        self.assertEqual([h[2] for h in holes], ['before_oldest', 'after_newest'])
+        # remove the middle zip: a missing export inside the range
+        mid = [n for n in names if '180000_2026' not in n]
+        self.assertEqual([h[2] for h in fetch.coverage(mid, t('2026-10-01 14:00'), t('2026-10-02 02:00'))], ['missing'])
+        self.assertEqual(fetch.coverage([], t('2026-10-01 14:00'), t('2026-10-01 15:00'))[0][2], 'no_zip')
 
     def test_tie_uses_last_modified(self):
         p = 'sub/rg/m'

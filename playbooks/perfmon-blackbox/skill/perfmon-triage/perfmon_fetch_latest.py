@@ -14,12 +14,17 @@ Authentication (first that works): env PERFMON_STORAGE_TOKEN (a bearer token for
 the Azure CLI (`az account get-access-token`), a managed identity (IDENTITY_ENDPOINT / MSI_ENDPOINT / IMDS).
 Read access is enough (Storage Blob Data Reader on the container). Python standard library only.
 
+Default: the latest zip. Range mode (--from/--to, or --last-hours N): every zip whose window overlaps the range, in
+time order, with a coverage report (the part of the range before the oldest zip, after the newest, or between zips that
+no zip covers). Times are the machine's local time as in the zip names (yyyy-mm-dd hh:mm[:ss]).
+
 Usage:
   perfmon_fetch_latest.py --account <storage account> (--prefix <sub>/<rg>/<machine> | --machine <name>)
-                          [--container perfmon] [--last N] [--out /tmp/perfmon]
+                          [--container perfmon] [--last N | --from <t> --to <t> | --last-hours N] [--out /tmp/perfmon]
   perfmon_fetch_latest.py --list-machines --account <storage account>
 """
 import argparse
+import datetime as dt
 import hashlib
 import json
 import os
@@ -64,6 +69,53 @@ def pick_latest(blobs, prefix, last=1):
             keyed.append((k[0], modified or '', k[1], name))
     keyed.sort(reverse=True)
     return [k[3] for k in keyed[:max(1, last)]]
+
+
+STAMP = '%Y%m%d-%H%M%S'
+
+
+def _window(name):
+    m = NAME_RE.match(name.split('/')[-1])
+    return (dt.datetime.strptime(m.group('from'), STAMP), dt.datetime.strptime(m.group('to'), STAMP)) if m else None
+
+
+def parse_time(text):
+    """'2026-10-11 14:00' / '2026-10-11T14:00:30' -> datetime (machine local time, as in the zip names)."""
+    t = text.strip().replace('T', ' ')
+    for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M', '%Y-%m-%d'):
+        try:
+            return dt.datetime.strptime(t, fmt)
+        except ValueError:
+            pass
+    raise ValueError(f'unrecognised time {text!r} (use yyyy-mm-dd hh:mm)')
+
+
+def pick_range(blobs, prefix, start, end):
+    """Every capture zip of the prefix whose window [from, to] overlaps [start, end], oldest first."""
+    out = []
+    for name, _ in blobs:
+        if parse_blob(name, prefix):
+            w = _window(name)
+            if w and w[1] >= start and w[0] <= end:
+                out.append((w[0], name))
+    return [n for _, n in sorted(out)]
+
+
+def coverage(names, start, end, slack_s=30):
+    """What part of [start, end] no zip covers: [(from, to, why)], why = before_oldest | after_newest | missing.
+    Holes up to slack_s between consecutive zips are the export's own roll and are not listed."""
+    holes = []
+    if not names:
+        return [(start, end, 'no_zip')]
+    ws = [_window(n) for n in names]
+    if ws[0][0] > start:
+        holes.append((start, ws[0][0], 'before_oldest'))
+    for (a0, a1), (b0, b1) in zip(ws, ws[1:]):
+        if (b0 - a1).total_seconds() > slack_s:
+            holes.append((a1, b0, 'missing'))
+    if ws[-1][1] < end:
+        holes.append((ws[-1][1], end, 'after_newest'))
+    return holes
 
 
 def machines(blob_names):
@@ -197,6 +249,9 @@ def main():
     g.add_argument('--machine', help='machine name; the prefix is looked up in the container')
     g.add_argument('--list-machines', action='store_true')
     ap.add_argument('--last', type=int, default=1, help='how many of the newest zips (default 1)')
+    ap.add_argument('--from', dest='start', help='range mode: start, machine local time (yyyy-mm-dd hh:mm)')
+    ap.add_argument('--to', dest='end', help='range mode: end (default: the newest zip\'s end)')
+    ap.add_argument('--last-hours', type=float, help='range mode: the last N hours before the newest zip\'s end')
     ap.add_argument('--out', default='/tmp/perfmon')
     a = ap.parse_args()
     token, source = get_token()
@@ -213,9 +268,21 @@ def main():
             prefix = hits[0]
         else:
             prefix = a.prefix.strip('/').lower()
-        picked = pick_latest(list_blobs(a.account, a.container, prefix + '/', token), prefix, a.last)
+        blobs = list_blobs(a.account, a.container, prefix + '/', token)
+        holes = None
+        if a.start or a.last_hours:
+            newest = pick_latest(blobs, prefix, 1)
+            if not newest:
+                sys.exit(f'no capture zip under {a.container}/{prefix}/')
+            end = parse_time(a.end) if a.end else _window(newest[0])[1]
+            start = parse_time(a.start) if a.start else end - dt.timedelta(hours=a.last_hours)
+            picked = pick_range(blobs, prefix, start, end)
+            holes = coverage(picked, start, end)
+            print(f'range: {start:%Y-%m-%d %H:%M:%S} .. {end:%Y-%m-%d %H:%M:%S} (machine local time); zips: {len(picked)}')
+        else:
+            picked = list(reversed(pick_latest(blobs, prefix, a.last)))   # oldest first
         if not picked:
-            sys.exit(f'no capture zip under {a.container}/{prefix}/')
+            sys.exit(f'no capture zip under {a.container}/{prefix}/' + (' in that range' if holes is not None else ''))
         os.makedirs(a.out, exist_ok=True)
         csvs = []
         for name in picked:
@@ -230,7 +297,14 @@ def main():
             print('sha256: OK')
     except urllib.error.HTTPError as e:
         sys.exit(f'storage request failed: HTTP {e.code} {e.reason}')
-    print('csv: ' + ' '.join(reversed(csvs)))
+    if holes is not None:
+        why = {'before_oldest': 'not covered: before the oldest zip (captures older than the lifecycle limit are deleted)',
+               'after_newest': 'not covered: after the newest zip (the next export has not run yet)',
+               'missing': 'not covered: no zip between these two exports (a missing export)', 'no_zip': 'not covered: no zip'}
+        print(f'coverage: {"complete" if not holes else str(len(holes)) + " hole(s)"}')
+        for f, t, w in holes:
+            print(f'  {f:%Y-%m-%d %H:%M:%S} .. {t:%Y-%m-%d %H:%M:%S}: {why[w]}')
+    print('csv: ' + ' '.join(csvs))
 
 
 if __name__ == '__main__':

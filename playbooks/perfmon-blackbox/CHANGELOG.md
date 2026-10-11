@@ -34,3 +34,4 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
 - 2026-10-11: rc.5 (P37: gaps and 'wrapped' judged per ring, bounded event text).
 - 2026-10-11: rc.6 (P40: a hole before a wrapped ring is reported as buffer_overrun).
 - 2026-10-11: rc.7 (P41: the export's own short roll is an expected export_roll gap).
+- 2026-10-11: skill **v2.2** (P44): range mode — every zip overlapping a requested time range, one database restricted to the range, coverage holes reported; default still the latest zip.

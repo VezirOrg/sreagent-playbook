@@ -3,7 +3,7 @@ name: perfmon-triage
 description: Triage a Windows Performance Monitor (PerfMon) capture, either the latest perfmon-blackbox capture of a machine fetched from its storage account or raw CSV file(s) given directly, when the cause of a slow or unresponsive machine is unknown. The skill converts the CSV into a SQLite database with its own script, then checks CPU, memory, disk, network, processes and application counters against a fixed checklist, ranks what would make the machine hard to use, and digs into the top problems (timeline, driver, root-cause chain). Use for PerfMon / perfmon / BLG-exported / relog CSV / performance counter captures, "server is slow", "machine is sluggish".
 compatibility: Python 3 standard library only (csv, sqlite3, urllib, zipfile). No pandas, no package installs. Runs in a terminal with python3. Fetching from storage needs read access (Storage Blob Data Reader) on the perfmon container.
 metadata:
-  version: "2.1"
+  version: "2.2"
 ---
 
 # PerfMon triage: CSV → SQLite → analysis
@@ -73,9 +73,28 @@ python3 "$SKILL_DIR/perfmon_fetch_latest.py" --account <storage account> --machi
 # which machines exist:  --list-machines
 ```
 
-It picks the newest zip by the window end in its name, checks the CSV against the manifest's SHA-256, unzips it and
-prints: the zip it used, the window, `complete`, buffer hours and every gap (`buffer_overrun`, `collector_restart`,
-`machine_off`, `local_cap`). **Quote the zip name, `complete` and every gap in the report's Capture section**; a gap
+**Default: the latest zip.** If the request names a time range ("yesterday 14:00–18:00", "the last 24 h",
+"between X and Y"), use **range mode** instead:
+
+```sh
+python3 "$SKILL_DIR/perfmon_fetch_latest.py" --account <account> --machine <machine> --from '2026-10-11 14:00' --to '2026-10-11 18:00' --out /tmp/perfmon
+python3 "$SKILL_DIR/perfmon_fetch_latest.py" --account <account> --machine <machine> --last-hours 24 --out /tmp/perfmon
+```
+
+Range mode fetches **every zip whose window overlaps the range**, oldest first, and prints a `coverage:` block: the
+parts of the range that no zip covers (before the oldest zip — older captures are deleted by the lifecycle rule —, after
+the newest — the next export has not run yet —, or a missing export between two zips). Then convert **all** the CSVs
+into one database restricted to the range (duplicate timestamps are dropped):
+
+```sh
+python3 "$SKILL_DIR/perfmon_csv_to_sqlite.py" <csv1> <csv2> ... /tmp/perfmon/range.db --from '2026-10-11 14:00' --to '2026-10-11 18:00'
+```
+
+Times are the machine's local time, as in the zip names. In the report, say plainly which part of the asked range is not
+covered; the holes between zips (the export's own roll, a missing zip) are gaps, not events of the machine.
+
+For each zip it checks the CSV against the manifest's SHA-256, unzips it and prints: the zip it used, the window, `complete`, buffer hours and every gap (`buffer_overrun`, `collector_restart`,
+`machine_off`, `local_cap`). **Quote every zip used, `complete` and every gap (and in range mode the coverage) in the report's Capture section**; a gap
 is a hole in the data, not an event of the machine (except `machine_off`). The last line `csv: …` lists the CSV
 file(s) for step 0. Authentication: a managed identity or Azure CLI login of the agent; on HTTP 403 say that the agent
 lacks Storage Blob Data Reader on the container, do not guess.
@@ -203,7 +222,7 @@ Take the problems that make the machine hard to use; if there are none, take the
 
 ## Report (final answer, ≤ 60 lines, no raw data tables)
 
-1. **Capture:** the zip used (step −1) with its `complete` flag and gaps, host, time range and zone, interval, gaps or restarts, CPU count, RAM estimate, workload.
+1. **Capture:** every zip used (step −1) with its `complete` flag and gaps; in range mode the asked range and what of it is not covered; host, time range and zone, interval, gaps or restarts, CPU count, RAM estimate, workload.
 2. **Verdict:** one or two sentences: was the machine hard to use, when, and why (or: not in this capture). The
    verdict word respects the `VERDICT CEILING`.
 3. **Ranked problems** (at most 5): impact (when, how long), evidence (numbers with their printed times), driver,

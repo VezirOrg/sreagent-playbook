@@ -28,6 +28,7 @@ different hosts are refused: build one database per host.
 
 Python standard library only (csv, sqlite3). Usage:
   python3 perfmon_csv_to_sqlite.py capture.csv [part2.csv ...] capture.db [--dayfirst | --monthfirst] [--force]
+                                   [--from 'yyyy-mm-dd hh:mm' --to 'yyyy-mm-dd hh:mm']   (keep only that range)
 """
 import argparse
 import csv
@@ -116,10 +117,21 @@ def main():
     g.add_argument('--dayfirst', action='store_true')
     g.add_argument('--monthfirst', action='store_true')
     ap.add_argument('--force', action='store_true', help='overwrite an existing database')
+    ap.add_argument('--from', dest='start', help='keep only samples at or after this local time (yyyy-mm-dd hh:mm[:ss])')
+    ap.add_argument('--to', dest='end', help='keep only samples at or before this local time')
     args = ap.parse_args()
     if len(args.paths) < 2:
         ap.error('give at least one CSV file and the database path (last)')
     csv_paths, db_path = args.paths[:-1], args.paths[-1]
+    def _t(x):
+        for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M', '%Y-%m-%d'):
+            try:
+                return dt.datetime.strptime(x.strip().replace('T', ' '), fmt)
+            except ValueError:
+                pass
+        ap.error(f'unrecognised time {x!r}')
+    range_from = _t(args.start) if args.start else None
+    range_to = _t(args.end) if args.end else None
     if db_path.lower().endswith('.csv'):
         sys.exit(f'the last argument is the database to write, not a CSV: {db_path}')
 
@@ -170,7 +182,7 @@ def main():
                        'VALUES (?,?,?,?,?,?,?)', (path_id[c], c, host, obj, inst, base, ctr))
 
     stats = {i: [0, 0, None, None, 0.0, None, None] for i in path_id.values()}  # n, blank, min, max, sum, first, last
-    n_rows = bad_cells = short_rows = overlap_rows = 0
+    n_rows = bad_cells = short_rows = overlap_rows = out_of_range = 0
     prev_ts = None
     deltas = {}
     batch = []
@@ -184,6 +196,9 @@ def main():
                 if not row or not row[0].strip():
                     continue
                 ts = parse_ts(row[0], dayfirst)
+                if (range_from and ts < range_from) or (range_to and ts > range_to):
+                    out_of_range += 1
+                    continue
                 if loaded_until is not None and ts <= loaded_until:
                     overlap_rows += 1
                     continue
@@ -234,6 +249,7 @@ def main():
         'timestamp_order': 'day/month/year' if dayfirst else 'month/day/year',
         'rows': n_rows, 'counter_columns': len(path_id), 'unparsed_paths': unparsed,
         'bad_cells': bad_cells, 'short_rows': short_rows, 'overlap_rows_skipped': overlap_rows,
+        'range': f"{range_from or '-'} .. {range_to or '-'}", 'out_of_range_rows_skipped': out_of_range,
         'first_ts': first_ts, 'last_ts': last_ts,
         'sample_interval_s': interval,
         'interval_histogram': ', '.join(f'{k}s x{v}' for k, v in sorted(deltas.items(), key=lambda kv: -kv[1])[:10]),
