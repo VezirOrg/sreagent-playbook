@@ -341,3 +341,17 @@ Hours held by 512 MB, full set at the 10 s default: 100 processes ≈ 26 h, 200 
 ~460 processes. For comparison, the real 36-counter servers at their own 1 s would hold only ≈ 1 h in 512 MB. R6 uses
 this formula before the first export (then the measured value); the README quotes the table. The wrap proof and the
 10 s full-set measurement (BbWrap1/2, BbFull10 on vm1) confirm it later.
+
+## P28: package build facts from T01 (session 2, 2026-10-11)
+
+- **T01 green on dc** (authoring side, portable PowerShell 7.4.6 in `C:\BbDev\pwsh`, GuestConfiguration 4.12.0,
+  PSDesiredStateConfiguration 2.0.7): NonCompliant on a clean box, then after `Start-GuestConfigurationPackageRemediation`
+  all six resources Compliant. The portable zip is not an install (no PATH, no registry, removed with `C:\BbDev`), so
+  P25 holds; vm1 and arc1 never get it.
+- PowerShell 7.4 hides `DscResourcesToExport` from `Get-Module -ListAvailable` when the manifest also has empty
+  `FunctionsToExport`/`CmdletsToExport`/… = `@()`; the DSC compiler then finds no class resource. The manifest has no
+  such lines.
+- `schtasks /query /xml` leaves out elements at their default (`<Enabled>true</Enabled>`), and `icacls` writes ACEs
+  in its own order: the Tests compare accordingly.
+- The package file is `PerfmonBlackbox.zip` (the name must equal the configuration name; the version lives in the
+  release tag and the policy's `contentHash`), not `PerfmonBlackbox_<ver>.zip` as T01's row said.

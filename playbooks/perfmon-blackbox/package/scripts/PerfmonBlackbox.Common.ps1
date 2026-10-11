@@ -719,7 +719,7 @@ function Compare-BbTask {
         @('arguments', 't:Task/t:Actions/t:Exec/t:Arguments'),
         @('start when available', 't:Task/t:Settings/t:StartWhenAvailable'),
         @('enabled', 't:Task/t:Settings/t:Enabled'),
-        @('boot trigger', 't:Task/t:Triggers/t:BootTrigger/t:Enabled'),
+        @('boot trigger', 't:Task/t:Triggers/t:BootTrigger'),
         @('repetition', 't:Task/t:Triggers/t:CalendarTrigger/t:Repetition/t:Interval'),
         @('daily', 't:Task/t:Triggers/t:CalendarTrigger/t:ScheduleByDay/t:DaysInterval'))
     $ns2 = New-Object System.Xml.XmlNamespaceManager $Actual.NameTable
@@ -727,8 +727,10 @@ function Compare-BbTask {
     foreach ($c in $checks) {
         $e = $exp.SelectSingleNode($c[1], $ns); $a = $Actual.SelectSingleNode($c[1], $ns2)
         $ev = ''; $av = ''
-        if ($e) { $ev = $e.InnerText }
-        if ($a) { $av = $a.InnerText }
+        if ($e) { $ev = $e.InnerText; if ($c[0] -eq 'boot trigger') { $ev = 'present' } }
+        if ($a) { $av = $a.InnerText; if ($c[0] -eq 'boot trigger') { $av = 'present' } }
+        # schtasks /query /xml leaves out elements at their default (Enabled = true)
+        if ($c[0] -eq 'enabled' -and $av -eq '') { $av = 'true' }
         if ($c[0] -eq 'principal' -and $av -eq 'SYSTEM') { $av = 'S-1-5-18' }
         if ($ev -ne $av) { $r += "task $Kind`: $($c[0]) is '$av', expected '$ev'" }
     }
@@ -749,6 +751,19 @@ function Register-BbTask {
 # ---------- folder ACL (icacls.exe; SIDs, so it works on any OS language) ----------
 
 $script:BbSddl = 'D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)'
+
+function Test-BbSddl {
+    # same protected DACL with the same ACEs, in any order (icacls keeps its own ACE order)
+    param([string]$Actual, [string]$Expected = $script:BbSddl)
+    if (-not $Actual) { return $false }
+    $norm = {
+        param($x)
+        if ($x -notmatch '^D:(?<flags>[A-Z]*)(?<aces>\(.*\))$') { return $null }
+        $aces = [regex]::Matches($Matches.aces, '\([^)]*\)') | ForEach-Object { $_.Value } | Sort-Object
+        return ($Matches.flags + '|' + ($aces -join ''))
+    }
+    return ((& $norm $Actual) -and (& $norm $Actual) -eq (& $norm $Expected))
+}
 
 function Get-BbAclSddl {
     param([Parameter(Mandatory)][string]$Path)

@@ -98,7 +98,7 @@ class BlackboxFiles {
         }
         if (Test-Path -LiteralPath $p.Root) {
             $sddl = Get-BbAclSddl $p.Root
-            if ($sddl -ne $script:BbSddl) { $out += New-BbReason 'BlackboxFiles' 'AclDiffers' "folder ACL is '$sddl', expected SYSTEM and Administrators only" }
+            if (-not (Test-BbSddl $sddl)) { $out += New-BbReason 'BlackboxFiles' 'AclDiffers' "folder ACL is '$sddl', expected SYSTEM and Administrators only" }
         }
         return $out
     }

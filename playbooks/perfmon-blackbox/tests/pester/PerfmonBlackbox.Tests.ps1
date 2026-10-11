@@ -199,6 +199,14 @@ Describe 'Blob path, template, collector compare, capacity, tasks' {
         (Compare-BbTask -Kind Boot -Actual $actual -ExpectedXml $boot).Count | Should -Be 0
         (Compare-BbTask -Kind Export -Actual $actual -ExpectedXml $exp).Count | Should -BeGreaterThan 0
         (Compare-BbTask -Kind Boot -Actual $null -ExpectedXml $boot)[0] | Should -Match 'not registered'
+        # schtasks /query /xml drops <Enabled>true</Enabled> (the default): still compliant
+        $noEnabled = [xml](($boot -replace '<Enabled>true</Enabled>', '') -replace '^\s*<\?xml[^>]*\?>', '')
+        (Compare-BbTask -Kind Boot -Actual $noEnabled -ExpectedXml $boot).Count | Should -Be 0
+    }
+    It 'ACL check ignores the ACE order icacls uses' {
+        Test-BbSddl 'D:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)' | Should -BeTrue
+        Test-BbSddl 'D:AI(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)' | Should -BeFalse
+        Test-BbSddl 'D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;BU)' | Should -BeFalse
     }
 }
 
