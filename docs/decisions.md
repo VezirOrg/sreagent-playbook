@@ -145,3 +145,6 @@ perfmon-blackbox's infra and policy definitions must name (Storage Blob Data Rea
 Contributor, Role Based Access Control Administrator) are in `scripts/scrub-allow.txt`, exact IDs only, never a
 pattern, each verified read-only (`az role definition list --name <id>`: roleType BuiltInRole) with its role name in
 the comment.
+
+**R17 addendum (2026-10-11):** the built-in **Reader** role ID is allow-listed too (verified BuiltInRole): the
+perfmon-blackbox DINE identity must read the machine to pass its identity to the per-machine role assignment.

@@ -8,3 +8,5 @@
 # ^ built-in role: Guest Configuration Resource Contributor
 f58310d9-a9f6-439a-9e8d-f62e7b41a168
 # ^ built-in role: Role Based Access Control Administrator
+acdd72a7-3385-48ef-bd42-f606fba81ae7
+# ^ built-in role: Reader (R17 addendum, verified BuiltInRole 2026-10-11)
