@@ -1,3 +1,10 @@
 # Public values the scrub check may ignore (exact match, case-insensitive), one per line, '#' comments.
 # Only well-known public identifiers belong here (e.g. built-in Azure role definition IDs), each with a comment.
 # Never a subscription, tenant, principal or resource ID of a real environment.
+# perfmon-blackbox (R17), each verified with az role definition list as roleType BuiltInRole on 2026-10-11:
+2a2b9908-6ea1-4ae2-8e65-a410df84e7d1
+# ^ built-in role: Storage Blob Data Reader
+088ab73d-1256-47ae-bea9-9de8e7131f31
+# ^ built-in role: Guest Configuration Resource Contributor
+f58310d9-a9f6-439a-9e8d-f62e7b41a168
+# ^ built-in role: Role Based Access Control Administrator

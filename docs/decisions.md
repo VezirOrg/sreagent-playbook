@@ -137,3 +137,11 @@ reached git or Drive; rotation is Emre's call), the rule is: check that credenti
 The pattern `files/` also matched any `files/` folder deeper in the tree, so a playbook's `package/files/` was silently
 never committed (perfmon-blackbox P20). The pattern is now `/files` and `/files/`: only the root Drive link is
 ignored. A playbook may still not name a folder `files/` by habit; perfmon-blackbox uses `package/collector/`.
+
+## R17: built-in role definition IDs used by perfmon-blackbox are allow-listed (the vezir, 2026-10-11)
+
+The scrub check flags every GUID. Built-in Azure role definition IDs are public constants: the three that
+perfmon-blackbox's infra and policy definitions must name (Storage Blob Data Reader, Guest Configuration Resource
+Contributor, Role Based Access Control Administrator) are in `scripts/scrub-allow.txt`, exact IDs only, never a
+pattern, each verified read-only (`az role definition list --name <id>`: roleType BuiltInRole) with its role name in
+the comment.
