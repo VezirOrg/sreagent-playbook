@@ -434,3 +434,14 @@ The playbook gets adopter documentation in `docs/`, written between the lab's Az
 summary table whose status column is kept current). English, plain and concise, each file opening with a 3–5 line
 summary; marked "draft until v1.0.0" where details may still change; the README-only fresh-eyes deploy at release
 validates them. Linked from the playbook README; scrub-checked like everything else.
+
+## P36: a resource's Test never throws (session 2, 2026-10-11)
+
+On arc1, rc.3 could not repair the files locked by the P33 bug: R1's Test hashed each file, the hash threw "access
+denied", the whole configuration failed, and R1's Set (which resets the ACLs) never ran. Rule: every resource's Test
+turns any failure into a NonCompliant reason (`FileUnreadable`, `ConfigUnreadable`, `CheckFailed: …`), never an
+exception, so Set always gets its chance. R1's check is now `Get-BbFilesDrift` in the common script (Pester-tested
+with a locked file). In rc.4.
+- **rc.4** (P36: Test never throws, so rc.4 self-heals machines locked by the P33 bug): `PerfmonBlackbox.zip` SHA-256
+  `F9D4CB5BE4351A507EC16CC07ACD9132AD563839C5020F9642FB409DDDF8A736` (L05 30/30, T01 green on dc; 12 files scrub-checked
+  clean before the upload).

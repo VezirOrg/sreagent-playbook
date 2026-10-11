@@ -756,6 +756,37 @@ function Register-BbTask {
     if ($r.ExitCode -ne 0) { throw "schtasks /create $Kind failed ($($r.ExitCode)): $($r.Output -join ' ')" }
 }
 
+# ---------- R1 check (never throws: an unreadable file is a reason, so Set can repair it; decisions P36) ----------
+
+function Get-BbFilesDrift {
+    # what R1 (BlackboxFiles) finds wrong: @{ Id; Phrase } items. Shipped = relative path -> package file.
+    param([Parameter(Mandatory)][hashtable]$Shipped, [Parameter(Mandatory)][string]$BinDir,
+          [Parameter(Mandatory)][string]$ConfigPath, [Parameter(Mandatory)]$ExpectedConfig, [string]$Root)
+    $out = @()
+    foreach ($rel in ($Shipped.Keys | Sort-Object)) {
+        $dst = Join-Path $BinDir $rel
+        if (-not (Test-Path -LiteralPath $dst)) { $out += @{ Id = 'FileMissing'; Phrase = "file $rel is missing" }; continue }
+        try {
+            if ((Get-BbSha256 $dst) -ne (Get-BbSha256 $Shipped[$rel])) { $out += @{ Id = 'FileDiffers'; Phrase = "file $rel differs from the package" } }
+        } catch { $out += @{ Id = 'FileUnreadable'; Phrase = "file $rel cannot be read: $($_.Exception.Message)" } }
+    }
+    $cfg = $null
+    try { $cfg = Read-BbJson $ConfigPath } catch { $out += @{ Id = 'ConfigUnreadable'; Phrase = "config.json cannot be read: $($_.Exception.Message)" } }
+    if (-not $cfg) {
+        if (-not ($out | Where-Object { $_.Id -eq 'ConfigUnreadable' })) { $out += @{ Id = 'NoConfig'; Phrase = 'config.json is missing' } }
+    } else {
+        foreach ($k in $ExpectedConfig.Keys) {
+            if ("$($cfg[$k])" -ne "$($ExpectedConfig[$k])") { $out += @{ Id = 'ConfigDiffers'; Phrase = "config $k is '$($cfg[$k])', expected '$($ExpectedConfig[$k])'" } }
+        }
+    }
+    if ($Root -and (Test-Path -LiteralPath $Root)) {
+        $sddl = $null
+        try { $sddl = Get-BbAclSddl $Root } catch { $sddl = $null }
+        if (-not (Test-BbSddl $sddl)) { $out += @{ Id = 'AclDiffers'; Phrase = "folder ACL is '$sddl', expected SYSTEM and Administrators only" } }
+    }
+    return , $out
+}
+
 # ---------- folder ACL (icacls.exe; SIDs, so it works on any OS language) ----------
 
 $script:BbSddl = 'D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)'

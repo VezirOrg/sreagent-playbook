@@ -224,6 +224,32 @@ Describe 'Pending buffers keep the right reason' {
     }
 }
 
+Describe 'R1 check never throws (P36)' {
+    BeforeEach {
+        $script:Ship = Join-Path $TestDrive 'ship'; $script:Bin = Join-Path $TestDrive 'bin'
+        New-Item -ItemType Directory -Force $script:Ship, $script:Bin | Out-Null
+        Set-Content (Join-Path $script:Ship 'a.ps1') 'one'; Set-Content (Join-Path $script:Bin 'a.ps1') 'one'
+        $script:Cfg = Join-Path $TestDrive 'config.json'; Write-BbJson $script:Cfg ([ordered]@{ MaxSizeMB = 512 })
+    }
+    It 'reports nothing when files and config match' {
+        (Get-BbFilesDrift -Shipped @{ 'a.ps1' = (Join-Path $script:Ship 'a.ps1') } -BinDir $script:Bin -ConfigPath $script:Cfg -ExpectedConfig @{ MaxSizeMB = 512 }).Count | Should -Be 0
+    }
+    It 'turns an unreadable file into a reason instead of an exception' {
+        Mock Get-BbSha256 { throw 'Access to the path is denied.' }
+        $d = Get-BbFilesDrift -Shipped @{ 'a.ps1' = (Join-Path $script:Ship 'a.ps1') } -BinDir $script:Bin -ConfigPath $script:Cfg -ExpectedConfig @{ MaxSizeMB = 512 }
+        $d[0].Id | Should -Be 'FileUnreadable'
+    }
+    It 'turns an unreadable config into a reason' {
+        Mock Read-BbJson { throw 'Access to the path is denied.' }
+        $d = Get-BbFilesDrift -Shipped @{} -BinDir $script:Bin -ConfigPath $script:Cfg -ExpectedConfig @{ MaxSizeMB = 512 }
+        $d[0].Id | Should -Be 'ConfigUnreadable'
+    }
+    It 'reports a changed parameter' {
+        $d = Get-BbFilesDrift -Shipped @{} -BinDir $script:Bin -ConfigPath $script:Cfg -ExpectedConfig @{ MaxSizeMB = 16 }
+        $d[0].Phrase | Should -Be "config MaxSizeMB is '512', expected '16'"
+    }
+}
+
 Describe 'Invoke-BbExport end to end on synthetic buffers' {
     BeforeEach {
         $script:Uploads.Clear()

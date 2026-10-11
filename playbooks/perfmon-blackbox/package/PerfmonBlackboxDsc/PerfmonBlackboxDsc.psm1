@@ -81,24 +81,8 @@ class BlackboxFiles {
         $out = @()
         foreach ($t in (Test-BbParameters $this)) { $out += New-BbReason 'BlackboxFiles' 'BadParameter' $t }
         $p = Get-BbPaths
-        $bin = $p.Bin
-        $files = Get-BbShippedFiles
-        foreach ($rel in $files.Keys) {
-            $dst = Join-Path $bin $rel
-            if (-not (Test-Path -LiteralPath $dst)) { $out += New-BbReason 'BlackboxFiles' 'FileMissing' "file $rel is missing"; continue }
-            if ((Get-BbSha256 $dst) -ne (Get-BbSha256 $files[$rel])) { $out += New-BbReason 'BlackboxFiles' 'FileDiffers' "file $rel differs from the package" }
-        }
-        $cfg = Read-BbJson $p.Config
-        $exp = Get-BbExpectedConfig $this
-        if (-not $cfg) { $out += New-BbReason 'BlackboxFiles' 'NoConfig' 'config.json is missing' }
-        else {
-            foreach ($k in $exp.Keys) {
-                if ("$($cfg[$k])" -ne "$($exp[$k])") { $out += New-BbReason 'BlackboxFiles' 'ConfigDiffers' "config $k is '$($cfg[$k])', expected '$($exp[$k])'" }
-            }
-        }
-        if (Test-Path -LiteralPath $p.Root) {
-            $sddl = Get-BbAclSddl $p.Root
-            if (-not (Test-BbSddl $sddl)) { $out += New-BbReason 'BlackboxFiles' 'AclDiffers' "folder ACL is '$sddl', expected SYSTEM and Administrators only" }
+        foreach ($d in (Get-BbFilesDrift -Shipped (Get-BbShippedFiles) -BinDir $p.Bin -ConfigPath $p.Config -ExpectedConfig (Get-BbExpectedConfig $this) -Root $p.Root)) {
+            $out += New-BbReason 'BlackboxFiles' $d.Id $d.Phrase
         }
         return $out
     }
@@ -133,13 +117,15 @@ class BlackboxCollector {
     [DscProperty(NotConfigurable)] [Reason[]] $Reasons
 
     [Reason[]] Check() {
-        $out = @()
-        try { $cfg = Get-BbConfig } catch { return @(New-BbReason 'BlackboxCollector' 'NoConfig' 'config.json is missing (BlackboxFiles)') }
-        $exp = Get-BbExpectedCounters -CollectorDir (Join-Path (Get-BbBinDir) 'collector')
-        foreach ($t in (Compare-BbCollector -Collector (Get-BbCollector) -Expected $exp -MaxSizeMB $cfg['MaxSizeMB'] -SampleIntervalSeconds $cfg['SampleIntervalSeconds'])) {
-            $out += New-BbReason 'BlackboxCollector' 'CollectorDiffers' $t
-        }
-        return $out
+        try {
+            $out = @()
+            try { $cfg = Get-BbConfig } catch { return @(New-BbReason 'BlackboxCollector' 'NoConfig' 'config.json is missing (BlackboxFiles)') }
+            $exp = Get-BbExpectedCounters -CollectorDir (Join-Path (Get-BbBinDir) 'collector')
+            foreach ($t in (Compare-BbCollector -Collector (Get-BbCollector) -Expected $exp -MaxSizeMB $cfg['MaxSizeMB'] -SampleIntervalSeconds $cfg['SampleIntervalSeconds'])) {
+                $out += New-BbReason 'BlackboxCollector' 'CollectorDiffers' $t
+            }
+            return $out
+        } catch { return @(New-BbReason 'BlackboxCollector' 'CheckFailed' $_.Exception.Message) }
     }
 
     [BlackboxCollector] Get() { $this.Reasons = $this.Check(); return $this }
@@ -162,10 +148,12 @@ class BlackboxRunning {
     [DscProperty(NotConfigurable)] [Reason[]] $Reasons
 
     [Reason[]] Check() {
-        $c = Get-BbCollector
-        if (-not $c) { return @(New-BbReason 'BlackboxRunning' 'NoCollector' 'collector set PerfmonBlackbox does not exist') }
-        if ($c.Status -ne 'Running') { return @(New-BbReason 'BlackboxRunning' 'NotRunning' "collector status is $($c.Status)") }
-        return @()
+        try {
+            $c = Get-BbCollector
+            if (-not $c) { return @(New-BbReason 'BlackboxRunning' 'NoCollector' 'collector set PerfmonBlackbox does not exist') }
+            if ($c.Status -ne 'Running') { return @(New-BbReason 'BlackboxRunning' 'NotRunning' "collector status is $($c.Status)") }
+            return @()
+        } catch { return @(New-BbReason 'BlackboxRunning' 'CheckFailed' $_.Exception.Message) }
     }
 
     [BlackboxRunning] Get() { $this.Reasons = $this.Check(); return $this }
@@ -189,9 +177,11 @@ class BlackboxBootTask {
     [string] Expected() { return (New-BbTaskXml -Kind 'Boot' -BinDir (Get-BbBinDir)) }
 
     [Reason[]] Check() {
-        $out = @()
-        foreach ($t in (Compare-BbTask -Kind 'Boot' -Actual (Get-BbTask 'Boot') -ExpectedXml $this.Expected())) { $out += New-BbReason 'BlackboxBootTask' 'TaskDiffers' $t }
-        return $out
+        try {
+            $out = @()
+            foreach ($t in (Compare-BbTask -Kind 'Boot' -Actual (Get-BbTask 'Boot') -ExpectedXml $this.Expected())) { $out += New-BbReason 'BlackboxBootTask' 'TaskDiffers' $t }
+            return $out
+        } catch { return @(New-BbReason 'BlackboxBootTask' 'CheckFailed' $_.Exception.Message) }
     }
 
     [BlackboxBootTask] Get() { $this.Reasons = $this.Check(); return $this }
@@ -214,9 +204,11 @@ class BlackboxExportTask {
     }
 
     [Reason[]] Check() {
-        $out = @()
-        foreach ($t in (Compare-BbTask -Kind 'Export' -Actual (Get-BbTask 'Export') -ExpectedXml $this.Expected())) { $out += New-BbReason 'BlackboxExportTask' 'TaskDiffers' $t }
-        return $out
+        try {
+            $out = @()
+            foreach ($t in (Compare-BbTask -Kind 'Export' -Actual (Get-BbTask 'Export') -ExpectedXml $this.Expected())) { $out += New-BbReason 'BlackboxExportTask' 'TaskDiffers' $t }
+            return $out
+        } catch { return @(New-BbReason 'BlackboxExportTask' 'CheckFailed' $_.Exception.Message) }
     }
 
     [BlackboxExportTask] Get() { $this.Reasons = $this.Check(); return $this }
@@ -234,7 +226,9 @@ class BlackboxCapacity {
 
     [hashtable] Result() {
         try { $cfg = Get-BbConfig } catch { return @{ Ok = $false; Reason = 'config.json is missing (BlackboxFiles)' } }
-        return (Test-BbCapacity -Config $cfg -State (Get-BbState))
+        $st = $null
+        try { $st = Get-BbState } catch { $st = $null }
+        return (Test-BbCapacity -Config $cfg -State $st)
     }
 
     [BlackboxCapacity] Get() {
