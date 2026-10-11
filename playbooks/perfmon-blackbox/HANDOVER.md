@@ -16,7 +16,13 @@
   re-syncs the guest assignment from the definition metadata (a first-party PUT at 21:07 flipped arc1 back to GitHub),
   so the mode is now chosen at generation: `perfmon-blackbox-<kind>-storage` definitions (accepted by the vezir with
   three conditions, in P48). 21:20Z: arc1 switched by the P48 procedure (pbb-arc removed, pbb-arc-storage assigned,
-  remediation). Pass = storage download over two refresh cycles with no PUT back.
+  remediation). Pass = storage download over two refresh cycles with no PUT back. Seen: 21:20:45 storage download (validated),
+  21:22:52 service PUT, 21:25:47 Compliant, 21:34:03 remediation deployment (pbb-arc-storage identity; writer + reader
+  OK), 21:35:48 storage download, 21:38:33 **service PUT**, 21:40:50 Compliant. **Not concluded:** the pull after the
+  21:38 service PUT (due ~21:45:50) never ran: **all three lab VMs were deallocated at 21:45:26Z** by a caller that is
+  neither the lab SP nor a user (not the 19:00 schedules). Restart only with the owner's OK. Resume: start dc, vm1, arc1;
+  after ~15 min check the arc1 agent log for "from private blob using managed identity" on two pulls with no
+  "Managed identity not provided"; then T18.sh arc1 storage.
 - **Resume recipe T18b:** `direnv exec . sh playbooks/perfmon-blackbox/tests/lab/T18.sh arc1 storage` (run.sh passes
   only the machine). Lab assignments now: pbb-vm (GitHub), pbb-arc-storage.
 - **Next:** T18b → rc.8 (T01, scrub, SHA in decisions first, publish P31) → P46 lab test (hosts block, retry at +5 min,
