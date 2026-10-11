@@ -178,3 +178,33 @@ Proposed by the vezir, **for Emre to decide** (design §2.6, CHOICE 9 and CHOICE
   reports a misfit as the compliance **reason** (NonCompliant, e.g. "buffer holds ~7 h, export window 24 h"), so it
   shows in Azure Policy before data is lost.
 - Export cadence: a third parameter, or derived from the measured buffer. Recommendation in design CHOICE 2.
+
+## P18: three counter groups added (Emre, 2026-10-11; extends P11, the 36 stay unchanged)
+
+The 36 original counters stay **exactly as they are** (`package/files/PerfmonBlackbox.counters.txt`). Added:
+
+- **G1, system-wide** (12; `PerfmonBlackbox.counters-g1-system.txt`): `\System\Processor Queue Length`,
+  `\System\Context Switches/sec`, `\System\System Up Time`, `\Memory\Pages Input/sec`, `\Memory\Pages/sec`,
+  `\Paging File(_Total)\% Usage`, `\LogicalDisk(*)\% Idle Time`, `\LogicalDisk(*)\Current Disk Queue Length`,
+  `\LogicalDisk(*)\Disk Reads/sec`, `\LogicalDisk(*)\Disk Writes/sec`, `\TCPv4\Segments Retransmitted/sec`,
+  `\Network Interface(*)\Packets Received Discarded`.
+- **G2, per process** (2; `…-g2-process.txt`): `\Process(*)\Pool Nonpaged Bytes`, `\Process(*)\Pool Paged Bytes`.
+- **G3, web** (6; `…-g3-web.txt`): `\ASP.NET Applications(__Total__)\Requests/Sec`, `\ASP.NET\Requests Queued`,
+  `\ASP.NET\Request Execution Time`, `\.NET CLR Memory(*)\# Bytes in all Heaps`, `\.NET CLR Memory(*)\% Time in GC`,
+  `\Web Service(_Total)\Current Connections`.
+
+Everything is deployed by **Azure Policy plus Machine Configuration. Nothing is Group Policy**; no doc may say
+otherwise (checked 2026-10-11: no mention in the repo).
+
+**Emre's question, to answer with lab data:** on a machine **without IIS or ASP.NET**, does collecting G3 cause an
+event-log storm of "counter not found" (Application, System, Microsoft-Windows-Diagnosis-PLA/Operational)? Test: G3
+forced in, 1 s, ≥ 30 min; new events counted per log and per ID at start and per minute; and whether the collector
+still starts and records the rest. (The vezir expects at most a warning at start, nothing per sample: to be proven.)
+
+**Proposal (vezir's recommendation, for Emre, CHOICE 10):** the package **auto-detects** the web objects: G3 is
+added only where its counter objects exist; the periodic Machine Configuration check re-evaluates, so a machine that
+gets IIS later gains G3 at the next check (through the pending-buffer restart path). No parameter for G3; missing
+counters are never configured.
+
+The buffer-hours measurement (P16) is re-run with the full set (36 + G1 + G2, plus G3 on a web box), because the
+hours per 512 MB shrink.
