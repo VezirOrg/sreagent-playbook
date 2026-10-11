@@ -4,7 +4,9 @@
 # complete: true, continuous with the export before.
 . "$(dirname "$0")/common.sh"
 m="${1:-vm1}"
-ip=$(az network private-endpoint show -g "$rg" -n "pe-$sa-blob" --query "customDnsConfigs[0].ipAddresses[0]" -o tsv)
+nic=$(az network private-endpoint show -g "$rg" -n "pe-$sa-blob" --query "networkInterfaces[0].id" -o tsv)
+ip=$(az network nic show --ids "$nic" --query "ipConfigurations[0].privateIPAddress" -o tsv)
+[ -n "$ip" ] || { bad 'no private endpoint IP'; finish; exit 1; }
 guest "$m" export-now.ps1 | grep '^state:'
 v "$m" "New-NetFirewallRule -Name BbT10c -DisplayName 'T10c block storage' -Direction Outbound -RemoteAddress $ip -Action Block | Out-Null; 'blocked'"
 f=$(guest "$m" export-now.ps1); echo "$f"

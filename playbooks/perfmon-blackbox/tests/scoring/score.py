@@ -68,12 +68,15 @@ def score(report, truth, zipname=None):
             ok = ok and 'bbcpu' in low
         found[pid] = ok; pts[pts_key] = n if ok else 0
     episode('cpu', ('cpu', 'processor'), 'P2', 15)
-    # disk: the line must name the disk AND a latency (not just any disk activity): P34 tightened
+    # disk (P42): the line(s) must name the PLANTED volume (truth driver, e.g. T:) AND a write latency, in the window;
+    # a process name containing "disk" or another volume's latency does not count
     d = probs.get('disk')
     if d:
         tgt = minute(d['from'])
-        ok = any(re.search(r'disk|logicaldisk|C:', w, re.I) and re.search(r'latency|sec/(read|write)|\d+(\.\d+)?\s*ms\b|\d\.\d+\s*s\b', w, re.I)
-                 and near(w, tgt) for w in windows(lines))
+        vol = re.escape(d.get('driver') or 'C:')
+        ok = any(re.search(r'(?<![A-Za-z])' + vol + r'(?![A-Za-z0-9])', w) and
+                 re.search(r'(write|sec/write).{0,60}(latency|\d+(\.\d+)?\s*(ms|s)\b)|latency.{0,60}write', w, re.I)
+                 and near(w, tgt, 6) for w in windows(lines))
         found['disk'] = ok; pts['P3'] = 15 if ok else 0
     episode('nic', ('network', 'nic', 'bytes total', 'interface'), 'P4', 15)
     # verdict words

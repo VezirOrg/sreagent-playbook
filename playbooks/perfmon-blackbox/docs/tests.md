@@ -30,7 +30,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | 1 | rc.1 | 85 → FAIL | leak, CPU, NIC (+ a memory episode) | 30-s stalls; disk | stalls are below the skill's 5-min ceiling by design → OPEN-2 closed, stalls removed (P34); disk plant never ran (P39) |
 | 2 | rc.3 | 85 → FAIL | leak, CPU, NIC (+ the memory episode) | disk | the disk plant never ran (P39); the agent rightly reported the disk as fine |
 | 3 | rc.5 | not valid | leak (622 MB/h), and a real full T: drive | CPU, disk, NIC | the server's own 4-hourly export ran at 16:07 between the plants and the finish, so the latest zip held only 16:07–16:24; the agent analysed that zip correctly. T16 now refuses a window cut by a scheduled export, and takes the longest agent message as the report |
-| 4 | rc.5 | 85 → FAIL | leak (bbleak), CPU burst (bbcpu), **disk latency** (first run with a working disk plant) | network burst | the burst used < 1.5 % of the Azure vNIC's bandwidth; the skill flags only saturation (> 70 %) or queueing, so "network fine" is its correct verdict: the NIC plant cannot fail by design (question to Emre). Scorer fixes: a negated cause ("not caused by") is not a claim |
+| 4 | rc.5 | not valid (disk), 70 | leak (bbleak), CPU burst (bbcpu) | network burst; disk | disk: the plant misfired again — T: was left full by run 3, so the writer only failed (capture: T: write latency max 3.1 ms, 0 samples > 25 ms); the agent rightly reported bbdisk as a memory hog and T: as full. Network: < 1.5 % of the vNIC, below the skill's threshold by design (question to Emre). Scorer now requires the planted volume with write latency (P42) |
 
 ### Collection
 
