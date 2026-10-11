@@ -21,7 +21,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | L04 fetch-latest selection | newest zip, other servers ignored, bad hash rejected | green | — |
 | L09 T16 scorer | the scoring rules | green | — |
 | T15 agent fetches and converts | the agent's own terminal, skill v2.1 | green | green |
-| T17 range mode | leak + CPU split over two zips; the agent asked for the range | pending (skill v2.2) | pending |
+| T17 range mode (P44) | leak + CPU split over two zips; the agent asked for the range | pending (skill v2.2) | pending |
 | **T16 agent report, scored** | planted problems vs the agent's report | see history below | pending |
 
 **T16 history** (pass = score ≥ 80, every planted problem found, nothing invented; since P43 only the memory leak and the CPU burst are planted):
@@ -62,6 +62,11 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T10c failed upload, no gap | | green (storage blocked by a hosts entry: the lab GPO turns the firewall off) | — |
 | T11 blob path, hashes, identity | | green (IMDS) | green (HIMDS) |
 | T12 cannot write elsewhere | | green | green |
+| T18a package from GitHub (P45) | the release asset (default) | green (T02, T04, T07–T12) | green (same) |
+| T18b package from storage, Arc (P45) | system identity, reader on the package container, same hash | — | running |
+| T18c package from storage, Azure VM (P45) | then back to GitHub | pending | — |
+| T18d storage mode without the reader role (P45) | no download, old config keeps running | pending | — |
+| T18e a different zip under the same name (P45) | rejected by the hash, old config keeps running | pending | — |
 | T13 lifecycle rule | | green | — |
 | T14 storage private | | green | — |
 
