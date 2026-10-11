@@ -1,32 +1,12 @@
-# perfmon-blackbox: IMPLEMENTING (session 2): most stages green on vm1 + arc1; T16 vm1 100 (P43); P46 retry committed (rc.8 to build); T18b: identity download proven on Arc; P47/P48 fixed; LAB DOWN since 21:45Z (not ours), resume recipe below.
+# perfmon-blackbox: CLOSED session 2 (2026-10-11 21:58Z). LAB DOWN (not ours, do NOT start). Next: T18b deciding pull, rc.8, P46 lab test.
 
 
-## Session 2 progress (2026-10-11, live; rewritten at close)
+## Close of session 2 (2026-10-11)
 
-- Decisions P20–P47; root R16–R19. Docs (P35, P38): `docs/` analysis-first, tests.md with live statuses.
-- **Green:** L01–L09 (+ CI Windows job); T01, T02, T03, T13, T14; **vm1:** T04–T07, T07b, T08, T09–T12, T10c, T15,
-  **T16 run 4 = 100** under P43 (plants verified in the capture, P42); **arc1:** T04–T07, T06b–T06e, T09–T12, T10b,
-  T15. Wrap proven, storm none, formula P27. Resilience R1 (real DNS outage, no data lost).
-- **Lab pre-releases (P29/P31):** rc.1 … rc.7 (rc.7 = P41, rolled out). **P46** (export retries +5/+15 min, Export task
-  restart-on-failure) committed 7edede7, L05 green; **rc.8 not built yet** (after T18b, so the package does not change
-  under the storage-mode test).
-- **T18b (arc1, package from storage):** system-identity download PROVEN on Arc (agent log 21:00:40Z: "from private
-  blob using managed identity", downloaded, validated, applied). Three of our defects found on the way, no SAS anywhere:
-  P47 API 2022-01-25 dropped `contentManagedIdentity`; P47 addendum stale RBAC Admin condition; **P48** the service
-  re-syncs the guest assignment from the definition metadata (a first-party PUT at 21:07 flipped arc1 back to GitHub),
-  so the mode is now chosen at generation: `perfmon-blackbox-<kind>-storage` definitions (accepted by the vezir with
-  three conditions, in P48). 21:20Z: arc1 switched by the P48 procedure (pbb-arc removed, pbb-arc-storage assigned,
-  remediation). Pass = storage download over two refresh cycles with no PUT back. Seen: 21:20:45 storage download (validated),
-  21:22:52 service PUT, 21:25:47 Compliant, 21:34:03 remediation deployment (pbb-arc-storage identity; writer + reader
-  OK), 21:35:48 storage download, 21:38:33 **service PUT**, 21:40:50 Compliant. **Not concluded:** the pull after the
-  21:38 service PUT (due ~21:45:50) never ran: **all three lab VMs were deallocated at 21:45:26Z** by a caller that is
-  neither the lab SP nor a user (not the 19:00 schedules). Restart only with the owner's OK. Resume: start dc, vm1, arc1;
-  after ~15 min check the arc1 agent log for "from private blob using managed identity" on two pulls with no
-  "Managed identity not provided"; then T18.sh arc1 storage.
-- **LAB DOWN since 21:45:26Z (2026-10-11):** dc, vm1, arc1 deallocated by an app identity that is not the lab SP,
-  not a managed identity of the subscription, with no role assignment visible here (inherited from above); the same
-  caller wrote other resources earlier that day. Not the rig, not the vezir; the vezir asked Emre. **Do not start the
-  VMs or touch Azure until the owner says so.**
+**lab18 VMs stopped 21:45Z by an unknown app identity; do NOT start them until the vezir main relays Emre's answer.**
+(dc, vm1, arc1 deallocated at 21:45:26Z in one second by an app identity that is not the lab SP and not a managed
+identity of the subscription, with no role assignment visible here; the same caller wrote other resources that day.)
+
 - **Resume recipe (once the owner allows the lab up)**, all from the repo root, every az call via `direnv exec .`:
   1. Start dc, vm1, arc1 (`az vm start -g <lab rg> -n <name>`; dc first, DNS). Wait until `v arc1 hostname` answers.
   2. **T18b (decides P48):** state left behind: assignments `pbb-vm` (GitHub) and `pbb-arc-storage`; arc1 holds Reader
@@ -36,7 +16,7 @@
      `Managed identity not provided`, **including the first pull after a first-party service PUT** (the 21:07 pattern;
      21:38:33 was the last one seen, its following pull never ran), over at least two pulls; then
      `direnv exec . sh playbooks/perfmon-blackbox/tests/lab/T18.sh arc1 storage` (call T18.sh directly: run.sh passes
-     only the machine). The watcher used is in the session scratchpad (`_watch.sh`); any loop over the two logs does.
+     only the machine). `tests/lab/watch-gc.sh arc1 60` prints both (new script, syntax-checked, not yet run against the lab; its prototype was).
      Fail (a flip back to GitHub) = stop and report to the owner.
   3. **rc.8 (P46, P31 standing permission):** `tests/run.sh T01 dc` (build + compliance on dc) → unpack the built zip
      into an empty dir and `scripts/scrub-check.sh` every file → write the SHA-256 into decisions.md under P46
@@ -51,13 +31,37 @@
      `upload attempt 1 failed … retry in 300 s`, then `uploaded on attempt 2` at about +5 min, the zip in storage,
      manifest with 0 gaps. Record in tests.md and tell the owner (and the v1.0.0 estimate impact).
   6. Then T18c (vm1 storage and back, by the P48 switch procedure, watch for flapping), T18d/e/f, T16 run 5, T17.
-- **Done while the lab is down:** naming pass (7f5c38a); L02 range mode end to end on synthetic data (6b058d2).
-- **Next:** T18b → rc.8 (T01, scrub, SHA in decisions first, publish P31) → P46 lab test (hosts block, retry at +5 min,
-  0 gaps) → T18c/d/e/f → T16 run 5 (arc1; vm1 after its next export) → T17 → T08/T07b arc1 → T06f part 2 →
-  least-privilege agent role (P30) → docs pass (naming item done 7f5c38a) → fresh-eyes deploy; v1.0.0 = Emre's gate.
+
+## Session 2 summary
+
+- Decisions P20–P48; root R16–R19. Docs analysis-first (P35, P38); tests.md with live statuses.
+- **Green:** L01–L09 (+ CI Windows job; L02 now also covers range mode end to end); T01, T02, T03, T13, T14; **vm1:**
+  T04–T07, T07b, T08, T09–T12, T10c, T15, **T16 run 4 = 100** under P43 (plants verified in the capture, P42);
+  **arc1:** T04–T07, T06b–T06e, T09–T12, T10b, T15. Wrap proven, storm none, formula P27. Resilience R1 (real DNS
+  outage, no data lost).
+- **Lab pre-releases (P29/P31):** rc.1 … rc.7 published; rc.7 runs on vm1 and arc1. **P46** (export retries +5/+15 min
+  in the same run, Export task restart-on-failure backstop, operations.md outage section) committed 7edede7, L05 green
+  (Pester 35/0, lint 0); **rc.8 not built** (recipe step 3).
+- **Package from storage (P45 → P47 → P48):** system-identity download PROVEN on Arc (arc1 agent log 21:00:40Z, again
+  21:20:45Z and 21:35:48Z: "from private blob using managed identity", downloaded, validated, applied). No SAS anywhere.
+  Our defects found on the way: P47 (assignment API 2022-01-25 dropped `contentManagedIdentity` → 2024-04-05; `az role
+  assignment create` does not update a stale delegation condition → lab-policy updates it in place, deploy.md warns),
+  **P48** (the service re-syncs the guest assignment from the definition metadata, so the package source is fixed at
+  generation: `perfmon-blackbox-<kind>-storage` definitions; accepted by the vezir with three conditions). Written up for
+  Emre's blog in docs/architecture.md ("Why the package source is fixed when the definitions are generated").
+  T18b timeline after the switch: 21:20:45 storage download, 21:22:52 service PUT, 21:25:47 Compliant, 21:34:03 our
+  remediation (writer + reader OK), 21:35:48 storage download, 21:38:33 service PUT, 21:40:50 Compliant; the deciding
+  pull (~21:45:50) never ran (lab stopped).
+- **Lab state left behind:** policy assignments `pbb-vm` (GitHub, rc.7) and `pbb-arc-storage` (storage, rc.7 in
+  `packages`), prerequisites `pbb-gc-prereq`; `pbb-arc` removed by the P48 switch (with its identity's role
+  assignments). All three VMs deallocated.
+- **Done while the lab was down:** naming pass ("Azure Machine Configuration" in prose, note in architecture.md;
+  7f5c38a); L02 range-mode test (6b058d2); stray temp script removed.
+- **Next after the recipe:** T18c/d/e/f → T16 run 5 (arc1; vm1 after its next export) → T17 → T08/T07b arc1 → T06f
+  part 2 → least-privilege agent role (P30) → docs pass → fresh-eyes deploy; v1.0.0 = Emre's gate.
 - Lab extras (register row updated): arc1; vm1 data disk + patchMode; dc identity = lab verifier; lab SP agent admin
-  (P30, remove at teardown). Lab auto-shutdown 19:00Z (dc and vm1): restart needs the owner's OK. Skill v2.1 backup in
-  `files/` (path in the owner report).
+  (P30, remove at teardown). Lab auto-shutdown 19:00Z (dc and vm1); any restart needs the owner's OK. Skill v2.1 backup
+  in `files/` (path in the owner report).
 
 ## Brief from session 1 (kept until close)
 
