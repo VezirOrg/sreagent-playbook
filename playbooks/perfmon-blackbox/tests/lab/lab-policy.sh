@@ -13,6 +13,8 @@ scope="/subscriptions/$sub/resourceGroups/$rg"
 sa_id=$(az storage account show -g "$rg" -n "$sa" --query id -o tsv)
 notscopes=""
 [ -n "${ARC_VM:-}" ] && notscopes="$scope/providers/Microsoft.Compute/virtualMachines/$ARC_VM"
+# dc is the lab's dev and T01 box (P24, P28): never a PerfmonBlackbox target
+vmnot="$scope/providers/Microsoft.Compute/virtualMachines/dc${notscopes:+ $notscopes}"
 mi_roles() { # mi_roles <principalId> <role> <scope> [condition]
   if [ -n "${4:-}" ]; then
     az role assignment create --assignee-object-id "$1" --assignee-principal-type ServicePrincipal --role "$2" --scope "$3" \
@@ -53,9 +55,9 @@ for kind in vm arc; do
   az policy definition create -n "perfmon-blackbox-$kind" --display-name "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["properties"]["displayName"])' "$f")" \
     --mode Indexed --rules "$f.policyRule" --params "$f.parameters" --metadata "@$f.metadata" -o none 2>/dev/null || \
   az policy definition create -n "perfmon-blackbox-$kind" --mode Indexed --rules "$f.policyRule" --params "$f.parameters" -o none
-  ns=""; [ "$kind" = vm ] && ns="$notscopes"
+  ns=""; [ "$kind" = vm ] && ns="$vmnot"
   az policy assignment create -n "pbb-$kind" --display-name "perfmon-blackbox lab ($kind)" --policy "perfmon-blackbox-$kind" \
-    --scope "$scope" --mi-system-assigned --location "$loc" --params "$params" ${ns:+--not-scopes "$ns"} -o none
+    --scope "$scope" --mi-system-assigned --location "$loc" --params "$params" ${ns:+--not-scopes $ns} -o none
   pid=$(az policy assignment show -n "pbb-$kind" --scope "$scope" --query identity.principalId -o tsv)
   echo "assignment pbb-$kind"
   mi_roles "$pid" 'Guest Configuration Resource Contributor' "$scope"
