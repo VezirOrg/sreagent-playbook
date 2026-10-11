@@ -1,21 +1,30 @@
-# perfmon-blackbox: IMPLEMENTING (session 2): vm1 + arc1 policy-deployed; most stages green on both; lab fixes P33-P41 in rc.3-rc.7; T16 run 4 running (disk plant fixed).
+# perfmon-blackbox: IMPLEMENTING (session 2): most stages green on vm1 + arc1; T16 vm1 100 (P43); P46 retry committed (rc.8 to build); T18b storage mode: P47 defect fixed, rerun in flight.
 
 
 ## Session 2 progress (2026-10-11, live; rewritten at close)
 
-- Decisions P20–P41; root R16–R19. Docs (P35, P38): `docs/` analysis-first, tests.md with live statuses.
-- **Green:** L01–L09 (+ CI Windows job); T01; T02, T03, T13, T14; **vm1:** T04–T07, T07b, T09–T12, T15;
-  **arc1 (Arc/HIMDS):** T04–T07, T06b, T06d, T06e, T09–T12, T10b, T15. Wrap proven (P34). P10 cleared.
-- **Lab pre-releases (P29/P31):** rc.1 … rc.7. Fixes found in the lab: P33 ACL (rc.3), P36 Test never throws (rc.4,
-  self-heal proven on arc1), P37 rings judged per own interval/size (rc.5), P40 hole before a wrapped ring (rc.6),
-  P41 export_roll (rc.7, published, not rolled out yet). vm1 runs rc.5, arc1 rc.6 (16→32 MB at 10 s in progress).
-- **T16 history (vm1):** run 1 85 FAIL (stalls by design → OPEN-2 closed P34; disk plant broken), run 2 85 FAIL
-  (disk plant broken, P39), run 3 not valid (scheduled export cut the window; harness fixed), **run 4 running
-  16:33–17:45Z** with a working disk plant (179 ms writes on uncached lab disk T:).
-- Lab extras (register row updated): arc1; vm1 data disk `bbdisk-vm1` + patchMode; dc identity = lab verifier; lab SP
-  agent admin (P30, remove at teardown).
-- Next: T16 run 4 finish; rc.7 to both; T08 on both; T06c re-run result (arc1); T10c; T06f part 2 (IIS on arc1);
-  T16 on arc1; T07b on arc1; least-privilege agent role (P30); fresh-eyes deploy; v1.0.0 = Emre's gate.
+- Decisions P20–P47; root R16–R19. Docs (P35, P38): `docs/` analysis-first, tests.md with live statuses.
+- **Green:** L01–L09 (+ CI Windows job); T01, T02, T03, T13, T14; **vm1:** T04–T07, T07b, T08, T09–T12, T10c, T15,
+  **T16 run 4 = 100** under P43 (plants verified in the capture, P42); **arc1:** T04–T07, T06b–T06e, T09–T12, T10b,
+  T15. Wrap proven, storm none, formula P27. Resilience R1 (real DNS outage, no data lost).
+- **Lab pre-releases (P29/P31):** rc.1 … rc.7 (rc.7 = P41, rolled out). **P46** (export retries +5/+15 min, Export task
+  restart-on-failure) committed 7edede7, L05 green; **rc.8 not built yet** (after T18b, so the package does not change
+  under the storage-mode test).
+- **T18b (arc1, package from storage, P45):** run 1 failed twice, both our defects, no SAS anywhere (P47): (1) the
+  policy created the guest assignment with API 2022-01-25, which drops `contentManagedIdentity` → fixed to 2024-04-05;
+  after that the agent logs "from private blob using managed identity"; (2) 403: the per-server reader grant failed
+  because the arc assignment identity's RBAC Admin condition was the pre-P45 one (`create` does not update) →
+  lab-policy.sh updates it in place (done 20:39Z). Rerun in flight: waiting for the reader role and the agent cycle.
+  The vm assignment's condition is still the old one: lab-policy fixes it the next time vm is assigned (T18c).
+- **Resume recipe T18b:** `direnv exec . playbooks/perfmon-blackbox/tests/run.sh T18 arc1 storage` when arc1 shows
+  MaxSizeMB=512 in config.json and the guest assignment is Compliant. If the reader role is missing, re-run the arc
+  remediation (lab-params.sh machine=arc1 PackageContainerResourceId=<packages container ID>).
+- **Next:** T18b → rc.8 (T01, scrub, SHA in decisions first, publish P31) → P46 lab test (hosts block, retry at +5 min,
+  0 gaps) → T18c/d/e/f → T16 run 5 (arc1; vm1 after its next export) → T17 → T08/T07b arc1 → T06f part 2 →
+  least-privilege agent role (P30) → fresh-eyes deploy; v1.0.0 = Emre's gate.
+- Lab extras (register row updated): arc1; vm1 data disk + patchMode; dc identity = lab verifier; lab SP agent admin
+  (P30, remove at teardown). Lab auto-shutdown 19:00Z (dc and vm1): restart needs the owner's OK. Skill v2.1 backup in
+  `files/` (path in the owner report).
 
 ## Brief from session 1 (kept until close)
 
