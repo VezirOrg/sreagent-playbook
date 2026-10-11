@@ -1,4 +1,4 @@
-# sreagent-playbook: repo index. 1 playbook (perfmon-blackbox); repo private, flips public on Emre's word; safety gates R10–R15 in place.
+# sreagent-playbook: repo index. 1 playbook (perfmon-blackbox); repo PUBLIC (Emre's word); safety gates R10–R18 in place.
 
 Index only (R12): repo-level status and links. **No playbook status here**: read the playbook's own HANDOVER, in a
 session opened for that playbook (`pj-open PLAYBOOK=<name>`).
@@ -11,8 +11,8 @@ session opened for that playbook (`pj-open PLAYBOOK=<name>`).
 
 ## Repo-level status (2026-10-11)
 
-- **Visibility: private.** Emre decided it goes public right after the first round (R2); the flip is done on his word
-  through the vezir. Every commit is written as public already; full-history scrub clean.
+- **Visibility: PUBLIC** (Emre's word; R19). Every commit is published the moment it is pushed; full-history scrub
+  clean; hooks and CI run the scrub check.
 - **Rules:** `CLAUDE.md` (one session = one playbook, R12; root changes are separate commits with a decision entry).
   Decisions `docs/decisions.md` (R1–R15). DoD `docs/definition-of-done.md`.
 - **Safety:** `scripts/install-hooks.sh` once per clone (pre-commit, commit-msg, pre-push run

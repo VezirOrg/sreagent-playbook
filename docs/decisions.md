@@ -154,3 +154,9 @@ perfmon-blackbox DINE identity must read the machine to pass its identity to the
 `.github/workflows/ci.yml` runs perfmon-blackbox's local tests (synthetic data) in the `checks` job, and a
 `perfmon-blackbox-windows` job on `windows-latest`: Pester L05 and the PSScriptAnalyzer Windows PowerShell 5.1 rules
 under `powershell.exe`, then the package build (authoring side, PowerShell 7). Nothing in CI touches Azure.
+
+## R19: the repo is public (the vezir, 2026-10-11, recording Emre's word)
+
+The repository is **public** by Emre's word (as the opening briefs and CLAUDE.md already treat it). The root
+`HANDOVER.md` said "private, flips public on Emre's word": corrected. Nothing else changes: every commit was already
+written as public.
