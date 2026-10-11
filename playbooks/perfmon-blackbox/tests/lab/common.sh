@@ -15,11 +15,12 @@ vm_real() { # the lab's real VM name for a playbook machine name (vm1 = the temp
 real1=$(vm_real vm1)
 mask() { # IDs, GUIDs and the real VM name never reach the terminal or evidence files
   BB_REAL="${real1:-NOREALNAME}" perl -pe 's#/subscriptions/[0-9a-f-]{36}#/subscriptions/<sub>#g; s#[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}#<guid>#g; s#\Q$ENV{BB_REAL}\E#vm1#gi'; }
-v() { m=$(vm_real "$1"); shift; (cd "$lab" && scripts/vmssh "$m" "$@") 2>&1 | grep -v '^direnv:' | mask; }
+sshuser() { if [ "$1" = arc1 ]; then echo "--user ${VM_ADMIN_USERNAME:-azureuser}"; fi; }   # arc1 is not domain-joined
+v() { m=$(vm_real "$1"); u=$(sshuser "$1"); shift; (cd "$lab" && scripts/vmssh $u "$m" "$@") 2>&1 | grep -v '^direnv:' | mask; }
 guest() { # guest <machine> <tests/lab/guest/x.ps1> [args]: run an in-guest check under Windows PowerShell 5.1 (P25)
-  m=$(vm_real "$1"); f="$here/guest/$2"; shift 2
-  (cd "$lab" && scripts/vmssh "$m" "New-Item -ItemType Directory -Force C:\\BbDev\\t | Out-Null" >/dev/null 2>&1 && scripts/vmscp "$m" "$f" "C:/BbDev/t/$(basename "$f")" >/dev/null 2>&1 &&
-   scripts/vmssh "$m" "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\BbDev\\t\\$(basename "$f") $*") 2>&1 | grep -v '^direnv:' | mask; }
+  m=$(vm_real "$1"); u=$(sshuser "$1"); f="$here/guest/$2"; shift 2
+  (cd "$lab" && scripts/vmssh $u "$m" "New-Item -ItemType Directory -Force C:\\BbDev\\t | Out-Null" >/dev/null 2>&1 && scripts/vmscp $u "$m" "$f" "C:/BbDev/t/$(basename "$f")" >/dev/null 2>&1 &&
+   scripts/vmssh $u "$m" "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\BbDev\\t\\$(basename "$f") $*") 2>&1 | grep -v '^direnv:' | mask; }
 machine_id() { # machine_id vm1|arc1 -> Azure resource ID (Compute VM or Arc machine)
   case "$1" in arc1) echo "/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.HybridCompute/machines/arc1" ;;
     *) echo "/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Compute/virtualMachines/$(vm_real "$1")" ;; esac; }
