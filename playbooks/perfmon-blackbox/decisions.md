@@ -453,3 +453,6 @@ false `buffer_overrun`: the gap rule used the NEW interval for samples recorded 
 against the NEW size. Fix: each pending ring carries its own size limit in its name (`…-<reason>-m<MaxSizeMB>.blg`),
 its interval is the median step of its own samples, inside-ring holes use that interval, holes between rings the larger
 of the two. The incomplete-export event text is bounded (first 10 gaps; the manifest has all). In rc.5.
+- **rc.5** (P37: rings judged by their own interval and size): `PerfmonBlackbox.zip` SHA-256
+  `3E7A3D2784EB466AD28083A2751FF6CF0A0089481155E4E86B2FA1BD021E3D44` (L05 32/32, T01 green on dc; 12 files
+  scrub-checked clean before the upload).
