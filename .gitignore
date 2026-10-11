@@ -8,3 +8,5 @@ files/
 __pycache__/
 *.pyc
 .DS_Store
+.azure-cli/
+.azd-config/
