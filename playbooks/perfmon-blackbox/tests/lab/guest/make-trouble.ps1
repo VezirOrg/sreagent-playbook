@@ -6,9 +6,7 @@ bb* copies of powershell.exe in C:\BbDev\trouble.
 Timeline (minutes after start; -Scale shrinks it for a dry run):
   leak   bbleak.exe grows its private bytes by LeakMBPerHour for the whole run (one PID)
   cpu    +10 for 12 min: bbcpu.exe spins one thread per logical CPU (machine CPU >= 95 %)
-  disk   +32 for 6 min: bbdisk.exe random 4 KiB write-through I/O on C: (latency episode)
-  nic    +45 for 6 min: bbnic.exe sends UDP datagrams to dc (Bytes Total/sec burst)
-  end    +70
+  end    +45
   -Start              run the timeline in the background (a scheduled task as SYSTEM) and return
   -Status             print the ground truth written so far
   -Stop               stop every bb* process and remove the task
@@ -33,7 +31,7 @@ function Now { (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') }
 function Save($t) { $t | ConvertTo-Json -Depth 6 | Set-Content -Path $truth -Encoding ASCII }
 
 if ($Stop) {
-    Get-Process -Name bbleak, bbcpu, bbdisk, bbnic -ErrorAction SilentlyContinue | Stop-Process -Force
+    Get-Process -Name bbleak, bbcpu -ErrorAction SilentlyContinue | Stop-Process -Force
     & schtasks.exe /delete /tn '\BbDev\MakeTrouble' /f 2>&1 | Out-Null
     'stopped'
     exit 0
@@ -65,12 +63,12 @@ function Invoke-Pool([int]$n, [scriptblock]$body, $arg) {
 '@
 $spinTpl = "Invoke-Pool {1} {{ param(`$end, `$i) while ((Get-Date) -lt `$end) {{ `$null = [math]::Sqrt(12345) }} }} (Get-Date).AddSeconds({0})"
 # leak: allocate and touch memory every 10 s, kept referenced (one PID for the whole run)
-$leakSec = [int](70 * $m)
+$leakSec = [int](45 * $m)
 $leak = Start-Bb 'bbleak' ("`$l=New-Object System.Collections.ArrayList; `$end=(Get-Date).AddSeconds($leakSec); `$step=[int]($LeakMBPerHour*1MB/360); while((Get-Date) -lt `$end){ `$b=New-Object byte[] `$step; for(`$i=0;`$i -lt `$b.Length;`$i+=4096){`$b[`$i]=1}; [void]`$l.Add(`$b); Start-Sleep 10 }")
 $t.problems += [ordered]@{ id = 'leak'; process = 'bbleak'; counter = 'Private Bytes'; per_hour_bytes = $LeakMBPerHour * 1MB; from = (Now); pid = $leak.Id }
 Save $t
-# no short-stall plant: OPEN-2 closed for v1.0.0 (decisions P34)
-$plan = @(@{ at = 10; id = 'cpu' }, @{ at = 32; id = 'disk' }, @{ at = 45; id = 'nic' }, @{ at = 70; id = 'end' })
+# only memory and CPU (decisions P43): no stall (P34), no disk, no network plant
+$plan = @(@{ at = 10; id = 'cpu' }, @{ at = 45; id = 'end' })
 $t0 = Get-Date
 foreach ($p in $plan) {
     $wait = $t0.AddSeconds($p.at * $m) - (Get-Date)
@@ -80,24 +78,6 @@ foreach ($p in $plan) {
             $d = [int](12 * $m); $from = Now
             $pr = Start-Bb 'bbcpu' ($pool + ($spinTpl -f $d, $cpus)); $pr.WaitForExit()
             $t.problems += [ordered]@{ id = 'cpu'; driver = 'bbcpu'; counter = 'Processor Information\% Processor Time'; from = $from; to = (Now); minutes = 12 * $Scale }
-        }
-        'disk' {
-            $d = [int](6 * $m); $from = Now
-            # 8 writers of 1 MiB write-through writes at random offsets: queue depth 8 x 1 MiB against the disk's
-            # throughput cap -> latency. Target: the lab's uncached data disk T: when present (the OS disk has host
-            # caching, which absorbs writes), else C:. Typed enums: New-Object FileStream with string arguments is
-            # ambiguous in Windows PowerShell 5.1 and fails (it did in T16 runs 1-2).
-            $dd = 'C:'; if (Test-Path 'T:\') { $dd = 'T:' }
-            if ((Get-PSDrive ($dd.TrimEnd(':'))).Free -lt 2.5GB) { throw "disk plant: less than 2.5 GB free on $dd" }
-            $io = $pool + "New-Item -ItemType Directory -Force $dd\bbio | Out-Null; Invoke-Pool 8 { param(`$end, `$i) `$ErrorActionPreference = 'Stop'; `$f = '$dd\bbio\' + `$i + '.bin'; Remove-Item `$f -Force -ErrorAction SilentlyContinue; `$fs = New-Object IO.FileStream(`$f, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None, 4096, [IO.FileOptions]::WriteThrough); `$fs.SetLength(256MB); `$b = New-Object byte[] 1048576; `$r = New-Object Random(`$i); `$stop = [DateTime]::UtcNow.AddSeconds(`$end).Ticks; while ([DateTime]::UtcNow.Ticks -lt `$stop) { `$fs.Position = [int64]`$r.Next(0, 255) * 1048576; `$fs.Write(`$b, 0, 1048576) }; `$fs.Close(); Remove-Item `$f -Force } $d"
-            $pr = Start-Bb 'bbdisk' $io; $pr.WaitForExit()
-            $t.problems += [ordered]@{ id = 'disk'; driver = $dd; counter = 'LogicalDisk\Avg. Disk sec/Write'; from = $from; to = (Now); minutes = 6 * $Scale }
-        }
-        'nic' {
-            $d = [int](6 * $m); $from = Now
-            $net = "`$e=(Get-Date).AddSeconds($d); `$u=New-Object Net.Sockets.UdpClient; `$u.Connect('$Target',9); `$b=New-Object byte[] 1400; while((Get-Date) -lt `$e){ for(`$i=0;`$i -lt 2000;`$i++){ [void]`$u.Send(`$b,`$b.Length) } }; `$u.Close()"
-            $pr = Start-Bb 'bbnic' $net; $pr.WaitForExit()
-            $t.problems += [ordered]@{ id = 'nic'; driver = 'bbnic'; counter = 'Network Interface\Bytes Total/sec'; from = $from; to = (Now); minutes = 6 * $Scale }
         }
         'end' {
             $t.problems[0].to = Now

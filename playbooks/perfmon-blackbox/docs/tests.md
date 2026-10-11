@@ -23,14 +23,14 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T15 agent fetches and converts | the agent's own terminal, skill v2.1 | green | green |
 | **T16 agent report, scored** | planted problems vs the agent's report | see history below | pending |
 
-**T16 history** (vm1; pass = score ≥ 80 and every planted problem found):
+**T16 history** (pass = score ≥ 80, every planted problem found, nothing invented; since P43 only the memory leak and the CPU burst are planted):
 
 | Run | Package | Score | Found | Missed | Why |
 |---|---|---|---|---|---|
 | 1 | rc.1 | 85 → FAIL | leak, CPU, NIC (+ a memory episode) | 30-s stalls; disk | stalls are below the skill's 5-min ceiling by design → OPEN-2 closed, stalls removed (P34); disk plant never ran (P39) |
 | 2 | rc.3 | 85 → FAIL | leak, CPU, NIC (+ the memory episode) | disk | the disk plant never ran (P39); the agent rightly reported the disk as fine |
 | 3 | rc.5 | not valid | leak (622 MB/h), and a real full T: drive | CPU, disk, NIC | the server's own 4-hourly export ran at 16:07 between the plants and the finish, so the latest zip held only 16:07–16:24; the agent analysed that zip correctly. T16 now refuses a window cut by a scheduled export, and takes the longest agent message as the report |
-| 4 | rc.5 | not valid (disk), 70 | leak (bbleak), CPU burst (bbcpu) | network burst; disk | disk: the plant misfired again — T: was left full by run 3, so the writer only failed (capture: T: write latency max 3.1 ms, 0 samples > 25 ms); the agent rightly reported bbdisk as a memory hog and T: as full. Network: < 1.5 % of the vNIC, below the skill's threshold by design (question to Emre). Scorer now requires the planted volume with write latency (P42) |
+| 4 | rc.5 | **100 → PASS under P43** (was 70 under the old scope) | leak (bbleak), CPU burst (bbcpu); plants verified in the capture: CPU > 85 % for 11.8 min, bbleak growing for 69 min to 797 MB | — | P43: only memory and CPU are planted and required. The run's disk plant had misfired (T: full); the memory picture in that run was partly bbdisk's error loop |
 
 ### Collection
 

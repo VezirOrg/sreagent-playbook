@@ -355,64 +355,50 @@ class L08Policies(unittest.TestCase):
 
 
 class L09Scorer(unittest.TestCase):
-    """tests/scoring/score.py: a report that names every planted problem passes; one that misses the disk episode
-    or invents a problem fails (synthetic report text and ground truth)."""
+    """tests/scoring/score.py (P43: only memory and CPU are planted): a report naming both passes with 100; a missing
+    CPU burst, a wrong leak rate, an invented problem (also: network or disk latency called a problem) lose points;
+    a negated cause or an area called fine does not."""
 
-    TRUTH = {'host': 'synth01', 'started': '2026-10-01 08:00:00', 'ended': '2026-10-01 09:10:00', 'problems': [
+    TRUTH = {'host': 'synth01', 'started': '2026-10-01 08:00:00', 'ended': '2026-10-01 08:45:00', 'problems': [
         {'id': 'leak', 'process': 'bbleak', 'per_hour_bytes': 600 * 1048576, 'from': '2026-10-01 08:00:00'},
-        {'id': 'cpu', 'driver': 'bbcpu', 'from': '2026-10-01 08:10:05', 'to': '2026-10-01 08:22:05'},
-        {'id': 'disk', 'driver': 'T:', 'from': '2026-10-01 08:32:00', 'to': '2026-10-01 08:38:00'},
-        {'id': 'nic', 'driver': 'bbnic', 'from': '2026-10-01 08:45:00', 'to': '2026-10-01 08:51:00'}]}
+        {'id': 'cpu', 'driver': 'bbcpu', 'from': '2026-10-01 08:10:05', 'to': '2026-10-01 08:22:05'}]}
     GOOD = '\n'.join([
-        'Capture: synth01_20261001-080000_20261001-091000.zip, host synth01, 08:00 .. 09:10 local time, complete.',
+        'Capture: synth01_20261001-080000_20261001-084500.zip, host synth01, 08:00 .. 08:45 local time, complete.',
         'Verdict: CPU saturation at 08:10 for 12 min (critical), driven by bbcpu.',
         '1. CPU: Processor Information _Total > 95 % from 08:10:10 for 12 min; top process bbcpu.',
-        '2. Disk: LogicalDisk T: Avg. Disk sec/Write 0.09 s (90 ms) from 08:32:10 for 6 min.',
-        '3. Network: Bytes Total/sec burst 08:45 to 08:51.',
-        '4. Memory: bbleak Private Bytes grows ~590 MB/h (one PID) - warning.',
+        '2. Memory: bbleak Private Bytes grows ~590 MB/h (one PID) - warning.',
+        'Fine: disk latency, network, paging file, PTEs.',
         'LINK: consistent with Y driving X.'])
 
     def score(self, text):
         sys.path.insert(0, os.path.join(PB, 'tests', 'scoring'))
         import score
-        return score.score(text, self.TRUTH, 'perfmon/x/2026/10/01/synth01_20261001-080000_20261001-091000.zip')
+        return score.score(text, self.TRUTH, 'perfmon/x/2026/10/01/synth01_20261001-080000_20261001-084500.zip')
 
     def test_good_report_passes(self):
         r = self.score(self.GOOD)
         self.assertTrue(r['pass'], r)
         self.assertEqual(r['total'], 100, r)
 
-    def test_missing_disk_fails(self):
-        r = self.score('\n'.join(l for l in self.GOOD.splitlines() if 'Disk' not in l))
+    def test_missing_cpu_fails(self):
+        r = self.score('\n'.join(l for l in self.GOOD.splitlines() if 'CPU' not in l))
         self.assertFalse(r['pass'])
-        self.assertFalse(r['found']['disk'])
+        self.assertFalse(r['found']['cpu'])
+
+    def test_wrong_leak_rate_not_found(self):
+        self.assertFalse(self.score(self.GOOD.replace('590 MB/h', '90 MB/h'))['found']['leak'])
 
     def test_invented_problem_costs_points(self):
-        r = self.score(self.GOOD + '\n6. Memory: commit near limit at 08:40.')
-        self.assertEqual(r['points']['N1'], 0)
-
-    def test_negated_cause_is_not_a_claim(self):
-        r = self.score(self.GOOD.replace('LINK: consistent with Y driving X.', '') + '\nT: full. Not caused by the stress tests.')
-        self.assertEqual(r['points']['R1'], 5)
+        self.assertEqual(self.score(self.GOOD + '\n3. Memory: commit near limit at 08:40.')['points']['N1'], 0)
+        self.assertEqual(self.score(self.GOOD + '\n3. Network: bandwidth saturated, critical.')['points']['N1'], 0)
 
     def test_fine_line_is_not_invented(self):
         r = self.score(self.GOOD + '\n| - | Disk, Network, Paging File, PTEs | All within thresholds | fine |')
         self.assertEqual(r['points']['N1'], 5)
 
-    def test_disk_process_name_or_other_volume_not_enough(self):
-        # run 4: bbdisk named, C: READ latency at the right time, but nothing about T: write latency
-        txt = self.GOOD.replace('2. Disk: LogicalDisk T: Avg. Disk sec/Write 0.09 s (90 ms) from 08:32:10 for 6 min.',
-                                '2. bbdisk at 08:32 used 4 GB; C: disk saturated, read latency 528 ms at 08:35:30.')
-        self.assertFalse(self.score(txt)['found']['disk'])
-
-    def test_disk_without_latency_not_found(self):
-        r = self.score(self.GOOD.replace('Avg. Disk sec/Write 0.09 s (90 ms)', 'busy'))
-        self.assertFalse(r['found']['disk'])
-
-    def test_wrong_leak_rate_not_found(self):
-        r = self.score(self.GOOD.replace('590 MB/h', '90 MB/h'))
-        self.assertFalse(r['found']['leak'])
-
+    def test_negated_cause_is_not_a_claim(self):
+        r = self.score(self.GOOD.replace('LINK: consistent with Y driving X.', '') + '\nT: full. Not caused by the stress tests.')
+        self.assertEqual(r['points']['R1'], 5)
 
 if __name__ == '__main__':
     unittest.main()

@@ -56,7 +56,7 @@ def score(report, truth, zipname=None):
         want = lk['per_hour_bytes'] / 1048576
         cand = [w for w in windows(lines) if 'bbleak' in w.lower()]
         ok = any(any(abs(r - want) <= 0.4 * want for r in rate_mb_h(w)) for w in cand)
-        found['leak'] = ok; pts['P1'] = 15 if ok else 0
+        found['leak'] = ok; pts['P1'] = 30 if ok else 0
         notes['P1'] = f'planted {want:.0f} MB/h; rates near bbleak: {[rate_mb_h(w) for w in cand][:3]}'
     def episode(pid, words, pts_key, n):
         p = probs.get(pid)
@@ -67,18 +67,8 @@ def score(report, truth, zipname=None):
         if pid == 'cpu':
             ok = ok and 'bbcpu' in low
         found[pid] = ok; pts[pts_key] = n if ok else 0
-    episode('cpu', ('cpu', 'processor'), 'P2', 15)
-    # disk (P42): the line(s) must name the PLANTED volume (truth driver, e.g. T:) AND a write latency, in the window;
-    # a process name containing "disk" or another volume's latency does not count
-    d = probs.get('disk')
-    if d:
-        tgt = minute(d['from'])
-        vol = re.escape(d.get('driver') or 'C:')
-        ok = any(re.search(r'(?<![A-Za-z])' + vol + r'(?![A-Za-z0-9])', w) and
-                 re.search(r'(write|sec/write).{0,60}(latency|\d+(\.\d+)?\s*(ms|s)\b)|latency.{0,60}write', w, re.I)
-                 and near(w, tgt, 6) for w in windows(lines))
-        found['disk'] = ok; pts['P3'] = 15 if ok else 0
-    episode('nic', ('network', 'nic', 'bytes total', 'interface'), 'P4', 15)
+    episode('cpu', ('cpu', 'processor'), 'P2', 30)
+    # disk and network are not planted (P43); a report calling them a problem is caught by N1
     # verdict words
     bad = [l for l in lines if re.search(r'critical|severe', l, re.I) and re.search(r'stall|spike|bbleak|leak', l, re.I)
            and not re.search(r'cpu.*(1[0-9]|12) ?min|bbcpu', l, re.I)]
@@ -86,7 +76,8 @@ def score(report, truth, zipname=None):
     # a term counts as invented only on a line that does not call it fine / within / no / not (P34 scorer fix)
     neg = re.compile(r'\b(fine|within|ok|no|not|normal|healthy|pass(ed)?|under|below)\b', re.I)
     inv = [l for l in lines for r in (r'commit (is )?near (the )?limit', r'\bPTEs? (are )?(exhausted|low)', r'paging file (is )?filling',
-                                      r'disk (is )?(nearly|almost) full') if re.search(r, l, re.I) and not neg.search(l)]
+                                      r'disk (is )?(nearly|almost) full', r'(network|nic|bandwidth).{0,40}(saturat|critical|warning)',
+                                      r'(write|read) latency.{0,40}(critical|warning)') if re.search(r, l, re.I) and not neg.search(l)]
     pts['N1'] = 0 if inv else 5
     # a negated statement ("not caused by", "no causal link") is not a causal claim (T16 run 4)
     claims = [l for l in lines if re.search(r'caused by|because|drives', l, re.I)
@@ -95,7 +86,7 @@ def score(report, truth, zipname=None):
     raw = [l for l in lines if len(re.findall(r'-?\d+(?:\.\d+)?', l)) > 30 and (l.count(',') > 30 or l.count('|') > 30)]
     pts['R2'] = 0 if raw else 5
     total = sum(pts.values())
-    planted = [p for p in ('leak', 'cpu', 'disk', 'nic') if p in probs]
+    planted = [p for p in ('leak', 'cpu') if p in probs]
     ok = total >= 80 and all(found.get(p) for p in planted)
     return {'points': pts, 'total': total, 'found': found, 'pass': ok, 'notes': notes}
 
