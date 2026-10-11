@@ -54,6 +54,8 @@ here, a link in the root `HANDOVER.md` and the README table, and a decision entr
 - **Secrets.** `.env` (a symlink to the lab credentials), `.envrc` (local az/azd config dirs) and `files/` are
   gitignored and never committed. Run every `az`/`azd` command as `direnv exec . <command>`. Never print a secret
   value: print its name or its length.
+- **Checking credentials (R15).** Only with `direnv exec . scripts/env-check.sh [NAME ...]` (name, set/unset,
+  length). Never an ad-hoc `echo`/`printf`/`eval`/`env`/`set` or parameter expansion on a credential variable.
 - **Layout per playbook.** `playbooks/<name>/` holds `README.md` (adopter guide), `HANDOVER.md`, `decisions.md`,
   `CHANGELOG.md`, `tests/`, and a `CLAUDE.md` only if it has rules of its own.
 - **Releases.** Tags are `<name>/vX.Y.Z`. Release packages (zips) are GitHub Release assets, never committed.

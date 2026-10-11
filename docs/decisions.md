@@ -124,3 +124,10 @@ registered in the template's lab register, in the template repo, in the same com
 Addendum (2026-10-11): `azd init` ran `git add` in the parent repo and staged template scripts despite the
 gitignore; they were unstaged before any commit. The scrub check now refuses any path under `.lab/` (pre-commit and
 pre-push), so a forced add cannot slip through.
+
+## R15: credentials are checked only with `scripts/env-check.sh` (Emre via the vezir, 2026-10-11)
+
+After a session printed credential values by an ad-hoc shell expansion meant to print lengths (2026-10-11; nothing
+reached git or Drive; rotation is Emre's call), the rule is: check that credentials load **only** with the vetted
+`direnv exec . scripts/env-check.sh [NAME ...]`, which prints name, set/unset and length, never a value. No ad-hoc
+`echo`, `printf`, `eval`, `env`, `set` or parameter expansion on credential variables, ever.
