@@ -456,3 +456,22 @@ of the two. The incomplete-export event text is bounded (first 10 gaps; the mani
 - **rc.5** (P37: rings judged by their own interval and size): `PerfmonBlackbox.zip` SHA-256
   `3E7A3D2784EB466AD28083A2751FF6CF0A0089481155E4E86B2FA1BD021E3D44` (L05 32/32, T01 green on dc; 12 files
   scrub-checked clean before the upload).
+
+## P38: the playbook reads analysis-first (Emre, 2026-10-11)
+
+perfmon-blackbox is a two-part solution whose **most important part is the SRE Agent analysis**: continuous capture by
+policy is the input; the agent skill fetching the latest capture, analysing it and writing recommendations is the
+value. The README opening and `docs/architecture.md` lead with what the agent tells you (with a short, masked or
+synthetic report excerpt); `docs/analysis.md` explains how to ask, what the skill does step by step, the report
+structure, its rules and known limits, and how T15/T16 prove it; `docs/tests.md` groups the tests into collection and
+analysis, with the T16 score history. No rename.
+
+## P39: the T16 disk plant really loads the disk (session 2, 2026-10-11)
+
+In T16 runs 1–2 the disk plant never wrote a byte: `New-Object IO.FileStream` with string arguments is ambiguous in
+Windows PowerShell 5.1 and threw; the loop then spun on errors (which the agent correctly reported as a memory episode
+of `bbdisk`, and correctly found no disk problem). Fixed: typed enums; 8 writers × 1 MiB write-through at random
+offsets; target = an **uncached** 4 GiB lab data disk `T:` on vm1 (the OS disk's host cache absorbs writes). Measured
+60 s: Avg. Disk sec/Write 179 ms average (queue ≈ 8, 174 MB/s), memory flat. Lab changes (register row updated): the
+data disk, and vm1's `patchMode` set to `AutomaticByPlatform`, which the template's hotpatch image requires for any VM
+update. The scorer's "invented problem" rule no longer counts a line that calls the area fine (run 2: "PTEs … fine").
