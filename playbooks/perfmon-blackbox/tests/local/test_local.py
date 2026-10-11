@@ -391,6 +391,10 @@ class L09Scorer(unittest.TestCase):
         r = self.score(self.GOOD + '\n6. Memory: commit near limit at 08:40.')
         self.assertEqual(r['points']['N1'], 0)
 
+    def test_fine_line_is_not_invented(self):
+        r = self.score(self.GOOD + '\n| - | Disk, Network, Paging File, PTEs | All within thresholds | fine |')
+        self.assertEqual(r['points']['N1'], 5)
+
     def test_disk_without_latency_not_found(self):
         r = self.score(self.GOOD.replace('Avg. Disk sec/Write 0.09 s (90 ms)', 'busy'))
         self.assertFalse(r['found']['disk'])

@@ -80,8 +80,10 @@ def score(report, truth, zipname=None):
     bad = [l for l in lines if re.search(r'critical|severe', l, re.I) and re.search(r'stall|spike|bbleak|leak', l, re.I)
            and not re.search(r'cpu.*(1[0-9]|12) ?min|bbcpu', l, re.I)]
     pts['V1'] = 0 if bad else 5
-    inv = [r for r in (r'commit (is )?near (the )?limit', r'PTE', r'paging file (is )?filling', r'disk (is )?(nearly|almost) full')
-           if re.search(r, report, re.I) and not re.search(r'(no|not|fine|ok|pass)\W', report[max(0, re.search(r, report, re.I).start() - 60):re.search(r, report, re.I).start()], re.I)]
+    # a term counts as invented only on a line that does not call it fine / within / no / not (P34 scorer fix)
+    neg = re.compile(r'\b(fine|within|ok|no|not|normal|healthy|pass(ed)?|under|below)\b', re.I)
+    inv = [l for l in lines for r in (r'commit (is )?near (the )?limit', r'\bPTEs? (are )?(exhausted|low)', r'paging file (is )?filling',
+                                      r'disk (is )?(nearly|almost) full') if re.search(r, l, re.I) and not neg.search(l)]
     pts['N1'] = 0 if inv else 5
     claims = [l for l in lines if re.search(r'caused by|because|drives', l, re.I)]
     pts['R1'] = 5 if (not claims or 'LINK:' in report) else 0

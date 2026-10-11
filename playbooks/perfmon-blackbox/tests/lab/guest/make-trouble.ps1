@@ -83,10 +83,14 @@ foreach ($p in $plan) {
         }
         'disk' {
             $d = [int](6 * $m); $from = Now
-            # 32 writers with write-through 4 KiB random I/O: queue depth 32 against the disk's IOPS cap = latency
-            $io = $pool + "New-Item -ItemType Directory -Force C:\BbDev\trouble\io | Out-Null; Invoke-Pool 32 { param(`$end, `$i) `$f = 'C:\BbDev\trouble\io\' + `$i + '.bin'; `$fs = New-Object IO.FileStream(`$f, 'Create', 'ReadWrite', 'None', 4096, [IO.FileOptions]::WriteThrough); `$fs.SetLength(256MB); `$b = New-Object byte[] 4096; `$r = New-Object Random(`$i); while ((Get-Date) -lt `$end) { `$fs.Position = [int64]`$r.Next(0, 65535) * 4096; `$fs.Write(`$b, 0, 4096) }; `$fs.Close(); Remove-Item `$f } (Get-Date).AddSeconds($d)"
+            # 8 writers of 1 MiB write-through writes at random offsets: queue depth 8 x 1 MiB against the disk's
+            # throughput cap -> latency. Target: the lab's uncached data disk T: when present (the OS disk has host
+            # caching, which absorbs writes), else C:. Typed enums: New-Object FileStream with string arguments is
+            # ambiguous in Windows PowerShell 5.1 and fails (it did in T16 runs 1-2).
+            $dd = 'C:'; if (Test-Path 'T:\') { $dd = 'T:' }
+            $io = $pool + "New-Item -ItemType Directory -Force $dd\bbio | Out-Null; Invoke-Pool 8 { param(`$end, `$i) `$f = '$dd\bbio\' + `$i + '.bin'; `$fs = New-Object IO.FileStream(`$f, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None, 4096, [IO.FileOptions]::WriteThrough); `$fs.SetLength(384MB); `$b = New-Object byte[] 1048576; `$r = New-Object Random(`$i); `$stop = [DateTime]::UtcNow.AddSeconds(`$end).Ticks; while ([DateTime]::UtcNow.Ticks -lt `$stop) { `$fs.Position = [int64]`$r.Next(0, 383) * 1048576; `$fs.Write(`$b, 0, 1048576) }; `$fs.Close(); Remove-Item `$f } $d"
             $pr = Start-Bb 'bbdisk' $io; $pr.WaitForExit()
-            $t.problems += [ordered]@{ id = 'disk'; driver = 'C:'; counter = 'LogicalDisk\Avg. Disk sec/Write'; from = $from; to = (Now); minutes = 6 * $Scale }
+            $t.problems += [ordered]@{ id = 'disk'; driver = $dd; counter = 'LogicalDisk\Avg. Disk sec/Write'; from = $from; to = (Now); minutes = 6 * $Scale }
         }
         'nic' {
             $d = [int](6 * $m); $from = Now
