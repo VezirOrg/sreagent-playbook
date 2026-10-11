@@ -56,13 +56,40 @@ done
 `perfmon-blackbox-vm` targets `Microsoft.Compute/virtualMachines` (Windows), `perfmon-blackbox-arc` targets
 `Microsoft.HybridCompute/machines` (Windows). Create only the one(s) you need.
 
+## 2b. Where the servers get the package: GitHub or your storage (P45)
+
+Two modes, chosen per assignment with the parameter **`PackageContainerResourceId`**:
+
+| Mode | Parameter | The server downloads from | Needs |
+|---|---|---|---|
+| GitHub (default) | empty | the release asset on github.com | outbound HTTPS to github.com (and its download host) |
+| **Storage** | the resource ID of a blob container, e.g. the `packages` container that `infra/main.bicep` creates | `https://<account>.blob.core.windows.net/<container>/PerfmonBlackbox.zip`, with **its own system-assigned identity** (no SAS) | the private endpoint (same as for the uploads): **no internet at all** for the package |
+
+In storage mode the policy also grants each server **Storage Blob Data Reader on that container only**; the capture
+container stays write-only. The `contentHash` is the release's SHA-256 in both modes, so it is the same zip either way:
+copy the release zip **unchanged** into the container and check the hash.
+
+```sh
+curl -sL -o PerfmonBlackbox.zip <release asset URL>
+shasum -a 256 PerfmonBlackbox.zip            # must equal the SHA-256 in the release notes
+# from a host that reaches the storage's private endpoint, with Storage Blob Data Contributor on the container:
+az storage blob upload --auth-mode login --account-name <account> -c packages -n PerfmonBlackbox.zip -f PerfmonBlackbox.zip --overwrite
+```
+
+A different file under that name is refused by the server's hash check (the server keeps its current configuration).
+
+**Agent versions for storage mode** (system-identity download, GA July 2025): Azure VMs need the Machine Configuration
+extension **1.29.98.0 or later** (the lab ran 1.29.119.0); Arc servers need a Connected Machine agent released after
+July 2025 (the lab ran 1.68). Older agents: use GitHub mode.
+
 ## 3. Assign, grant, remediate
 
 ```sh
 az policy assignment create -n pbb-vm --policy perfmon-blackbox-vm --scope <scope> \
   --mi-system-assigned --location <region> \
   --params '{"StorageAccountResourceId":{"value":"<storageAccountResourceId>"},
-             "WriterRoleDefinitionId":{"value":"<writerRoleDefinitionId>"}}'
+             "WriterRoleDefinitionId":{"value":"<writerRoleDefinitionId>"},
+             "PackageContainerResourceId":{"value":""}}'      # or the package container's ID for storage mode
 pid=$(az policy assignment show -n pbb-vm --scope <scope> --query identity.principalId -o tsv)
 ```
 
@@ -78,11 +105,12 @@ az role assignment create --assignee-object-id $pid --assignee-principal-type Se
 w=<last segment of writerRoleDefinitionId>
 az role assignment create --assignee-object-id $pid --assignee-principal-type ServicePrincipal \
   --role "Role Based Access Control Administrator" --scope <storageAccountResourceId> --condition-version 2.0 \
-  --condition "((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$w})) AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$w}))"
+  --condition "((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$w, 2a2b9908-6ea1-4ae2-8e65-a410df84e7d1})) AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$w, 2a2b9908-6ea1-4ae2-8e65-a410df84e7d1}))"
 az policy remediation create -n pbb-vm-1 --policy-assignment pbb-vm -g <rg>    # per resource group in scope
 ```
 
-Repeat for `perfmon-blackbox-arc` (`pbb-arc`). Wait a minute after the role assignments before the remediation.
+The condition allows exactly the Writer role and the built-in Storage Blob Data Reader (`2a2b9908-…`, granted only in
+storage mode, on the package container). Repeat for `perfmon-blackbox-arc` (`pbb-arc`). Wait a minute after the role assignments before the remediation.
 
 What happens per server: the guest assignment `PerfmonBlackbox` is created; one role assignment of the Writer role on
 the container lets the server write only under `<subscriptionId>/<resourceGroup>/<server>/`; within 15–30 minutes the
