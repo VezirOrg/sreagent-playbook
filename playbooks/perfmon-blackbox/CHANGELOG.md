@@ -21,3 +21,4 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
   `Start-PerfmonBlackbox.ps1`, `Export-PerfmonBlackbox.ps1` (Windows PowerShell 5.1, ASCII), `PerfmonBlackbox.config.ps1`,
   `build.ps1`; Pester L05 (24 tests incl. export end to end on synthetic `.blg`) and PSScriptAnalyzer 5.1 rules,
   run on a lab VM by `tests/run.sh L05`. P27: storm answered (none), bytes-per-sample formula.
+- 2026-10-11: `infra/main.bicep` (private storage, PE, lifecycle 30 d, write-only custom role, agent readers); T01, T13, T14 green on lab18.
