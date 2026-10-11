@@ -1,0 +1,3 @@
+# G2 per process (decisions P18).
+\Process(*)\Pool Nonpaged Bytes
+\Process(*)\Pool Paged Bytes

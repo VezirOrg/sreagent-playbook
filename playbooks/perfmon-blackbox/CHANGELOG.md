@@ -10,3 +10,4 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
   log with `MaxSizeMB` (default 512) on both policies, export around the circular file, buffer-hour estimate.
 - 2026-10-11: P16–P19: lab18 measurement (partial), counter groups G1–G3, interval parameter, capacity check; PLAN-OK
   for design rev 3 (defaults 10 s / 512 MB / export 4 h).
+- 2026-10-11: session 2: P20 collector files committed under `package/collector/` (they never entered git under `package/files/`); P21 the export rolls the collector.

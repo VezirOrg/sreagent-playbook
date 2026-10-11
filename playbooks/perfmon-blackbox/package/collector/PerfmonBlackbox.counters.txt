@@ -1,0 +1,37 @@
+# The 36 counters of Emre's PerfMon template (decisions P11), verbatim, one per line. Do not add counters.
+\LogicalDisk(*)\Avg. Disk sec/Read
+\LogicalDisk(*)\Avg. Disk sec/Write
+\LogicalDisk(*)\Avg. Disk Write Queue Length
+\LogicalDisk(*)\Disk Bytes/sec
+\LogicalDisk(*)\Disk Transfers/sec
+\LogicalDisk(*)\% Free Space
+\Memory\% Committed Bytes In Use
+\Memory\Available MBytes
+\Memory\Commit Limit
+\Memory\Committed Bytes
+\Memory\Pool Nonpaged Bytes
+\Memory\Pool Paged Bytes
+\Memory\System Cache Resident Bytes
+\Memory\Free System Page Table Entries
+\Process(*)\% Processor Time
+\Process(*)\Handle Count
+\Process(*)\ID Process
+\Process(*)\IO Data Operations/sec
+\Process(*)\Private Bytes
+\Process(*)\Thread Count
+\Process(*)\Working Set
+\Process(*)\Working Set - Private
+\Network Interface(*)\Bytes Total/sec
+\Network Interface(*)\Current Bandwidth
+\Network Interface(*)\Output Queue Length
+\Processor Information(*)\% Processor Performance
+\Processor Information(*)\% Processor Time
+\Processor Information(*)\Parking Status
+\Processor Information(*)\% Privileged Time
+\Processor Information(*)\% User Time
+\TCPv4\Connections Active
+\TCPv4\Connections Established
+\TCPv4\Connections Reset
+\TCPv6\Connections Active
+\TCPv6\Connections Established
+\TCPv6\Connections Reset

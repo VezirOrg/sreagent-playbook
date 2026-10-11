@@ -1,0 +1,7 @@
+# G3 web (decisions P18). Added only where these counter objects exist (proposal, CHOICE 10).
+\ASP.NET Applications(__Total__)\Requests/Sec
+\ASP.NET\Requests Queued
+\ASP.NET\Request Execution Time
+\.NET CLR Memory(*)\# Bytes in all Heaps
+\.NET CLR Memory(*)\% Time in GC
+\Web Service(_Total)\Current Connections

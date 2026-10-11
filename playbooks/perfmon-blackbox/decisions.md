@@ -233,3 +233,22 @@ hours per 512 MB shrink.
 and still ≥ 2× on a server with about 2.5× the processes (≈ 9 h buffer, if bytes scale with processes). R6 reports any
 machine where the measured buffer is < 1.5 × the export window. To revisit with the formula `a + b × processes`
 once measured (P16 is unfinished: the process-load step did not hold, see HANDOVER).
+
+## P20: the collector files live in `package/collector/` (session 2, 2026-10-11; fixes a record error)
+
+The root `.gitignore` line `files/` also matches `playbooks/perfmon-blackbox/package/files/`, so the five files
+P11/P18 describe as committed (`PerfmonBlackbox.counters*.txt`, `PerfmonBlackbox.template.xml`) **never entered git**;
+they existed only untracked in the main checkout. They are now committed, unchanged, under **`package/collector/`**
+(no root change needed; the vezir was told the root pattern is broad). Every `package/files/` in the design, the test
+plan and older decisions means `package/collector/`. SHA-256 as committed: counters.txt `84cd8325…a878a9`,
+g1-system `b75523b4…ac62bd0`, g2-process `862d668c…3acb3064`, g3-web `aa52b312…f6a3695a`, template.xml
+`16ac255c…7039f61`.
+
+## P21: the export rolls the collector (session 2, 2026-10-11; replaces design §2.2 step 1 "live snapshot")
+
+Lab fact (HANDOVER, lab18): a running circular `.blg` cannot be read by `relog`, not even as a copy. So the export
+**stops the collector, moves the `.blg` to `pending\`, starts it again**, then relogs the closed files. The restart
+gap (seconds) is written into the manifest as a `collector_restart` gap like any other. T10 measures the gap
+(pass: ≤ 10 s). Consequence: every export makes the current `.blg` a pending buffer, so after an export the ring
+starts empty and the overrun case (§2.3) applies only to the time **between two exports** (a missed export means
+the ring holds MaxSizeMB of the newest data and the older part of the window is gone: `buffer_overrun`).

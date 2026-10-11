@@ -71,7 +71,7 @@ R2 become non-compliant, Set re-creates the collector with the new values, and n
 ### 2.1 The collector template (P11, P12, P13, P18)
 
 Counter set = Emre's **36** (unchanged) + **G1** system-wide (12) + **G2** per process (2) = **50 lines**, plus **G3**
-web (6) **only where its counter objects exist** (CHOICE 10, below). One file per group in `package/files/`.
+web (6) **only where its counter objects exist** (CHOICE 10, below). One file per group in `package/collector/` (P20).
 All of it is deployed by Azure Policy + Machine Configuration; nothing is Group Policy.
 
 **G3 auto-detect (vezir's proposal, CHOICE 10).** R2's `Test` builds the expected list as 36 + G1 + G2 + the G3
@@ -82,10 +82,10 @@ sample is lost. Missing counters are never configured; there is no G3 parameter.
 counters would even hurt (event-log storm) is measured in the lab (P18 question, T06f).
 
 
-- `package/files/PerfmonBlackbox.counters.txt`: Emre's **36 counters, verbatim**; `…-g1-system.txt`, `…-g2-process.txt`,
+- `package/collector/PerfmonBlackbox.counters.txt`: Emre's **36 counters, verbatim**; `…-g1-system.txt`, `…-g2-process.txt`,
   `…-g3-web.txt`: the groups of P18 (LogicalDisk ×6, Memory ×8,
   Process ×8, Network Interface ×3, Processor Information ×5, TCPv4 ×3, TCPv6 ×3). The tests read the same file.
-- `package/files/PerfmonBlackbox.template.xml`: sanitized Data Collector Set: those counters; binary log
+- `package/collector/PerfmonBlackbox.template.xml`: sanitized Data Collector Set: those counters; binary log
   (`LogFileFormat=3`), circular (`LogCircular`), overwrite, `Duration=0` (continuous), no schedule, no
   subdirectory pattern, run as SYSTEM, file `%ProgramData%\PerfmonBlackbox\blg\PerfmonBlackbox.blg`;
   `{{MaxSizeMB}}` and `{{SampleIntervalSeconds}}` filled in on the machine. Which XML field carries the circular
@@ -103,11 +103,11 @@ is uploaded and verified.
 0. **Pending buffers.** Whenever the collector is (re)started (boot, R2 re-create, R3), `Start-PerfmonBlackbox.ps1`
    first renames the existing `.blg` to `pending\<yyyymmdd-hhmmss>.blg`, so a restart never overwrites unexported
    data. (A circular log restarted with overwrite would wipe it.)
-1. **Snapshot.** Copy the live `.blg` (the collector keeps running; the file is opened read-share) to
-   `work\live.blg`. If a copy of a file in use proves unreliable in the lab, fall back to a short
-   `logman stop` → move → `start` (gap = seconds, reported like any gap). T10 decides.
-2. **Window.** Sources = all pending buffers + the snapshot, in time order. The window is **from the first sample
-   after `last_ts` to the last sample in the snapshot**. `relog <sources> -f csv -b <last_ts + 1 s> -e <end>
+1. **Roll (P21).** A running circular `.blg` cannot be read (lab18), so the export stops the collector, moves the
+   `.blg` to `pending\<yyyymmdd-hhmmss>.blg` and starts it again. The restart gap (seconds) is a `collector_restart`
+   gap in the manifest. T10 measures it (≤ 10 s).
+2. **Window.** Sources = all pending buffers (the just-rolled one included), in time order. The window is **from the first sample
+   after `last_ts` to the last sample in the newest pending buffer**. `relog <sources> -f csv -b <last_ts + 1 s> -e <end>
    -o export.csv` (relog's begin/end filter). **No overlap**: every sample ≤ `last_ts` is excluded by construction.
    **No gap**: every sample after `last_ts` still on the disk is included.
 3. **Loss detection.** The CSV is scanned for holes: any step between consecutive samples > 2 × interval, and the
@@ -279,7 +279,7 @@ network per **[CHOICE 5]**, container `perfmon` private, **lifecycle rule** dele
 playbooks/perfmon-blackbox/
   README.md CHANGELOG.md HANDOVER.md decisions.md CLAUDE.md
   docs/design.md docs/test-plan.md
-  package/   files/ (PerfmonBlackbox.counters.txt, PerfmonBlackbox.template.xml, scripts), PerfmonBlackboxDsc/, build.ps1
+  package/   collector/ (PerfmonBlackbox.counters.txt, PerfmonBlackbox.template.xml, scripts), PerfmonBlackboxDsc/, build.ps1
   policy/    build-policies.ps1 (splits -vm and -arc), the two generated definitions
   infra/     main.bicep (storage, container, lifecycle, custom role, agent reader role)
   skill/perfmon-triage/   SKILL.md perfq.py perfmon_csv_to_sqlite.py (+ perfmon_fetch_latest.py in v2.1)

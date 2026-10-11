@@ -1,0 +1,13 @@
+# G1 system-wide (decisions P18). Added to the 36; one per line.
+\System\Processor Queue Length
+\System\Context Switches/sec
+\System\System Up Time
+\Memory\Pages Input/sec
+\Memory\Pages/sec
+\Paging File(_Total)\% Usage
+\LogicalDisk(*)\% Idle Time
+\LogicalDisk(*)\Current Disk Queue Length
+\LogicalDisk(*)\Disk Reads/sec
+\LogicalDisk(*)\Disk Writes/sec
+\TCPv4\Segments Retransmitted/sec
+\Network Interface(*)\Packets Received Discarded

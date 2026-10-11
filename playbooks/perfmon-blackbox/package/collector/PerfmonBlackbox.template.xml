@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- PerfmonBlackbox Data Collector Set template (sanitized, decisions P11/P12).
+     Counters: the 36 of Emre's template, verbatim. Settings: continuous binary circular log.
+     No machine name, no dated path, no LatestOutputLocation. {{...}} values are filled in on the machine
+     from the policy parameters before "logman import". -->
+<DataCollectorSet>
+	<Name>PerfmonBlackbox</Name>
+	<RootPath>%ProgramData%\PerfmonBlackbox\blg</RootPath>
+	<Duration>0</Duration>
+	<Segment>0</Segment>
+	<SegmentMaxDuration>0</SegmentMaxDuration>
+	<SegmentMaxSize>{{MaxSizeMB}}</SegmentMaxSize>
+	<SubdirectoryFormat>0</SubdirectoryFormat>
+	<UserAccount>SYSTEM</UserAccount>
+	<StopOnCompletion>0</StopOnCompletion>
+	<SchedulesEnabled>0</SchedulesEnabled>
+	<PerformanceCounterDataCollector>
+		<DataCollectorType>0</DataCollectorType>
+		<Name>Counters</Name>
+		<FileName>PerfmonBlackbox</FileName>
+		<FileNameFormat>0</FileNameFormat>
+		<LogAppend>0</LogAppend>
+		<LogCircular>-1</LogCircular>
+		<LogOverwrite>-1</LogOverwrite>
+		<SampleInterval>{{SampleIntervalSeconds}}</SampleInterval>
+		<LogFileFormat>3</LogFileFormat>
+		<Counter>\LogicalDisk(*)\Avg. Disk sec/Read</Counter>
+		<Counter>\LogicalDisk(*)\Avg. Disk sec/Write</Counter>
+		<Counter>\LogicalDisk(*)\Avg. Disk Write Queue Length</Counter>
+		<Counter>\LogicalDisk(*)\Disk Bytes/sec</Counter>
+		<Counter>\LogicalDisk(*)\Disk Transfers/sec</Counter>
+		<Counter>\LogicalDisk(*)\% Free Space</Counter>
+		<Counter>\Memory\% Committed Bytes In Use</Counter>
+		<Counter>\Memory\Available MBytes</Counter>
+		<Counter>\Memory\Commit Limit</Counter>
+		<Counter>\Memory\Committed Bytes</Counter>
+		<Counter>\Memory\Pool Nonpaged Bytes</Counter>
+		<Counter>\Memory\Pool Paged Bytes</Counter>
+		<Counter>\Memory\System Cache Resident Bytes</Counter>
+		<Counter>\Memory\Free System Page Table Entries</Counter>
+		<Counter>\Process(*)\% Processor Time</Counter>
+		<Counter>\Process(*)\Handle Count</Counter>
+		<Counter>\Process(*)\ID Process</Counter>
+		<Counter>\Process(*)\IO Data Operations/sec</Counter>
+		<Counter>\Process(*)\Private Bytes</Counter>
+		<Counter>\Process(*)\Thread Count</Counter>
+		<Counter>\Process(*)\Working Set</Counter>
+		<Counter>\Process(*)\Working Set - Private</Counter>
+		<Counter>\Network Interface(*)\Bytes Total/sec</Counter>
+		<Counter>\Network Interface(*)\Current Bandwidth</Counter>
+		<Counter>\Network Interface(*)\Output Queue Length</Counter>
+		<Counter>\Processor Information(*)\% Processor Performance</Counter>
+		<Counter>\Processor Information(*)\% Processor Time</Counter>
+		<Counter>\Processor Information(*)\Parking Status</Counter>
+		<Counter>\Processor Information(*)\% Privileged Time</Counter>
+		<Counter>\Processor Information(*)\% User Time</Counter>
+		<Counter>\TCPv4\Connections Active</Counter>
+		<Counter>\TCPv4\Connections Established</Counter>
+		<Counter>\TCPv4\Connections Reset</Counter>
+		<Counter>\TCPv6\Connections Active</Counter>
+		<Counter>\TCPv6\Connections Established</Counter>
+		<Counter>\TCPv6\Connections Reset</Counter>
+	</PerformanceCounterDataCollector>
+	<DataManager>
+		<Enabled>0</Enabled>
+	</DataManager>
+</DataCollectorSet>
