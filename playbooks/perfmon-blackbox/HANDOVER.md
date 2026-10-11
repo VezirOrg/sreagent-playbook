@@ -1,20 +1,21 @@
-# perfmon-blackbox: IMPLEMENTING (session 2): vm1 + arc1 policy-deployed (rc.3), stages green on both except T06b-e/T08/T10b-c/T16; wrap proven; T16 run 2 running.
+# perfmon-blackbox: IMPLEMENTING (session 2): vm1 + arc1 policy-deployed; most stages green on both; lab fixes P33-P41 in rc.3-rc.7; T16 run 4 running (disk plant fixed).
 
 
 ## Session 2 progress (2026-10-11, live; rewritten at close)
 
-- Decisions P20–P34 (P31 standing permission for lab rc.N; P32 package hash in the existence condition; P33 ACL bug
-  + stale-size finding; P34 OPEN-2 closed for v1.0.0 + wrap proof). Root: R16, R17 (+ Reader addendum), R18 (CI).
-- **Green:** L01–L09; L05 on dc and in CI (Windows runner); T01; T02, T03, T13, T14; **vm1:** T04–T07, T07b, T09–T12,
-  T15; **arc1 (Arc, HIMDS):** T04–T07, T09–T12, T15. P10 risk cleared (Machine Configuration does every step on Arc).
-- **Wrap proven** (BbWrap1/2, P34); storm none, formula (P27); BbFull10 still running (full ~08:59Z 10-12).
-- **Releases (lab pre-releases, P29/P31):** rc.1 EFE14BE1…, rc.2 CC42AF18…, **rc.3 2F9E19F4…** (P33 ACL fix). vm1 is on
-  rc.3 (upgrade via P32 worked); arc1 is being moved to rc.3 with MaxSizeMB=16 / 1 s / 24 h (its rc.1 files were
-  locked by the P33 bug when its parameters changed: rc.3 must self-heal them, to verify).
-- **Running:** T16 run 2 on vm1 (13:41:44Z–~14:52Z; then `tests/lab/T16.sh vm1 finish`). Run 1: agent found CPU, leak,
-  NIC; missed 30-s stalls → OPEN-2 decided (P34).
-- Next: arc1 on rc.3 → T06b/T06d/T06e/T10b there, then T06c (32 MB), back to defaults; T08 (reboot) on arc1 and vm1;
-  T10c; T16 on arc1; README review + fresh-eyes deploy; remove the lab SP's agent admin role at teardown (P30).
+- Decisions P20–P41; root R16–R19. Docs (P35, P38): `docs/` analysis-first, tests.md with live statuses.
+- **Green:** L01–L09 (+ CI Windows job); T01; T02, T03, T13, T14; **vm1:** T04–T07, T07b, T09–T12, T15;
+  **arc1 (Arc/HIMDS):** T04–T07, T06b, T06d, T06e, T09–T12, T10b, T15. Wrap proven (P34). P10 cleared.
+- **Lab pre-releases (P29/P31):** rc.1 … rc.7. Fixes found in the lab: P33 ACL (rc.3), P36 Test never throws (rc.4,
+  self-heal proven on arc1), P37 rings judged per own interval/size (rc.5), P40 hole before a wrapped ring (rc.6),
+  P41 export_roll (rc.7, published, not rolled out yet). vm1 runs rc.5, arc1 rc.6 (16→32 MB at 10 s in progress).
+- **T16 history (vm1):** run 1 85 FAIL (stalls by design → OPEN-2 closed P34; disk plant broken), run 2 85 FAIL
+  (disk plant broken, P39), run 3 not valid (scheduled export cut the window; harness fixed), **run 4 running
+  16:33–17:45Z** with a working disk plant (179 ms writes on uncached lab disk T:).
+- Lab extras (register row updated): arc1; vm1 data disk `bbdisk-vm1` + patchMode; dc identity = lab verifier; lab SP
+  agent admin (P30, remove at teardown).
+- Next: T16 run 4 finish; rc.7 to both; T08 on both; T06c re-run result (arc1); T10c; T06f part 2 (IIS on arc1);
+  T16 on arc1; T07b on arc1; least-privilege agent role (P30); fresh-eyes deploy; v1.0.0 = Emre's gate.
 
 ## Brief from session 1 (kept until close)
 
