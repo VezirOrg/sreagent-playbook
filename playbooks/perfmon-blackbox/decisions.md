@@ -497,3 +497,12 @@ fits within two intervals). In rc.7.
 - **rc.7** (P41: `export_roll`): `PerfmonBlackbox.zip` SHA-256
   `011ABABE14A8F4D720DAE32025679821569CAE18071EE06696F2F923441B673B` (L05 34/34, T01 green on dc; 12 files
   scrub-checked clean before the upload).
+
+## P42: T16's disk item counts only on the planted volume (the vezir, 2026-10-11)
+
+A disk problem counts as found only if the report names the **planted volume** (`T:` in the lab) with **write
+latency** (or an equivalent latency claim on that volume) in the planted window. A process name containing "disk"
+plus a matching time is not enough. Before any T16 run is recorded green, the planted effect itself is checked in the
+capture (the planted volume's `Avg. Disk sec/Write` really above 25 ms for minutes in the window); a run whose plant did
+not take effect is **invalid** for that item, not a pass or a fail. Run 4 is under this review; run 5 follows on a
+freshly formatted `T:` (rc.7).
