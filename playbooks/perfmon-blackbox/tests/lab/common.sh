@@ -45,3 +45,22 @@ res = (v[-1]["properties"].get("details") or {}).get("resources", []) if v else 
 a["resources"] = [{"id": (x.get("properties") or {}).get("ResourceId"), "status": x.get("complianceStatus"),
                    "reasons": " | ".join(y.get("phrase", "") for y in x.get("reasons") or [])} for x in res]
 print(json.dumps(a))' "$a" "$r"; }
+ask_report() { # ask_report "<question>" <out.raw>: ask the agent in a new thread and wait (up to 30 min) until one of its
+  # messages is the report (it holds a "Capture" section), then write the whole thread (ask-agent's format) to <out.raw>
+  _q="$1"; _o="$2"
+  (cd "$lab" && scripts/ask-agent "$_q" > "$_o" 2> "$_o.err") || true
+  _tid=$(sed -n 's/^thread //p' "$_o.err" | head -1); rm -f "$_o.err"
+  [ -n "$_tid" ] || return 0
+  _ep=$(az resource show -g "$rg" -n "$(cd "$lab" && azd env get-value SRE_AGENT_NAME 2>/dev/null)" --resource-type Microsoft.App/agents --api-version 2025-05-01-preview --query properties.agentEndpoint -o tsv)
+  for _i in $(seq 1 60); do
+    grep -qi 'capture' "$_o" && [ "$(grep -c '' "$_o")" -gt 30 ] && return 0
+    sleep 30
+    az rest -m GET --url "$_ep/api/v1/threads/$_tid/messages" --resource https://azuresre.dev 2>/dev/null | python3 -c '
+import json, sys
+d = json.load(sys.stdin); msgs = d.get("value", d) if isinstance(d, dict) else d
+for m in msgs:
+    if m.get("messageType") == "Reasoning": continue
+    role = (m.get("author") or {}).get("role"); text = m.get("text") or ""
+    cmd = (m.get("azCliExecution") or {}).get("command")
+    if text or cmd: print(f"--- {role}\n" + (text or f"az: {cmd}"))' > "$_o.new" 2>/dev/null && [ -s "$_o.new" ] && mv "$_o.new" "$_o"
+  done; rm -f "$_o.new"; }

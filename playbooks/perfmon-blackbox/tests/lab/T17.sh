@@ -25,7 +25,7 @@ from=${range%|*}; to=${range#*|}
 zips=$(verify_blobs "$m" 3 -AllowIncomplete | grep '^zip ' | sed 's/^zip //; s/:.*//; s#.*/##; s/\.zip$//' | tr -d '\r')
 echo "zips in storage (newest 3): $zips"
 q="Analyse the PerfMon captures of the server $name between $from and $to (server local time) with your perfmon-triage skill. The captures are in the storage account $sa (container perfmon). Fetch what that range needs yourself and give your report."
-(cd "$lab" && scripts/ask-agent "$q" 2>&1) | grep -v '^direnv:' > "$ev/T17-$m-thread.raw"
+ask_report "$q" "$ev/T17-$m-thread.raw"
 python3 -c '
 import sys
 t = open(sys.argv[1]).read(); msgs = [x.strip() for x in t.split("--- SREAgent")[1:]]

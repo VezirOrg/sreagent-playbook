@@ -31,7 +31,7 @@ m = re.search(r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\.\d+ \.\. (\d{4}-\d\d-\d\d \d\d
 if m: t["capture_first"], t["capture_last"] = m.group(1), m.group(2)
 json.dump(t, open(sys.argv[1], "w"), indent=1)' "$ev/T16-$m-truth.raw" "$win"
 q="Analyse the latest PerfMon capture of the server $name with your perfmon-triage skill. The captures are in the storage account $sa (container perfmon). Fetch the latest one yourself and give your report."
-(cd "$lab" && scripts/ask-agent "$q" 2>&1) | grep -v '^direnv:' > "$ev/T16-$m-thread.raw"
+ask_report "$q" "$ev/T16-$m-thread.raw"
 python3 -c '
 import sys
 t = open(sys.argv[1]).read()

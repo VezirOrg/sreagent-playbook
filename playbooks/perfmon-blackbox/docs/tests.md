@@ -60,6 +60,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T10 roll gap ≤ 10 s | | green | green |
 | T10b overrun detected | | pending | green |
 | T10c failed upload, no gap | | green (storage blocked by a hosts entry: the lab GPO turns the firewall off) | — |
+| R1 resilience: storage unreachable for real (lab DNS down when the lab's auto-shutdown stopped dc) | the 19:03Z export failed ("remote name could not be resolved"), state unchanged; the next export (19:12Z) covered 18:15:08–19:12:47 in one zip, both rings, complete, 0 gaps: nothing lost. No immediate retry by design: a failed export is retried at the next scheduled run (ExportEveryHours) | — | green |
 | T11 blob path, hashes, identity | | green (IMDS) | green (HIMDS) |
 | T12 cannot write elsewhere | | green | green |
 | T18a package from GitHub (P45) | the release asset (default) | green (T02, T04, T07–T12) | green (same) |
