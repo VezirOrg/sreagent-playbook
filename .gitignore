@@ -3,8 +3,8 @@
 .env.*
 .envrc
 # Drive mapping (private artifacts, real/masked data)
-files
-files/
+/files
+/files/
 __pycache__/
 *.pyc
 .DS_Store

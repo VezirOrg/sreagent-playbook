@@ -131,3 +131,9 @@ After a session printed credential values by an ad-hoc shell expansion meant to 
 reached git or Drive; rotation is Emre's call), the rule is: check that credentials load **only** with the vetted
 `direnv exec . scripts/env-check.sh [NAME ...]`, which prints name, set/unset and length, never a value. No ad-hoc
 `echo`, `printf`, `eval`, `env`, `set` or parameter expansion on credential variables, ever.
+
+## R16: `.gitignore` ignores only the root `files/` link (the vezir, 2026-10-11)
+
+The pattern `files/` also matched any `files/` folder deeper in the tree, so a playbook's `package/files/` was silently
+never committed (perfmon-blackbox P20). The pattern is now `/files` and `/files/`: only the root Drive link is
+ignored. A playbook may still not name a folder `files/` by habit; perfmon-blackbox uses `package/collector/`.
