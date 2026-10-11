@@ -210,6 +210,20 @@ Describe 'Blob path, template, collector compare, capacity, tasks' {
     }
 }
 
+Describe 'Pending buffers keep the right reason' {
+    It 'a ring last written before the boot is a boot buffer, whoever restarts the collector' {
+        $p = Use-TestRoot (Join-Path $TestDrive 'reason')
+        $old = Join-Path $p.Blg 'PerfmonBlackbox.blg'; Set-Content $old 'x'; (Get-Item $old).LastWriteTime = (Get-Date).AddHours(-2)
+        Mock Get-CimInstance { [pscustomobject]@{ LastBootUpTime = (Get-Date).AddHours(-1) } }
+        $m = Move-BbBufferToPending -Reason 'start' -Paths $p
+        $m[0] | Should -Match '-boot\.blg$'
+        $new = Join-Path $p.Blg 'PerfmonBlackbox.blg'; Set-Content $new 'y'
+        $m2 = Move-BbBufferToPending -Reason 'boot' -Paths $p
+        $m2[0] | Should -Match '-start\.blg$'
+        (Move-BbBufferToPending -Reason 'export' -Paths $p).Count | Should -Be 0
+    }
+}
+
 Describe 'Invoke-BbExport end to end on synthetic buffers' {
     BeforeEach {
         $script:Uploads.Clear()
