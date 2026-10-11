@@ -5,7 +5,7 @@ r"""Generate the two perfmon-blackbox policy definitions (design sec. 3.1-3.2; d
   perfmon-blackbox-arc.json  Microsoft.HybridCompute/machines (Windows)     -> guest assignment on the Arc machine
 
 Both are DeployIfNotExists with the same parameters. The deployment does two things:
-  1 the guest configuration assignment PerfmonBlackbox (ApplyAndAutoCorrect, contentUri + contentHash pinned), with
+  1 the Azure Machine Configuration guest assignment PerfmonBlackbox (ApplyAndAutoCorrect, contentUri + contentHash pinned), with
     the six parameters as configurationParameter of [BlackboxFiles]Files (P23)
   2 a nested deployment at the storage account's resource group: one role assignment of the custom write-only role
     on the container for the machine's system identity, with an ABAC condition that allows writes only under

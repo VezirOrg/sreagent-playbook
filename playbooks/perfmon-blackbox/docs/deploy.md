@@ -137,7 +137,7 @@ What happens per server: the guest assignment `PerfmonBlackbox` is created; one 
 the container lets the server write only under `<subscriptionId>/<resourceGroup>/<server>/`; within 15–30 minutes the
 agent applies the package and the assignment turns Compliant. Parameters: [parameters.md](parameters.md).
 
-Check: `az rest --method get --url https://management.azure.com<server ID>/providers/Microsoft.GuestConfiguration/guestConfigurationAssignments/PerfmonBlackbox?api-version=2022-01-25 --query properties.complianceStatus`.
+Check: `az rest --method get --url https://management.azure.com<server ID>/providers/Microsoft.GuestConfiguration/guestConfigurationAssignments/PerfmonBlackbox?api-version=2024-04-05 --query properties.complianceStatus`.
 
 ## 4. The skill
 

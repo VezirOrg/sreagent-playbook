@@ -8,6 +8,11 @@
 >
 > Draft until v1.0.0.
 
+*Azure Machine Configuration* was formerly called guest configuration (the name lives on in identifiers such as
+`Microsoft.GuestConfiguration`). It is the current service and replaces Azure Automation State Configuration (retiring
+2027-09-30) and the DSC extension
+([Learn](https://learn.microsoft.com/azure/governance/machine-configuration/whats-new/migrating-from-azure-automation)).
+
 ## What you get
 
 ```text
