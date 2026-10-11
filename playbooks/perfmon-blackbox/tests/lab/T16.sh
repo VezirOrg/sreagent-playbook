@@ -8,6 +8,11 @@
 m="${1:-vm1}"; step="${2:-finish}"; name=$(vm_real "$m" | tr 'A-Z' 'a-z')
 ev="$root/files/test-runs/$(date -u +%y%m%d)-${rg#rg-}"; mkdir -p "$ev"
 if [ "$step" = start ]; then
+  # the latest zip must cover the whole planted window: refuse if the Export task's schedule fires within 80 min
+  nxt=$(v "$m" '$i = & schtasks.exe /query /tn \PerfmonBlackbox\Export /v /fo csv | ConvertFrom-Csv | Select-Object -First 1; [int](([datetime]::Parse($i."Next Run Time")) - (Get-Date)).TotalMinutes' | tr -d '\r' | tail -1)
+  echo "next scheduled export in ${nxt:-?} min"
+  [ "${nxt:-0}" -gt 80 ] || { echo "a scheduled export falls inside the T16 window: start right after it"; exit 1; }
+  v "$m" 'Get-ChildItem T:\bbio, C:\bbio -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; "cleaned leftover disk-plant files"'
   guest "$m" export-now.ps1 | tail -2
   guest "$m" make-trouble.ps1 -Start
   echo "planted load started; run 'T16.sh $m finish' after ~72 min"; exit 0
@@ -29,7 +34,9 @@ q="Analyse the latest PerfMon capture of the server $name with your perfmon-tria
 python3 -c '
 import sys
 t = open(sys.argv[1]).read()
-print(t.rsplit("--- SREAgent", 1)[-1].strip())' "$ev/T16-$m-thread.raw" > "$ev/T16-$m-report.raw"
+msgs = [x.strip() for x in t.split("--- SREAgent")[1:]]
+# the report is the longest agent message (the last one is often a short wrap-up)
+print(max(msgs, key=len) if msgs else "")' "$ev/T16-$m-thread.raw" > "$ev/T16-$m-report.raw"
 for f in thread report; do mask < "$ev/T16-$m-$f.raw" > "$ev/T16-$m-$f.txt"; rm -f "$ev/T16-$m-$f.raw"; done
 mv "$ev/T16-$m-truth.raw" "$ev/T16-$m-truth.txt"   # already masked by guest()
 # scored on the masked texts: the machine is 'vm1'/'arc1' in the report, the truth and the zip name alike
