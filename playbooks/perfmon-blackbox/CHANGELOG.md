@@ -27,3 +27,4 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
   VM's own identity (201), roll gap 1.7–2.7 s, consecutive exports continuous (no gap, no overlap), a machine cannot
   write elsewhere or read. T04/T06e read the assignment report API; verifier decodes the list response's BOM under 5.1.
 - 2026-10-11: P31 standing permission for lab rc.N; rc.2 (boot reason from the boot time).
+- 2026-10-11: **arc1 (Arc, HIMDS) policy-deployed: T04, T05, T06, T07, T09, T10, T11, T12 green** (upload with the Arc machine's identity: P10 risk cleared); T07b green on vm1; CI green with the new jobs.
