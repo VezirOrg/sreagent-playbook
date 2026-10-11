@@ -42,8 +42,10 @@ here, a link in the root `HANDOVER.md` and the README table, and a decision entr
 - **Hooks.** After every fresh clone run `scripts/install-hooks.sh`. pre-commit, commit-msg and pre-push run
   `scripts/scrub-check.sh`. Never bypass them (`--no-verify` is forbidden). A hit is fixed, not allowed-listed,
   unless it is a well-known public value (then `scripts/scrub-allow.txt`, with a comment).
-- **Denylist.** The scrub check needs the private denylist at `files/source-data/denylist.txt` (or
-  `SCRUB_DENYLIST=<path>`). It is never committed. Without it the check fails closed.
+- **Denylist.** The scrub check merges every private denylist: `files/source-data/*denylist*.txt`,
+  `files/denylist-extra.txt` and `SCRUB_DENYLIST` (R13). None is ever committed. Without any, it fails closed.
+  A real name you find that is not caught: add it to `files/denylist-extra.txt` (never print it) and tell your
+  owner.
 - **Data.** Tests use **synthetic data only** (`playbooks/*/tests/fixtures/synthetic/`). Real or masked third-party
   data never enters the repo: it stays in `files/` (Google Drive, gitignored). Real names never appear in code,
   docs, test names, commit messages or blob paths shown in docs. Private names (private repos, the lab template,

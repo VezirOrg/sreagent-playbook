@@ -102,3 +102,14 @@ playbook's design and test plan (the PLAN GATE).
 First application (2026-10-11): the repo's first round touches both root files and the first playbook; it is
 committed as separate commits: root (R1–R12, shared safety tooling, root docs) first, then
 `playbooks/perfmon-blackbox/` alone.
+
+## R13: every denylist is merged; private extra denylist (2026-10-11, on Emre's input via the vezir)
+
+- `scripts/scrub-check.sh` merges **all** denylists it finds: every path in `SCRUB_DENYLIST` (`:`-separated),
+  every `files/source-data/*denylist*.txt` (the blog session's copy, R7), and `files/denylist-extra.txt`. Fail
+  closed if none is found (unchanged). Hits are reported as `L<list>#<entry>` and length, never the name.
+- `files/denylist-extra.txt` (Drive, never committed) holds names this project found that the shared denylist
+  lacks. First entries (2026-10-11): the machine name in Emre's original PerfMon template (its
+  `LatestOutputLocation`), full and its long part. The vezir is asked to get them into the shared denylist too.
+- The R10 interim (pointing `SCRUB_DENYLIST` at the blog's list) ends: `files/source-data/` now holds the
+  denylist.

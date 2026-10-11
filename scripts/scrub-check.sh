@@ -8,8 +8,9 @@
 #   scripts/scrub-check.sh --msg FILE      one commit message (commit-msg)
 #   scripts/scrub-check.sh --self-test     prove each check fires on a planted hit (no real name used)
 #
-# Denylist (private, never committed): $SCRUB_DENYLIST, else files/source-data/denylist.txt. One name per line,
-# '#' for comments. Matched like the masker (rule b): case-insensitive; a name of 5+ characters anywhere, a shorter
+# Denylists (private, never committed), ALL of them are merged: every path in $SCRUB_DENYLIST (':'-separated),
+# every files/source-data/*denylist*.txt, and files/denylist-extra.txt. One name per line, '#' for comments.
+# Duplicates count once; entries are numbered per list as "<list>#<n>". Matched like the masker (rule b): case-insensitive; a name of 5+ characters anywhere, a shorter
 # one only as a whole word. No denylist = FAIL, unless SCRUB_ALLOW_NO_DENYLIST=1 (CI only: it has no denylist).
 #
 # Output never contains a hit's text: only the check, the place (file:line or commit) and, for the denylist,
@@ -73,16 +74,28 @@ def name_pattern(real, min_len=5):
 
 
 def load_deny():
-    path = os.environ.get('SCRUB_DENYLIST') or os.path.join(ROOT, 'files', 'source-data', 'denylist.txt')
-    if not os.path.isfile(path):
+    import glob
+    paths = [p for p in os.environ.get('SCRUB_DENYLIST', '').split(':') if p]
+    paths += sorted(glob.glob(os.path.join(ROOT, 'files', 'source-data', '*denylist*.txt')))
+    paths.append(os.path.join(ROOT, 'files', 'denylist-extra.txt'))
+    paths = [p for p in dict.fromkeys(paths) if os.path.isfile(p)]
+    if not paths:
         if os.environ.get('SCRUB_ALLOW_NO_DENYLIST') == '1':
             print('scrub-check: NOTE no denylist (SCRUB_ALLOW_NO_DENYLIST=1): real names NOT checked')
             return []
-        print('scrub-check: FAILED no denylist found (set SCRUB_DENYLIST or put it at files/source-data/denylist.txt)')
+        print('scrub-check: FAILED no denylist found (files/source-data/*denylist*.txt, files/denylist-extra.txt '
+              'or SCRUB_DENYLIST)')
         sys.exit(1)
-    with open(path, encoding='utf-8') as f:
-        deny = [l.strip() for l in f if l.strip() and not l.lstrip().startswith('#')]
-    return [(i, len(d), re.compile(name_pattern(d), re.I)) for i, d in enumerate(deny, start=1)]
+    seen, out = set(), []
+    for k, p in enumerate(paths, start=1):
+        with open(p, encoding='utf-8') as f:
+            names = [l.strip() for l in f if l.strip() and not l.lstrip().startswith('#')]
+        for i, d in enumerate(names, start=1):
+            if d.lower() in seen:
+                continue
+            seen.add(d.lower())
+            out.append((f'L{k}#{i}', len(d), re.compile(name_pattern(d), re.I)))
+    return out
 
 
 ALLOWED = load_allow()
@@ -163,7 +176,7 @@ def mode_range(rng, deny):
 def self_test():
     """Planted values are assembled at run time; none of them is a real secret or a real name."""
     global hits
-    deny = [(1, 7, re.compile(name_pattern('Zq' + 'xwvut'), re.I)), (2, 3, re.compile(name_pattern('Q' + 'zx'), re.I))]
+    deny = [('T#1', 7, re.compile(name_pattern('Zq' + 'xwvut'), re.I)), ('T#2', 3, re.compile(name_pattern('Q' + 'zx'), re.I))]
     cases = [
         ('Account' + 'Key=' + 'A' * 40, True), ('?sv=1&s' + 'ig=' + 'B' * 30, True),
         ('-----BEGIN ' + 'RSA PRIVATE ' + 'KEY-----', True), ('pass' + 'word = ' + 'hunter2xyz', True),
