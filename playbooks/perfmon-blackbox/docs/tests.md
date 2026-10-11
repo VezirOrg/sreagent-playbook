@@ -21,6 +21,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | L04 fetch-latest selection | newest zip, other servers ignored, bad hash rejected | green | — |
 | L09 T16 scorer | the scoring rules | green | — |
 | T15 agent fetches and converts | the agent's own terminal, skill v2.1 | green | green |
+| T17 range mode | leak + CPU split over two zips; the agent asked for the range | pending (skill v2.2) | pending |
 | **T16 agent report, scored** | planted problems vs the agent's report | see history below | pending |
 
 **T16 history** (pass = score ≥ 80, every planted problem found, nothing invented; since P43 only the memory leak and the CPU burst are planted):
@@ -48,17 +49,17 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T05 extension/agent, identity, no pwsh | | green | green (IMDS blocked) |
 | T06 collector running as configured | counters, format, size, interval | green | green |
 | T06b never exceeds, really wraps | 16 MB ring at 1 s | wrap proven by the 512 MB runs (P34) | green |
-| T06c changed MaxSizeMB reaches the server | 16 → 32 MB | pending | size part green (peak exactly 32 MB); re-run at 10 s for the re-create boundary (P40) |
+| T06c changed MaxSizeMB reaches the server | 16 → 32 MB | pending | green (re-create export complete, 0 gaps, 260/260 rows; file grew to 19.4 MB, ≤ 32 MB) |
 | T06d changed interval reaches the server | 10 → 1 s and back | pending | green (rc.6: 1 → 10 s, clean manifest, P37) |
 | T06e capacity misfit reported | R6 NonCompliant with the numbers | pending | green |
 | T06f G3 without IIS: no storm; auto-detect | | storm part green (dc, P27); auto-detect pending | pending |
 | T07 scheduled tasks | | green | green |
 | T07b buffer hours measured | | green (21.7 h at 10 s) | pending |
-| T08 reboot | | pending | pending |
+| T08 reboot | | green (rc.7: boot ring kept, Boot task after boot, only a 67-s machine_off gap) | pending |
 | T09 two exports, no gap, no overlap | | green | green |
 | T10 roll gap ≤ 10 s | | green | green |
 | T10b overrun detected | | pending | green |
-| T10c failed upload, no gap | | pending | — |
+| T10c failed upload, no gap | | green (storage blocked by a hosts entry: the lab GPO turns the firewall off) | — |
 | T11 blob path, hashes, identity | | green (IMDS) | green (HIMDS) |
 | T12 cannot write elsewhere | | green | green |
 | T13 lifecycle rule | | green | — |
