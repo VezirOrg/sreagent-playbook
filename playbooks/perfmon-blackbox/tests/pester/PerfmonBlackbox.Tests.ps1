@@ -223,6 +223,8 @@ Describe 'Blob path, template, collector compare, capacity, tasks' {
         $exp = New-BbTaskXml -Kind Export -BinDir 'C:\ProgramData\PerfmonBlackbox\bin' -ExportEveryHours 4
         $exp | Should -Match '<Interval>PT4H</Interval>'
         $exp | Should -Match '<StartWhenAvailable>true</StartWhenAvailable>'
+        $exp | Should -Match '<RestartOnFailure><Interval>PT15M</Interval><Count>3</Count></RestartOnFailure>'
+        $boot | Should -Not -Match 'RestartOnFailure'
         (New-BbTaskXml -Kind Export -BinDir 'x' -ExportEveryHours 24) | Should -Not -Match '<Repetition>'
         $actual = [xml]($boot -replace '^\s*<\?xml[^>]*\?>', '')
         (Compare-BbTask -Kind Boot -Actual $actual -ExpectedXml $boot).Count | Should -Be 0
@@ -325,7 +327,7 @@ Describe 'Invoke-BbExport end to end on synthetic buffers' {
     It 'a failed upload leaves state.json and the buffers unchanged; the next run covers both windows' {
         New-TestCsv (Join-Path $TestDrive 'f1.csv') $script:T0 30
         New-TestBlg (Join-Path $TestDrive 'f1.csv') (Join-Path $script:P.Pending '20261001-080500-00-export.blg')
-        { Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $script:FailUploader -CollectorDir $script:Collector } | Should -Throw
+        { Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $script:FailUploader -RetryDelaysSeconds @() -CollectorDir $script:Collector } | Should -Throw
         (Get-BbState)['last_ts'] | Should -BeNullOrEmpty
         (Get-BbState)['last_error'] | Should -Match 'storage unreachable'
         @(Get-ChildItem $script:P.Pending).Count | Should -Be 1
@@ -334,6 +336,22 @@ Describe 'Invoke-BbExport end to end on synthetic buffers' {
         $r = Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $script:OkUploader -CollectorDir $script:Collector
         $r.Rows | Should -Be 60
         $r.Manifest.complete | Should -BeTrue
+    }
+    It 'retries a failed upload in the same run (P46) and fails cleanly when every attempt fails' {
+        New-TestCsv (Join-Path $TestDrive 'r1.csv') $script:T0 20
+        New-TestBlg (Join-Path $TestDrive 'r1.csv') (Join-Path $script:P.Pending '20261001-080400-00-export.blg')
+        $script:Calls = 0
+        $flaky = { param($blob, $zip, $meta) $script:Calls++; if ($script:Calls -lt 2) { throw 'name could not be resolved (test)' }; 201 }
+        $r = Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $flaky -RetryDelaysSeconds @(0, 0) -CollectorDir $script:Collector
+        $r.Result | Should -Be 'uploaded'
+        $script:Calls | Should -Be 2
+        New-TestCsv (Join-Path $TestDrive 'r2.csv') $script:T0.AddSeconds(200) 10
+        New-TestBlg (Join-Path $TestDrive 'r2.csv') (Join-Path $script:P.Pending '20261001-080600-00-export.blg')
+        $before = (Get-BbState)['last_ts']; $script:Calls = 0
+        $down = { param($blob, $zip, $meta) $script:Calls++; throw 'storage unreachable (test)' }
+        { Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $down -RetryDelaysSeconds @(0, 0) -CollectorDir $script:Collector } | Should -Throw
+        $script:Calls | Should -Be 3
+        (Get-BbState)['last_ts'] | Should -Be $before
     }
     It 'reports a buffer_overrun gap (complete: false) when the ring wrapped past last_ts' {
         $s = Get-BbState; $s['last_ts'] = '2026-10-01 07:00:00.000'; Write-BbJson $script:P.State $s

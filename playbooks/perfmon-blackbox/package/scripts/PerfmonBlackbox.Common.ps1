@@ -711,6 +711,7 @@ function New-BbTaskXml {
         $script = Join-Path $BinDir 'Start-PerfmonBlackbox.ps1'
         $taskArgs = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$script`" -Reason boot"
         $limit = 'PT10M'
+        $restart = ''
     } else {
         $rep = ''
         if ($ExportEveryHours -lt 24) { $rep = "<Repetition><Interval>PT$($ExportEveryHours)H</Interval><Duration>P1D</Duration><StopAtDurationEnd>false</StopAtDurationEnd></Repetition>" }
@@ -718,6 +719,8 @@ function New-BbTaskXml {
         $script = Join-Path $BinDir 'Export-PerfmonBlackbox.ps1'
         $taskArgs = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$script`""
         $limit = 'PT2H'
+        # backstop for a run that fails to start (the upload itself retries inside the script, P46)
+        $restart = '<RestartOnFailure><Interval>PT15M</Interval><Count>3</Count></RestartOnFailure>'
     }
     $esc = [System.Security.SecurityElement]::Escape($taskArgs)
     @"
@@ -735,7 +738,7 @@ function New-BbTaskXml {
     <AllowStartOnDemand>true</AllowStartOnDemand>
     <Enabled>true</Enabled>
     <Hidden>false</Hidden>
-    <ExecutionTimeLimit>$limit</ExecutionTimeLimit>
+    <ExecutionTimeLimit>$limit</ExecutionTimeLimit>$restart
     <Priority>7</Priority>
   </Settings>
   <Actions Context="Author"><Exec><Command>$ps</Command><Arguments>$esc</Arguments></Exec></Actions>
@@ -768,7 +771,8 @@ function Compare-BbTask {
         @('enabled', 't:Task/t:Settings/t:Enabled'),
         @('boot trigger', 't:Task/t:Triggers/t:BootTrigger'),
         @('repetition', 't:Task/t:Triggers/t:CalendarTrigger/t:Repetition/t:Interval'),
-        @('daily', 't:Task/t:Triggers/t:CalendarTrigger/t:ScheduleByDay/t:DaysInterval'))
+        @('daily', 't:Task/t:Triggers/t:CalendarTrigger/t:ScheduleByDay/t:DaysInterval'),
+        @('restart on failure', 't:Task/t:Settings/t:RestartOnFailure/t:Interval'))
     $ns2 = New-Object System.Xml.XmlNamespaceManager $Actual.NameTable
     $ns2.AddNamespace('t', 'http://schemas.microsoft.com/windows/2004/02/mit/task')
     foreach ($c in $checks) {
@@ -874,7 +878,7 @@ function Set-BbAcl {
 
 function Invoke-BbExport {
     # -NoRoll/-NoLock/-Machine/-Uploader/-CollectorDir exist for the Pester tests (L05) and the lab; the task uses none
-    param([switch]$NoUpload, [switch]$NoRoll, [switch]$NoLock, $Machine, [scriptblock]$Uploader,
+    param([switch]$NoUpload, [switch]$NoRoll, [switch]$NoLock, $Machine, [scriptblock]$Uploader, [int[]]$RetryDelaysSeconds = @(300, 600),
           [string]$CollectorDir = (Join-Path (Get-BbPaths).Bin 'collector'), [string]$PackageVersion = '1.0.0')
     $StampFormat = 'yyyy-MM-dd HH:mm:ss.fff'
     $p = Get-BbPaths
@@ -1012,14 +1016,29 @@ function Invoke-BbExport {
 
         # 6 token, 7 upload (a test passes -Uploader instead)
         $meta = @{ sha256 = (Get-BbSha256 $zipPath); seq = $manifest.seq; complete = "$complete".ToLowerInvariant() }
-        if ($Uploader) {
-            $status = & $Uploader $blob $zipPath $meta
-        } else {
-            $tok = Get-BbToken
-            $status = Send-BbBlob -Account $account -Container $cfg['ContainerName'] -Name $blob -Path $zipPath -Token $tok.Token -Metadata $meta
-            $tok = $null
+        # P46: a failed token or upload is retried in the same run (default +5 and +15 min), each time with a fresh
+        # token; the zip is the same window from last_ts, so a retry neither duplicates nor leaves a gap
+        $attempt = 0
+        while ($true) {
+            try {
+                if ($Uploader) {
+                    $status = & $Uploader $blob $zipPath $meta
+                } else {
+                    $tok = Get-BbToken
+                    $status = Send-BbBlob -Account $account -Container $cfg['ContainerName'] -Name $blob -Path $zipPath -Token $tok.Token -Metadata $meta
+                    $tok = $null
+                }
+                if ([int]$status -ne 201) { throw "upload returned $status" }
+                break
+            } catch {
+                $tok = $null
+                if ($attempt -ge $RetryDelaysSeconds.Count) { throw }
+                Write-BbLog "export: upload attempt $($attempt + 1) failed ($($_.Exception.Message)); retry in $($RetryDelaysSeconds[$attempt]) s" 'WARN'
+                Start-Sleep -Seconds $RetryDelaysSeconds[$attempt]
+                $attempt++
+            }
         }
-        if ([int]$status -ne 201) { throw "upload returned $status" }
+        if ($attempt) { Write-BbLog "export: uploaded on attempt $($attempt + 1)" }
 
         # 8 commit: only after a verified upload
         $state['last_ts'] = $last.ToString($StampFormat)
