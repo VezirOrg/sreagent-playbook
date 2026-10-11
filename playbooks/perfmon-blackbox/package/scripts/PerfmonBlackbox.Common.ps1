@@ -786,12 +786,18 @@ function Get-BbAclSddl {
 }
 
 function Set-BbAcl {
-    # SYSTEM + Administrators only, inheritance off (captures carry process and instance names)
+    # SYSTEM + Administrators only (captures carry process and instance names). The root gets a protected DACL with
+    # two inheritable ACEs; everything below is reset to inherit them. (Never /inheritance:r with /T: on files that
+    # already exist it strips the inherited ACEs, while an (OI)(CI) grant does not apply to files, which leaves them
+    # with an empty DACL that even SYSTEM cannot read: a lab finding, decisions P33.)
     param([Parameter(Mandatory)][string]$Path)
-    $r = Invoke-BbTool icacls.exe @($Path, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F', '/T', '/C', '/Q')
+    $r = Invoke-BbTool icacls.exe @($Path, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F', '/C', '/Q')
     if ($r.ExitCode -ne 0) { throw "icacls failed ($($r.ExitCode)): $($r.Output -join ' ')" }
-    # drop every other ACE that came with the folder (e.g. Users, CREATOR OWNER)
-    foreach ($sid in '*S-1-5-32-545', '*S-1-3-0', '*S-1-5-11') { $null = Invoke-BbTool icacls.exe @($Path, '/remove:g', $sid, '/T', '/C', '/Q') }
+    foreach ($sid in '*S-1-5-32-545', '*S-1-3-0', '*S-1-5-11') { $null = Invoke-BbTool icacls.exe @($Path, '/remove:g', $sid, '/C', '/Q') }
+    if (@(Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue).Count) {
+        $r = Invoke-BbTool icacls.exe @((Join-Path $Path '*'), '/reset', '/T', '/C', '/Q')
+        if ($r.ExitCode -ne 0) { throw "icacls /reset failed ($($r.ExitCode)): $($r.Output -join ' ')" }
+    }
 }
 
 # ---------- export (design sec. 2.2; the Export task runs Export-PerfmonBlackbox.ps1, which calls this) ----------

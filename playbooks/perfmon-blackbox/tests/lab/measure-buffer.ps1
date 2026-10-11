@@ -65,7 +65,9 @@ switch ($Action) {
         # A running circular .blg cannot be read (relog: "Unable to read counter information"), not even a copy:
         # while it runs only its size is sampled; samples come from elapsed time / interval, checked by 'readback'.
         $f = Get-Blg
-        $bytes = if ($f) { $f.Length } else { 0 }
+        # through a handle: the directory entry's size is stale while PLA writes (decisions P33)
+        $bytes = 0
+        if ($f) { try { $fs = [IO.File]::Open($f.FullName, 'Open', 'Read', 'ReadWrite'); $bytes = $fs.Length; $fs.Close() } catch { $bytes = $f.Length } }
         $procs = (Get-Process).Count
         $inst = ((Get-Counter '\Process(*)\ID Process' -ErrorAction SilentlyContinue).CounterSamples).Count
         $status = ((& logman query $SetName) -match '^Status:' | Select-Object -First 1) -replace '^Status:\s*', ''

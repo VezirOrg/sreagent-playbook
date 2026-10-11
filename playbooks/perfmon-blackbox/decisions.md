@@ -394,3 +394,18 @@ Compliant, so a new package version would not reach machines that already run th
 third condition, `guestConfigurationAssignments/guestConfiguration.contentHash` equals the definition's `contentHash`:
 after a definition update (new release), every machine on the old package is non-compliant for the policy and the
 next remediation moves it to the new package. This is the adopter upgrade path (README).
+
+## P33: two lab findings fixed (session 2, 2026-10-11)
+
+1. **ACL bug in R1 (rc.1, rc.2).** `Set-BbAcl` ran `icacls <root> /inheritance:r /grant:r SID:(OI)(CI)F /T`: on files
+   that already existed under the root, `/inheritance:r` removed the inherited ACEs while an `(OI)(CI)` grant does not
+   apply to files, leaving an **empty DACL** that even SYSTEM cannot open (proven on dc). On a fresh machine nothing
+   exists yet, so it did not show; but any later R1 Set (ACL drift) would have locked the export out of `pending\` and
+   `state.json`. Fixed: the root gets the protected DACL (no `/T`), then everything below is `/reset` to inherit it;
+   proven idempotent on dc. In rc.3. vm1's pre-existing measurement files are repaired with a one-off SYSTEM task.
+2. **The size of a running `.blg` read from the directory is stale.** NTFS updates a file's directory-entry size
+   only when the writer closes it: BbWrap1 showed 286 MB from 11:44 to 13:07, then exactly 536,870,912 B after the
+   stop. Size polls (T06b/T06c `watch-size.ps1`, `measure-buffer.ps1 -Action sample`) must read the size through a
+   handle (open with read/write sharing), not `Get-ChildItem`. The 11:44Z fill-rate figures used that same listing;
+   they were probably fresh (R1's ACL change touched the files at 11:43), and the full-at time they predicted (13:03Z)
+   agrees with the 512 MB found at the 13:08Z stop, but they are not proof on their own.

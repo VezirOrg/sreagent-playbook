@@ -6,7 +6,11 @@ $cfg = Get-BbConfig; $max = $cfg['MaxSizeMB'] * 1MB
 $peak = 0; $fullAt = $null; $t0 = Get-Date
 while (((Get-Date) - $t0).TotalMinutes -lt $Minutes) {
     $f = Get-ChildItem C:\ProgramData\PerfmonBlackbox\blg -Filter *.blg -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($f) { if ($f.Length -gt $peak) { $peak = $f.Length }; if (-not $fullAt -and $f.Length -ge 0.95 * $max) { $fullAt = Get-Date } }
+    if ($f) {
+        # the directory entry's size is stale while PLA writes (P33): read it through a handle
+        $len = 0; try { $fs = [IO.File]::Open($f.FullName, 'Open', 'Read', 'ReadWrite'); $len = $fs.Length; $fs.Close() } catch { $len = $f.Length }
+        if ($len -gt $peak) { $peak = $len }; if (-not $fullAt -and $len -ge 0.95 * $max) { $fullAt = Get-Date }
+    }
     Start-Sleep 30
 }
 $c = Get-BbCollector

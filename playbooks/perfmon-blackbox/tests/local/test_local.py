@@ -264,6 +264,8 @@ class L07Template(unittest.TestCase):
                 if f.endswith(('.ps1', '.psm1', '.psd1', '.txt', '.xml')):
                     data = open(os.path.join(d, f), 'rb').read()
                     self.assertTrue(all(b < 128 for b in data), f)
+                    # shipped code names no lab (the package is a public release asset): P29, P33
+                    self.assertIsNone(re.search(rb'lab1[0-9]|rg-lab|BbDev|stbb', data), f)
 
     """The template holds exactly the 36 lines of the counter list, no location, date or machine field;
     placeholders only {{MaxSizeMB}} and {{SampleIntervalSeconds}}."""
