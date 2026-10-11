@@ -164,6 +164,34 @@ class L02Perfq(unittest.TestCase):
         _, out = quiet(self.q['triage'], self.q['open_db'](dbp))
         self.assertIn('VERDICT CEILING: WARNING', out)
 
+    def test_range_split_over_two_zips(self):
+        # T17 locally (P44): the CPU burst is cut by an export boundary; both parts converted together with a range
+        # give the burst once, at full length, and the leak over the whole range
+        import datetime as dt
+        args = ('--hours', '2', '--procs', '8', '--plant', 'leak,cpu')
+        _, truth = make(self.tmp, 'whole', *args)
+        cpu = [x for x in truth['problems'] if x['id'] == 'cpu'][0]
+        t0 = dt.datetime.strptime(truth['first_ts'][:19], '%Y-%m-%d %H:%M:%S')
+        c0 = dt.datetime.strptime(cpu['from'], '%Y-%m-%d %H:%M:%S')
+        cut = int((c0 - t0).total_seconds() // 10 + cpu['minutes'] * 3)  # the middle of the burst
+        p1, _ = make(self.tmp, 'z1', *args, '--to-row', str(cut + 3))
+        p2, _ = make(self.tmp, 'z2', *args, '--from-row', str(cut))
+        lo, hi = c0 - dt.timedelta(minutes=20), c0 + dt.timedelta(minutes=cpu['minutes'] + 20)
+        rc, meta, dbp = convert(self.tmp, 'range', p2, p1, opts=('--from', lo.strftime('%Y-%m-%d %H:%M'),
+                                                                   '--to', hi.strftime('%Y-%m-%d %H:%M')))
+        self.assertEqual(rc, 0)
+        self.assertEqual(meta['source_files'], '2')
+        self.assertEqual(meta['overlap_rows_skipped'], '3')
+        self.assertEqual(meta['first_ts'][:16], lo.strftime('%Y-%m-%d %H:%M'))
+        self.assertEqual(meta['last_ts'][:16], hi.strftime('%Y-%m-%d %H:%M'))
+        db = self.q['open_db'](dbp)
+        lines, _ = quiet(self.q['triage'], db)
+        tot = [l for l in lines if l[1] == 'Processor Information\\% Processor Time' and l[2] == '_Total'][0]
+        self.assertEqual(tot[7][:19], cpu['from'])
+        self.assertAlmostEqual(tot[6], cpu['minutes'], delta=0.5)
+        _, out = quiet(self.q['movers'], db, 'Process', ('Private Bytes',), 3)
+        self.assertTrue([l for l in out.splitlines() if '|' in l][1].startswith('leaker |'))
+
     def test_stalls_are_short(self):
         # OPEN-2 case: 20-40 s stalls stay below the 5-minute ceiling (rule unchanged until Emre decides)
         c, truth = make(self.tmp, 'stall', '--hours', '2', '--procs', '8', '--plant', 'stall')
