@@ -1,35 +1,172 @@
 # perfmon-blackbox
 
-A **black-box PerfMon recorder** for Windows servers, for Azure SRE Agent.
+A **black-box PerfMon recorder** for Windows servers (Azure VMs and Azure Arc-enabled servers), plus the **Azure SRE
+Agent skill** that analyses the latest capture of a server.
 
 > Not an official Microsoft product. Working and versioned, no support promise. See the
 > [repo README](../../README.md).
 
-**Status: in design. There is no release yet, and nothing here is ready to deploy.** This README becomes the
-adopter guide with the first release (`perfmon-blackbox/v1.0.0`).
+**Status: release candidate in lab testing** (`perfmon-blackbox/v1.0.0-rc.1` is a lab test build, not for use). This
+guide becomes final with `perfmon-blackbox/v1.0.0`.
 
-## What it will do
+## What it does
 
-- An **Azure Machine Configuration** package keeps a PerfMon Data Collector Set running on every targeted server
-  (also right after every reboot).
-- Once a day the server exports the day's capture (CSV, zipped) to **your private storage account**, with **its own
-  managed identity**, into **its own folder**; it cannot write anywhere else.
-- Two Azure Policy definitions: one for **Azure VMs**, one for **Azure Arc-enabled servers**. Assign the one(s) you
-  need.
-- An **Azure SRE Agent skill** (`perfmon-triage`) finds the latest capture of a server, converts it and analyses it,
-  and posts its findings in the agent thread.
+- An **Azure Machine Configuration** package (`PerfmonBlackbox`, AuditAndSet) keeps a PerfMon Data Collector Set
+  running on every targeted server, as a **binary circular log** (default 512 MB, sampled every 10 s), and restarts it
+  after every reboot. The last `MaxSizeMB` of data is always on the disk.
+- Every `ExportEveryHours` (default 4) a scheduled task exports the window **since the last successful export** (no
+  gap, no overlap) to CSV, zips it with a `manifest.json`, and uploads it with the **server's own managed identity**
+  into **its own folder** of **your private storage account**. A server cannot write anywhere else, and cannot read.
+- Any loss (the ring overwrote data before an export, the machine was off, the collector restarted, the local cap
+  dropped data) is **written into the manifest** (`gaps[]`, `complete: false`) and the event log. Never silent.
+- If a server's buffer cannot hold the export window (many processes, short interval, small buffer), the guest
+  assignment turns **NonCompliant** with the numbers in its reason, before data is lost.
+- Two Azure Policy definitions (DeployIfNotExists): `perfmon-blackbox-vm` for Azure VMs and `perfmon-blackbox-arc`
+  for Arc-enabled servers. Assign the one(s) you need.
+- The SRE Agent skill **perfmon-triage** fetches the latest zip of a server, checks it, converts it to SQLite and
+  triages it; the report quotes the zip and every gap.
 
-The design is in [docs/design.md](docs/design.md), the tests in [docs/test-plan.md](docs/test-plan.md).
+Nothing is installed on the servers beyond the package's own files: the scripts run in **Windows PowerShell 5.1**
+(built in) and use `logman`, `relog`, `schtasks` and .NET only. The Machine Configuration agent runs the package's DSC
+resources in its own PowerShell 7, which ships with the agent.
 
-## What is here today
+Design: [docs/design.md](docs/design.md). Tests: [docs/test-plan.md](docs/test-plan.md). Decisions:
+[decisions.md](decisions.md).
 
-- `skill/perfmon-triage/`: the analysis skill v2.0 (SKILL.md, `perfq.py`, `perfmon_csv_to_sqlite.py`). It reads a
-  PerfMon CSV today; reading the latest capture from storage comes in v2.1.
-- `scripts/deploy-skill.sh`: create or update the skill on an agent through the data plane API (dry run by
-  default).
-- `lab-tools/perfmon_mask_csv.py`: replaces names in a PerfMon CSV from a private mapping and fails on any name of
-  a private denylist. A test-side tool; never part of the package or the skill.
+## Counters
+
+A 36-counter PerfMon template (LogicalDisk, Memory, Process ×8, Network Interface, Processor Information, TCP),
+plus 12 system-wide counters (G1: queue, context switches, up time, hard faults, paging file, disk idle/queue, …),
+2 per-process pool counters (G2), and 6 web counters (G3: ASP.NET, .NET CLR Memory, Web Service) **only where those
+counter objects exist** (re-checked every 15 minutes). Files: [package/collector/](package/collector/).
+
+## How long the buffer lasts
+
+A `.blg` costs about 45–54 bytes per value per sample; the per-process counters dominate. Measured on lab servers and
+counted on real captures (decisions P27): **bytes per sample ≈ 4.5 KB + 0.53 KB × processes** (full set).
+
+| Processes | KB per sample | Hours in 512 MB at 10 s |
+|---|---|---|
+| 100 | ≈ 58 | ≈ 26 h |
+| 200 | ≈ 110 | ≈ 13.5 h |
+| 300 | ≈ 164 | ≈ 9 h |
+| 400 | ≈ 216 | ≈ 6.9 h |
+| 500 | ≈ 270 | ≈ 5.5 h |
+
+With the default 4-hour export the guest assignment stays Compliant up to about 460 processes (it needs ≥ 1.5 × the
+export window). Above that, raise `MaxSizeMB`, lengthen the interval or export more often.
+
+## Prerequisites
+
+- Windows Server 2016 or later (Azure VM or Azure Arc-enabled server), Windows PowerShell 5.1 (built in).
+- Azure VMs: the built-in initiative *Deploy prerequisites to enable Guest Configuration policies on virtual machines*
+  (system-assigned identity + the Machine Configuration extension). Arc servers: Connected Machine agent ≥ 1.10.
+- Network: every server must reach the storage account's **private endpoint** (DNS `privatelink.blob.core.windows.net`
+  resolving to it), and the package URL (GitHub, HTTPS) for the Machine Configuration agent.
+- **The SRE Agent needs VNet integration** that can resolve and reach the same private endpoint (its sandbox egress
+  in your VNet with private DNS resolution). Without it the skill cannot read the captures.
+- Permissions to deploy the storage, create custom roles and policy definitions, and assign roles.
+
+## Deploy
+
+All commands run from this folder (`playbooks/perfmon-blackbox`) with the Azure CLI signed in.
+
+### 1. Private storage
+
+```sh
+az deployment group create -g <storage-rg> -f infra/main.bicep \
+  -p storageAccountName=<name> privateEndpointSubnetId=<subnet id> \
+     blobPrivateDnsZoneId=<id of privatelink.blob.core.windows.net> \
+     readerPrincipalIds='["<SRE Agent system identity>","<SRE Agent user-assigned identity>"]'
+```
+
+It creates the storage account (no shared key, no public network access, no anonymous access, TLS 1.2), the
+container `perfmon`, a lifecycle rule (delete after 30 days), the private endpoint, two custom roles
+(**PerfMon Blackbox Writer**: blob write only; **PerfMon Blackbox Deployer**: deployments only) and Storage Blob Data
+Reader on the container for the agent. Note the outputs `storageAccountResourceId` and `writerRoleDefinitionId`.
+
+### 2. The policy definitions
+
+The package is the release asset `PerfmonBlackbox.zip` of the release you use; its SHA-256 is in the release notes.
+
+```sh
+python3 policy/build_policies.py --content-uri <asset URL> --content-hash <sha256> --version <x.y.z> --out policy/out
+for kind in vm arc; do
+  f=policy/out/perfmon-blackbox-$kind.json
+  az policy definition create -n perfmon-blackbox-$kind --mode Indexed \
+    --rules  "$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))["properties"]["policyRule"]))' $f)" \
+    --params "$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))["properties"]["parameters"]))' $f)"
+done
+```
+
+### 3. Assign, with the rights the assignment identity needs
+
+For each definition you use, at the scope of your servers (management group, subscription or resource group):
+
+```sh
+az policy assignment create -n pbb-vm --policy perfmon-blackbox-vm --scope <scope> \
+  --mi-system-assigned --location <region> \
+  --params '{"StorageAccountResourceId":{"value":"<storageAccountResourceId>"},"WriterRoleDefinitionId":{"value":"<writerRoleDefinitionId>"}}'
+```
+
+Then give its identity (`az policy assignment show -n pbb-vm --scope <scope> --query identity.principalId`):
+
+| Role | Scope | Why |
+|---|---|---|
+| Guest Configuration Resource Contributor | the servers' scope | create the guest assignment |
+| Reader | the servers' scope | read each server's identity |
+| PerfMon Blackbox Deployer | the storage account's resource group | deploy the per-server role assignment |
+| Role Based Access Control Administrator, **with a condition** | the storage account | assign only the Writer role (below) |
+
+The condition limits the RBAC Administrator role to the Writer role (`<writer guid>` = last segment of
+`writerRoleDefinitionId`):
+
+```text
+((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {<writer guid>}))
+AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {<writer guid>}))
+```
+
+```sh
+az role assignment create --assignee-object-id <principalId> --assignee-principal-type ServicePrincipal \
+  --role "Role Based Access Control Administrator" --scope <storageAccountResourceId> \
+  --condition "<condition above>" --condition-version 2.0
+```
+
+Start a remediation task for existing servers (`az policy remediation create --policy-assignment pbb-vm -g <rg>`).
+For each server the policy creates the guest assignment and one role assignment of the Writer role on the container,
+with an ABAC condition that allows writes only under `<subscriptionId>/<resourceGroup>/<server>/`.
+
+**Parameters** (both definitions): `MaxSizeMB` (512), `SampleIntervalSeconds` (10), `ExportEveryHours` (4; one of 1,
+2, 3, 4, 6, 8, 12, 24), `StorageAccountResourceId` (required), `ContainerName` (`perfmon`), `LocalKeepMB` (1024),
+`WriterRoleDefinitionId` (required). A changed value reaches the servers at the next evaluation; the collector is
+re-created without losing what it recorded.
+
+Scale note: one role assignment per server counts toward the subscription's role-assignment limit.
+
+### 4. The skill
+
+```sh
+SRE_AGENT_ID=<agent resource ID> scripts/deploy-skill.sh skill/perfmon-triage            # dry run
+SRE_AGENT_ID=<agent resource ID> scripts/deploy-skill.sh skill/perfmon-triage --apply    # needs SRE Agent Administrator
+```
+
+Ask the agent, in a new thread: *"Analyse the latest PerfMon capture of `<server>`. The captures are in the storage
+account `<name>`."*
+
+## On each server
+
+`C:\ProgramData\PerfmonBlackbox\` (SYSTEM and Administrators only): `bin\` (scripts, counter lists, template),
+`blg\` (the live ring), `pending\` (closed rings not yet exported), `outbox\`, `log\`, `config.json`, `state.json`.
+Tasks `\PerfmonBlackbox\Boot` and `\PerfmonBlackbox\Export`. Event log source `PerfmonBlackbox` (1000s info, 2000s data
+loss, 3000s errors). Captures live at `perfmon/<subscriptionId>/<resourceGroup>/<server>/<yyyy>/<mm>/<dd>/` in storage.
 
 ## Cost
 
-Written here per server and per deployment before the first release.
+Written per server and per deployment before v1.0.0 (Machine Configuration on Arc is billed per server; on Azure VMs
+it is free; storage and private endpoint are small and measured in the lab).
+
+## Remove
+
+Delete the policy assignments (and their remediation), then on each server the guest assignment is removed by the
+agent; delete the collector set (`logman stop PerfmonBlackbox; logman delete PerfmonBlackbox`), the two tasks and
+`C:\ProgramData\PerfmonBlackbox`. Delete the storage deployment last.
