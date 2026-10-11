@@ -164,3 +164,17 @@ Build this project's **own lab now**, for **one measurement only**:
 - Log everything in the lab log on Drive (`files/lab-log/`). Say which VM size and why.
 - **Stop condition:** the template cannot be imported as is, or logman refuses bincirc with this counter set:
   report instead of changing counters.
+
+## P17: the sample interval is a policy parameter too (Emre, 2026-10-11)
+
+`SampleIntervalSeconds` is a **policy parameter on both policies**, passed like `MaxSizeMB` as a Machine
+Configuration configuration parameter. Its **default stays OPEN** until the 1 s / 15 s measurement (P16); it is in
+the choice table for Emre (CHOICE 1). Tests: a changed value reaches the machine and the running collector **really
+samples at the new interval** (timestamps in the `.blg`).
+
+Proposed by the vezir, **for Emre to decide** (design §2.6, CHOICE 9 and CHOICE 2):
+- Azure Policy cannot validate one parameter against another, so the **package itself** checks whether
+  `MaxSizeMB` at this interval can hold the export window, using the **measured fill rate on that machine**, and
+  reports a misfit as the compliance **reason** (NonCompliant, e.g. "buffer holds ~7 h, export window 24 h"), so it
+  shows in Azure Policy before data is lost.
+- Export cadence: a third parameter, or derived from the measured buffer. Recommendation in design CHOICE 2.

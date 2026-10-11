@@ -44,8 +44,8 @@ package as Machine Configuration configuration parameters:
 | Parameter | Default | Meaning |
 |---|---|---|
 | `MaxSizeMB` | **512** | maximum size of the circular `.blg` (P13, P14) |
-| `SampleIntervalSeconds` | **[CHOICE 1]** | collector interval |
-| `ExportEveryHours` | **[CHOICE 2]** | how often the export task runs |
+| `SampleIntervalSeconds` | **OPEN, CHOICE 1** (after the P16 measurement) | collector interval (P17) |
+| `ExportEveryHours` | **CHOICE 2**: `0` = auto (derived) recommended | how often the export runs; `0` derives it from the measured buffer (§2.6) |
 | `StorageAccountName` | — (required) | the private storage account |
 | `ContainerName` | `perfmon` | container for all machines |
 | `LocalKeepMB` | `1024` | cap for pending buffers + not-yet-uploaded zips on the disk (oldest go first, and that loss is reported) |
@@ -59,6 +59,7 @@ assignment shows drift per item):
 | R2 | `BlackboxCollector` | set `PerfmonBlackbox` exists; counters **equal** the 36 of the counter list; format binary circular; interval = `SampleIntervalSeconds`; max size = `MaxSizeMB`; no duration limit | if absent: fill the template from the parameters, `logman import`. If interval or size differ: keep the current buffer as pending (§2.2 step 0), delete, re-import, start |
 | R3 | `BlackboxRunning` | status Running | `Start-PerfmonBlackbox.ps1` (keeps the old buffer as pending, then `logman start`) |
 | R4 | `BlackboxBootTask` | task `\PerfmonBlackbox\Boot`: AtStartup, SYSTEM, highest, action `Start-PerfmonBlackbox.ps1` | register |
+| R6 | `BlackboxCapacity` | the **measured** buffer hours on this machine (§2.6) ≥ 1.5 × the export window | none (audit only). NonCompliant **reason**, e.g. `buffer holds ~7 h at 1 s with MaxSizeMB=512 (148 processes), export window 24 h: data will be lost; raise MaxSizeMB, lengthen the interval or export more often` |
 | R5 | `BlackboxExportTask` | task `\PerfmonBlackbox\Export`: Daily trigger repeating every `ExportEveryHours` (24 = once a day), SYSTEM, `StartWhenAvailable` | register |
 
 A changed `MaxSizeMB` or interval on the assignment reaches the machine at the next evaluation (≤ 15 min): R1 and
@@ -150,6 +151,26 @@ the margin per machine.
 is busier than estimated): the oldest part of the window is gone; the export uploads what is left, the manifest has
 a `buffer_overrun` gap with its from/to and `complete: false`, and an event-log warning is written. T10b forces this
 case and checks the manifest.
+
+### 2.6 Capacity check reported in Azure Policy (P17; vezir's proposal, for Emre: CHOICE 9)
+
+Azure Policy cannot check one parameter against another (`MaxSizeMB` vs `SampleIntervalSeconds` vs the export
+window), and the right answer depends on the machine (its process count). So the package checks it on the machine:
+
+- The export task (and R6's `Test`) measures the **fill rate**: bytes per sample = ring size ÷ samples in the ring
+  once it has wrapped (before that: file size ÷ samples so far), and **buffer hours** = `MaxSizeMB` ÷ bytes per
+  sample × interval. It keeps the last value in `state.json` and writes it into each manifest.
+- R6 is **NonCompliant** when buffer hours < 1.5 × the export window, with the numbers in the **reason** text, so a
+  misfit shows in the Azure Policy compliance view **before** any data is lost (and is visible per machine).
+- Until the first measurement exists (fresh install), R6 uses the formula `a + b × processes` from the P16
+  measurement with the machine's current process count, and says "estimated" in the reason.
+- The export still reports any real loss in the manifest (§2.2 step 3); R6 is the early warning.
+
+**Export cadence, parameter or derived (CHOICE 2).** Recommendation: **derived by default**: `ExportEveryHours = 0`
+(auto) means the export task runs every `floor(buffer hours ÷ 2)` hours, at least 1 and at most 24, recomputed after
+each export from the measured fill rate (the task trigger is re-registered only when the value changes). A positive
+value is an adopter override; with an override, R6 guards it. Derived cannot drift out of fit when a machine grows
+more processes; an override can, and R6 then says so.
 
 ### 2.4 Machine prefix
 
@@ -287,11 +308,12 @@ playbooks/perfmon-blackbox/
 
 | # | Choice | Options | Recommendation |
 |---|---|---|---|
-| **CHOICE 1** | **Sample interval** (his template: 1 s; P12 left it open) | **1 s** (≈ 2.4 h in 512 MB; 20–40 s stalls are 20–40 points) · **5 s** (≈ 12 h; stalls 4–8 points) · **15 s** (≈ 36 h; stalls 1–3 points, i.e. blips under SKILL rule 4) | **1 s**, as in his template, because OPEN-2 is about 20–40 s stalls and only 1 s shows them clearly. Requires CHOICE 2 = 1 h. If a daily export is preferred: 15 s with a 12 h export. |
-| **CHOICE 2** | **Export cadence** (`ExportEveryHours`, a parameter) | 1 h · 4–6 h · 12 h · 24 h | Tied to CHOICE 1 so the ring never overruns: **1 h for 1 s**, 4 h for 5 s, 12 h for 15 s. Final value from the measured buffer hours (T07b). |
+| **CHOICE 1** | **Default of the `SampleIntervalSeconds` parameter** (P17; his template: 1 s) | **1 s** (≈ 2.4 h in 512 MB; 20–40 s stalls are 20–40 points) · **5 s** (≈ 12 h; stalls 4–8 points) · **15 s** (≈ 36 h; stalls 1–3 points, i.e. blips under SKILL rule 4) | **1 s**, as in his template, because OPEN-2 is about 20–40 s stalls and only 1 s shows them clearly. Requires CHOICE 2 = 1 h. If a daily export is preferred: 15 s with a 12 h export. |
+| **CHOICE 2** | **Export cadence: third parameter or derived** | fixed parameter (1/4/12/24 h) · **derived** (`0` = auto: every ⌊buffer h ÷ 2⌋ h, 1–24) with optional override | **derived by default**, override allowed and guarded by R6 (§2.6). If a fixed value is wanted: 1 h for 1 s, 4 h for 5 s, 12 h for 15 s |
 | CHOICE 3 | Machine prefix | `<sub>/<rg>/<machine>` · `vmId` GUID | `<sub>/<rg>/<machine>` |
 | CHOICE 4 | Who grants the per-machine write role | DINE policy · adopter script | DINE policy |
 | CHOICE 5 | Storage network | private endpoint + public access disabled · selected networks | private endpoint (lab default); selected networks documented for Arc servers without private connectivity |
 | CHOICE 6 | Blob retention | 7 · 30 · 90 days | 30 days |
 | CHOICE 7 | Package hosting | public GitHub Release asset · adopter-hosted | Release asset (+ self-host section in README) |
 | **CHOICE 8** | **Skill vs. this counter set** (§2.5) | adapt skill v2.1 to the 36 counters (at least `Processor Information`) · keep the skill, accept "not in capture" | **adapt the skill** (no new counters); the lost checks (System, PhysicalDisk, paging, .NET, ASP.NET, request-based leak rate) are listed in the report's "not checked" section |
+| **CHOICE 9** | **Capacity check as compliance reason** (vezir's proposal, §2.6) | R6 audit resource with the numbers in the NonCompliant reason · no check (loss only in the manifest) | **R6**: a misfit shows in Azure Policy before data is lost |
