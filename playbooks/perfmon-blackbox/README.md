@@ -69,89 +69,8 @@ export window). Above that, raise `MaxSizeMB`, lengthen the interval or export m
 
 ## Deploy
 
-All commands run from this folder (`playbooks/perfmon-blackbox`) with the Azure CLI signed in.
-
-### 1. Private storage
-
-```sh
-az deployment group create -g <storage-rg> -f infra/main.bicep \
-  -p storageAccountName=<name> privateEndpointSubnetId=<subnet id> \
-     blobPrivateDnsZoneId=<id of privatelink.blob.core.windows.net> \
-     readerPrincipalIds='["<SRE Agent system identity>","<SRE Agent user-assigned identity>"]'
-```
-
-It creates the storage account (no shared key, no public network access, no anonymous access, TLS 1.2), the
-container `perfmon`, a lifecycle rule (delete after 30 days), the private endpoint, two custom roles
-(**PerfMon Blackbox Writer**: blob write only; **PerfMon Blackbox Deployer**: deployments only) and Storage Blob Data
-Reader on the container for the agent. Note the outputs `storageAccountResourceId` and `writerRoleDefinitionId`.
-
-### 2. The policy definitions
-
-The package is the release asset `PerfmonBlackbox.zip` of the release you use; its SHA-256 is in the release notes.
-
-```sh
-python3 policy/build_policies.py --content-uri <asset URL> --content-hash <sha256> --version <x.y.z> --out policy/out
-for kind in vm arc; do
-  f=policy/out/perfmon-blackbox-$kind.json
-  az policy definition create -n perfmon-blackbox-$kind --mode Indexed \
-    --rules  "$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))["properties"]["policyRule"]))' $f)" \
-    --params "$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))["properties"]["parameters"]))' $f)"
-done
-```
-
-### 3. Assign, with the rights the assignment identity needs
-
-For each definition you use, at the scope of your servers (management group, subscription or resource group):
-
-```sh
-az policy assignment create -n pbb-vm --policy perfmon-blackbox-vm --scope <scope> \
-  --mi-system-assigned --location <region> \
-  --params '{"StorageAccountResourceId":{"value":"<storageAccountResourceId>"},"WriterRoleDefinitionId":{"value":"<writerRoleDefinitionId>"}}'
-```
-
-Then give its identity (`az policy assignment show -n pbb-vm --scope <scope> --query identity.principalId`):
-
-| Role | Scope | Why |
-|---|---|---|
-| Guest Configuration Resource Contributor | the servers' scope | create the guest assignment |
-| Reader | the servers' scope | read each server's identity |
-| PerfMon Blackbox Deployer | the storage account's resource group | deploy the per-server role assignment |
-| Role Based Access Control Administrator, **with a condition** | the storage account | assign only the Writer role (below) |
-
-The condition limits the RBAC Administrator role to the Writer role (`<writer guid>` = last segment of
-`writerRoleDefinitionId`):
-
-```text
-((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {<writer guid>}))
-AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {<writer guid>}))
-```
-
-```sh
-az role assignment create --assignee-object-id <principalId> --assignee-principal-type ServicePrincipal \
-  --role "Role Based Access Control Administrator" --scope <storageAccountResourceId> \
-  --condition "<condition above>" --condition-version 2.0
-```
-
-Start a remediation task for existing servers (`az policy remediation create --policy-assignment pbb-vm -g <rg>`).
-For each server the policy creates the guest assignment and one role assignment of the Writer role on the container,
-with an ABAC condition that allows writes only under `<subscriptionId>/<resourceGroup>/<server>/`.
-
-**Parameters** (both definitions): `MaxSizeMB` (512), `SampleIntervalSeconds` (10), `ExportEveryHours` (4; one of 1,
-2, 3, 4, 6, 8, 12, 24), `StorageAccountResourceId` (required), `ContainerName` (`perfmon`), `LocalKeepMB` (1024),
-`WriterRoleDefinitionId` (required). A changed value reaches the servers at the next evaluation; the collector is
-re-created without losing what it recorded.
-
-Scale note: one role assignment per server counts toward the subscription's role-assignment limit.
-
-### 4. The skill
-
-```sh
-SRE_AGENT_ID=<agent resource ID> scripts/deploy-skill.sh skill/perfmon-triage            # dry run
-SRE_AGENT_ID=<agent resource ID> scripts/deploy-skill.sh skill/perfmon-triage --apply    # needs SRE Agent Administrator
-```
-
-Ask the agent, in a new thread: *"Analyse the latest PerfMon capture of `<server>`. The captures are in the storage
-account `<name>`."*
+Step by step, with every command and role: **[docs/deploy.md](docs/deploy.md)** (storage, the two policies, the rights
+of the policy identity, remediation, the skill).
 
 ## On each server
 
@@ -162,24 +81,22 @@ loss, 3000s errors). Captures live at `perfmon/<subscriptionId>/<resourceGroup>/
 
 ## Cost
 
-Prices: Azure Retail Prices API (`prices.azure.com`), retail USD, queried 2026-10-11 (Sweden Central for storage).
+Azure VM ≈ 0.01–0.03 USD a month (storage); Arc server + 6.00 USD a month (Machine Configuration on Arc); ≈ 7.30 USD a
+month per deployment (private endpoint). Details and price source: [docs/cost.md](docs/cost.md).
 
-| Item | Price | Per server per month |
-|---|---|---|
-| Machine Configuration on an **Azure VM** | free | 0 |
-| Machine Configuration on an **Arc-enabled server** ("Guest Configuration Policy/Server") | 6.00 USD / server / month | **6.00 USD** |
-| Blob storage, Hot LRS | 0.0184 USD / GB / month | ≈ 0.01 USD (100 processes) to ≈ 0.03 USD (350 processes) |
-| Write operations | 0.05 USD / 10,000 | < 0.01 USD (6 exports a day) |
-| Private endpoint data processed | 0.01 USD / GB in and out | < 0.01 USD |
+## Documentation
 
-Per deployment: the private endpoint, 0.01 USD / hour ≈ **7.30 USD / month**, plus the storage account itself (no fixed
-charge). Storage volume, measured in the lab: a zipped capture costs ≈ 1.9 KB per sample at ~117 processes and 10 s
-(≈ 16 MB a day, ≈ 0.5 GB held under the 30-day lifecycle rule); it grows with the process count like the buffer does.
-
-**So: an Azure VM costs ≈ 0.01–0.03 USD a month, an Arc server ≈ 6.03 USD, plus ≈ 7.30 USD a month per deployment.**
+| Doc | For |
+|---|---|
+| [docs/architecture.md](docs/architecture.md) | how it fits together (diagram) |
+| [docs/deploy.md](docs/deploy.md) | deploying it |
+| [docs/parameters.md](docs/parameters.md) | parameters, buffer hours, the capacity check |
+| [docs/operations.md](docs/operations.md) | upgrades, troubleshooting, removal |
+| [docs/security.md](docs/security.md) | identities, roles, the prefix condition, what runs on servers |
+| [docs/cost.md](docs/cost.md) | cost per server and per deployment |
+| [docs/tests.md](docs/tests.md) | every test and its status |
+| [docs/load-generation.md](docs/load-generation.md) | how the lab plants problems for the end-to-end test |
 
 ## Remove
 
-Delete the policy assignments (and their remediation), then on each server the guest assignment is removed by the
-agent; delete the collector set (`logman stop PerfmonBlackbox; logman delete PerfmonBlackbox`), the two tasks and
-`C:\ProgramData\PerfmonBlackbox`. Delete the storage deployment last.
+See [docs/operations.md](docs/operations.md#remove).

@@ -1,0 +1,107 @@
+# Tests
+
+> **Summary.** Local tests (L) need no Azure and run on every push in CI on synthetic data. Stage tests (T) run in the
+> playbook's lab, one command each (`tests/run.sh <ID> [vm1|arc1]`), and must pass on both an Azure VM (`vm1`) and an
+> Arc-enabled server (`arc1`). The last stage, T16, is the success criterion: the SRE Agent analyses the latest zip
+> and its report is scored against problems planted on purpose.
+>
+> Status as of 2026-10-11, lab18, package rc.1–rc.3. The plan with full pass conditions: [test-plan.md](test-plan.md).
+
+## Summary
+
+| Test | Stage | vm1 (Azure VM) | arc1 (Arc) |
+|---|---|---|---|
+| L01 converter | local | green (Mac + CI) | — |
+| L02 perfq triage | local | green | — |
+| L03 masker | local | green | — |
+| L04 fetch-latest selection | local | green | — |
+| L05 export logic (Pester, 5.1) + lint | local (Windows) | green (lab dc + CI Windows runner) | — |
+| L06 repo safety (scrub) | local | green | — |
+| L07 template, ASCII, no lab names | local | green | — |
+| L08 policy generator | local | green | — |
+| L09 T16 scorer | local | green | — |
+| T01 package builds, local compliance | build | green (dc; build also in CI) | — |
+| T02 policy definitions | Azure | green | green |
+| T03 policy assignments and roles | Azure | green | green |
+| T04 guest assignment Compliant | machine | green | green |
+| T05 extension/agent, identity, no pwsh | machine | green | green (IMDS blocked) |
+| T06 collector running as configured | machine | green | green |
+| T06b never exceeds, really wraps | machine | wrap proven by the 512 MB lab runs (P34) | running |
+| T06c changed MaxSizeMB reaches the server | machine | pending | pending |
+| T06d changed interval reaches the server | machine | pending | running |
+| T06e capacity misfit reported | machine | pending | running |
+| T06f G3 without IIS: no event storm; auto-detect | machine | storm part green (dc, P27); auto-detect part pending | — |
+| T07 scheduled tasks | machine | green | green |
+| T07b buffer hours measured | machine | green (21.7 h at 10 s) | pending |
+| T08 reboot | machine | pending (needs rc.3) | pending |
+| T09 two exports, no gap, no overlap | machine | green | green |
+| T10 roll gap ≤ 10 s | machine | green | green |
+| T10b overrun detected | machine | pending | running |
+| T10c failed upload, no gap | machine | pending | — |
+| T11 blob path, hashes, identity | machine | green (IMDS) | green (HIMDS) |
+| T12 cannot write elsewhere | machine | green | green |
+| T13 lifecycle rule | storage | green | — |
+| T14 storage private | storage | green | — |
+| T15 agent fetches and converts | agent | green | green |
+| T16 agent report, scored | agent | run 1: 85/100, missed the 30-s stalls → OPEN-2 closed (P34); run 2 running | pending |
+
+## Local tests
+
+- **L01 converter.** A synthetic PerfMon CSV (made by `tests/synth/make_capture.py`) converts with the right row and
+  column counts, no bad cells; day-first and month-first dates read alike; two overlapping parts merge without repeats.
+- **L02 perfq.** `triage()` finds the planted CPU and disk breaches with their start times and minutes, reads the CPU
+  count from `Processor Information`, prints the right VERDICT CEILING; `movers()` finds the leak and its rate.
+- **L03 masker.** A synthetic mapping masks the names; a denylist hit fails without printing the name.
+- **L04 fetch-latest.** On a synthetic listing it picks the newest zip of a server, ignores other servers (including
+  `synth010` next to `synth01`) and non-capture blobs, and rejects a zip whose CSV hash does not match its manifest.
+- **L05 export logic.** Pester 5 under Windows PowerShell 5.1: CSV merge without overlap, validation, gap causes,
+  blob path, template filling, collector and task comparison, ACL check, capacity check, and the whole export on
+  synthetic `.blg` files with a mocked upload (state moves only after a good upload; a failed upload leaves it). Plus
+  PSScriptAnalyzer with the Windows PowerShell 5.1 compatibility rules on every server script.
+- **L06 repo safety.** The scrub check's self-test and a clean tree.
+- **L07 template and shipped code.** The template holds exactly the 36 counters and only the two placeholders; the
+  three groups have 12/2/6 counters; shipped files are pure ASCII and name no lab.
+- **L08 policy generator.** Two definitions, one resource type each, the same parameters, the parameter hash in step
+  with the configuration parameters, the package hash pinned, and the ABAC condition evaluates to the exact expected
+  text.
+- **L09 scorer.** A report naming every planted problem scores 100; a missing disk episode, a disk mention without a
+  latency, a wrong leak rate or an invented problem lose points.
+
+## Stage tests (lab)
+
+- **T01** builds the package and runs it on a clean Windows box: NonCompliant before, all six resources Compliant after.
+- **T02** both definitions exist with the right type, package URL, hash, version and default parameters.
+- **T03** both assignments exist with a system identity and exactly the designed roles (including the delegation
+  condition); the Arc server's Azure VM and the build box are outside the VM policy.
+- **T04** the server's guest assignment is Compliant, recently checked, with all six resources Compliant.
+- **T05** the Azure VM has the extension and its identity; the Arc server is Connected, agent ≥ 1.10, identity, IMDS
+  blocked; neither has PowerShell 7 on its path.
+- **T06** the collector runs with exactly the expected counters (36 + G1 + G2 + present G3), binary circular, the
+  configured interval and size, and its file grows.
+- **T06b/T10b** with a 16 MB buffer at 1 s and exports suspended: the file reaches 16 MB and never exceeds it; the next
+  export is marked incomplete with a `buffer_overrun` gap, the ring is marked wrapped, an event-log warning exists.
+- **T06c** MaxSizeMB 16 → 32 reaches the server: the file grows past 16 MB, stays ≤ 32 MB, and no samples are lost.
+- **T06d** a new interval reaches the server: the newest samples step by the new interval.
+- **T06e** a buffer too small for the export window turns the assignment NonCompliant with the numbers in the reason.
+- **T06f** G3 counters on a server without IIS cause no event storm (one error per missing counter at start, nothing
+  per sample); G3 appears by itself after IIS is installed.
+- **T07** exactly the Boot and Export tasks exist as designed; both run on demand with result 0.
+- **T07b** the measured buffer hours hold at least 1.5 × the export window.
+- **T08** after a reboot the collector runs again, the ring from before the reboot is kept, and the next export holds
+  it with only a `machine_off` gap.
+- **T09** two exports in a row: each zip has one CSV and a manifest with matching hash, PDH header, the 36 counters,
+  the expected number of rows; the second starts right after the first (no gap, no overlap).
+- **T10** the export's collector restart lasts ≤ 10 s and leaves no hole.
+- **T10c** with storage blocked the export fails and changes nothing; once unblocked one zip covers both windows.
+- **T11** the newest blob is at the expected path, its Content-MD5 and sha256 metadata match, and it was uploaded with
+  the server's own identity (IMDS on the VM, HIMDS on Arc).
+- **T12** with its own token the server cannot write into another server's folder, a look-alike folder or outside any
+  folder, cannot list, read or delete; it can write its own folder.
+- **T13** the lifecycle rule deletes after 30 days. **T14** the storage is private (no anonymous, no shared key, TLS
+  1.2, public network access disabled, approved private endpoint).
+- **T15** the agent, in its own terminal, fetches the newest zip with the skill, checks the hash and converts it with
+  zero errors.
+- **T16** the planted load runs for 70 minutes ([load-generation.md](load-generation.md)); the agent, asked in a new
+  thread to analyse the latest capture, names the zip, finds the leak (rate within 40 %), the CPU burst, the disk
+  latency and the network burst at their times, invents nothing, and keeps to the skill's rules. Pass = score ≥ 80 and
+  all four problems found.
