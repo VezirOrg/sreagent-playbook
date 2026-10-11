@@ -556,3 +556,18 @@ every upload; the package is not affected.
   on vm1 (temporary, then back to GitHub), T18d no reader role → no download, T18e a different zip under the same name
   → rejected by the hash, the old configuration stays; T18f the whole chain with shared key access disabled. The
   fresh-eyes deploy in the second lab uses storage mode.
+
+## P46: a failed export retries itself (the vezir for Emre, 2026-10-11; for v1.0.0, rc.8)
+
+Why: on the real servers (300–365 processes) 512 MB at 10 s holds only ≈ 7.4–8.9 h, and R6 allows a buffer down to
+1.5 × the export window; one failed export waited 4 h for the next run and could already lose data (labelled, but lost).
+Seen for real on lab18 (R1: a DNS outage).
+
+Design: the **export script retries its own upload**: on a failed token or upload it waits and tries again, at +5 min
+and +15 min after the first failure (three attempts, ≤ 20 min, well inside the task's 2-h limit), each time with a fresh
+token; the zip is the same (the window from `last_ts`, so nothing is duplicated and no gap is created). Only if all fail
+does it exit non-zero with state unchanged; the next scheduled run then exports the longer window as before. As a
+backstop the Export task also gets **RestartOnFailure (15 min, 3 times)**, and `MultipleInstancesPolicy = IgnoreNew`
+stays, so a retry never overlaps a scheduled run. (Task Scheduler's restart acts on a failed start rather than on a
+non-zero exit code, which is why the retry lives in the script.) Test: storage blocked by name on one machine, an
+export started, the block lifted after ~3 min: the same run uploads at its +5-min attempt, 0 gaps, continuous.
