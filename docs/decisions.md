@@ -148,3 +148,9 @@ the comment.
 
 **R17 addendum (2026-10-11):** the built-in **Reader** role ID is allow-listed too (verified BuiltInRole): the
 perfmon-blackbox DINE identity must read the machine to pass its identity to the per-machine role assignment.
+
+## R18: CI runs the perfmon-blackbox tests (the vezir, 2026-10-11)
+
+`.github/workflows/ci.yml` runs perfmon-blackbox's local tests (synthetic data) in the `checks` job, and a
+`perfmon-blackbox-windows` job on `windows-latest`: Pester L05 and the PSScriptAnalyzer Windows PowerShell 5.1 rules
+under `powershell.exe`, then the package build (authoring side, PowerShell 7). Nothing in CI touches Azure.

@@ -25,3 +25,18 @@ jobs:
           [ -z "$files" ] || python3 -m py_compile $files
       - name: shell syntax
         run: for f in $(git ls-files '*.sh' '.githooks/*'); do sh -n "$f" || bash -n "$f"; done
+      - name: perfmon-blackbox local tests (synthetic data)
+        run: python3 -m unittest discover -s playbooks/perfmon-blackbox/tests/local -t playbooks/perfmon-blackbox
+
+  perfmon-blackbox-windows:
+    # Pester (L05) and the PSScriptAnalyzer 5.1 rules under Windows PowerShell 5.1, then the package build (T01's
+    # build half; authoring side, PowerShell 7). Test-only modules are saved into C:\BbDev on the runner.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pester and lint (Windows PowerShell 5.1)
+        shell: powershell
+        run: playbooks\perfmon-blackbox\tests\pester\Run-L05.ps1 -Src "$env:GITHUB_WORKSPACE\playbooks\perfmon-blackbox"
+      - name: package build
+        shell: pwsh
+        run: playbooks\perfmon-blackbox\package\build.ps1 -Install -OutputPath "$env:RUNNER_TEMP\pbb"
