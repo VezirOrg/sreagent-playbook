@@ -113,3 +113,10 @@ committed as separate commits: root (R1–R12, shared safety tooling, root docs)
   `LatestOutputLocation`), full and its long part. The vezir is asked to get them into the shared denylist too.
 - The R10 interim (pointing `SCRUB_DENYLIST` at the blog's list) ends: `files/source-data/` now holds the
   denylist.
+
+## R14: a playbook's lab project lives in `.lab/`, gitignored (2026-10-11, for LAB-KUR, P16 of perfmon-blackbox)
+
+A playbook lab is built from the private lab template with `azd init -t <template> --branch <tag>`. That checkout
+holds the private template, so it must never enter this public repo: it lives in `.lab/<playbook>/` (gitignored)
+and is driven with `direnv exec <repo root> azd …` (this repo's `.env` and local az/azd config dirs). The lab is
+registered in the template's lab register, in the template repo, in the same commit as its build or teardown.

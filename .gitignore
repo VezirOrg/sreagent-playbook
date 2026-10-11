@@ -10,3 +10,5 @@ __pycache__/
 .DS_Store
 .azure-cli/
 .azd-config/
+# playbook lab checkouts of the private lab template (R14)
+.lab/
