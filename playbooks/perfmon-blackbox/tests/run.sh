@@ -12,12 +12,14 @@ for a in "$@"; do case "$a" in --keep-going) keep=1 ;; *) machine="$a" ;; esac; 
 
 local_test() {  # $1 = L0x
   case "$1" in
-    L01) cls=L01Converter ;; L02) cls=L02Perfq ;; L03) cls=L03Masker ;; L04) cls=L04FetchLatest ;; L07) cls=L07Template ;; L08) cls=L08Policies ;;
+    L01) cls=L01Converter ;; L02) cls=L02Perfq ;; L03) cls=L03Masker ;; L04) cls=L04FetchLatest ;; L07) cls=L07Template ;; L08) cls=L08Policies ;; L09) cls=L09Scorer ;;
     L06) (cd "$root" && scripts/scrub-check.sh --self-test >/dev/null && scripts/scrub-check.sh); return $? ;;
     L05) sh "$here/lab/L05.sh" "${machine:-dc}"; return $? ;;
     *) echo "unknown test $1" >&2; return 2 ;;
   esac
-  (cd "$pb" && python3 -m unittest "tests.local.test_local.$cls" 2>&1 | tail -3)
+  out=$(cd "$pb" && python3 -m unittest "tests.local.test_local.$cls" 2>&1); rc=$?
+  echo "$out" | tail -3; [ $rc -eq 0 ] || echo "$out" | grep -E '^(FAIL|ERROR):|Error|assert' | head -10
+  return $rc
 }
 
 one() {
@@ -32,7 +34,7 @@ one() {
 }
 
 if [ "$id" = all ] || [ "$id" = local ]; then
-  ids="L01 L02 L03 L04 L06 L07 L08"
+  ids="L01 L02 L03 L04 L06 L07 L08 L09"
   [ "$id" = all ] && ids="$ids T13 T14 T01 T02 T03 T04 T05 T06 T07 T06b T06c T07b T08 T09 T10 T10b T10c T11 T12 T15 T16"
   fail=0
   for t in $ids; do one "$t" || { fail=1; [ $keep -eq 1 ] || exit 1; }; done

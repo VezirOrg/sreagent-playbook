@@ -207,9 +207,17 @@ function Move-BbBufferToPending {
     $files = @(Get-ChildItem -LiteralPath $Paths.Blg -Filter *.blg -ErrorAction SilentlyContinue)
     if ($files.Count) { $null = New-Item -ItemType Directory -Force -Path $Paths.Pending }
     $n = 0
+    # a ring last written before the current boot was closed by the shutdown, whoever restarts the collector
+    # (the Boot task or the agent's BlackboxRunning, whichever comes first): its reason is 'boot'
+    $bootTime = $null
+    if ($Reason -eq 'start' -or $Reason -eq 'boot') {
+        try { $bootTime = (Get-CimInstance -ClassName Win32_OperatingSystem).LastBootUpTime } catch { $bootTime = $null }
+    }
     foreach ($f in ($files | Sort-Object LastWriteTime)) {
         if ($f.Length -le 0) { Remove-Item -LiteralPath $f.FullName -Force; continue }
-        $name = '{0}-{1:D2}-{2}.blg' -f $Now.ToString('yyyyMMdd-HHmmss'), $n, $Reason
+        $why = $Reason
+        if ($bootTime) { if ($f.LastWriteTime -lt $bootTime) { $why = 'boot' } else { $why = 'start' } }
+        $name = '{0}-{1:D2}-{2}.blg' -f $Now.ToString('yyyyMMdd-HHmmss'), $n, $why
         Move-Item -LiteralPath $f.FullName -Destination (Join-Path $Paths.Pending $name)
         $moved += $name
         $n++

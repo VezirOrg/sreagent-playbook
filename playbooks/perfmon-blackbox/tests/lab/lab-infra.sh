@@ -14,6 +14,9 @@ subnet=$(az network vnet subnet show -g "$rg" --vnet-name "$vnet" -n pe --query 
 zone=$(az network private-dns zone show -g "$rg" -n "privatelink.blob.core.windows.net" --query id -o tsv)
 agent_sys=$(az resource list -g "$rg" --resource-type Microsoft.App/agents --query "[0].identity.principalId" -o tsv)
 uami=$(az identity list -g "$rg" --query "[0].principalId" -o tsv)
+# lab verifier: dc's system identity reads the captures for T09-T11 (lab only; the machines themselves stay write-only)
+dcid=$(az vm show -g "$rg" -n dc --query identity.principalId -o tsv 2>/dev/null || true)
+readers="[\"$agent_sys\",\"$uami\"${dcid:+,\"$dcid\"}]"
 az deployment group create -g "$rg" -n perfmon-blackbox-infra -f "$pb/infra/main.bicep" \
   -p storageAccountName="$name" privateEndpointSubnetId="$subnet" blobPrivateDnsZoneId="$zone" \
-  readerPrincipalIds="[\"$agent_sys\",\"$uami\"]" --query "properties.outputs.storageAccountResourceId.value" -o tsv
+  readerPrincipalIds="$readers" --query "properties.outputs.storageAccountResourceId.value" -o tsv

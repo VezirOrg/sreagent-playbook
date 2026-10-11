@@ -26,3 +26,9 @@ machine_id() { # machine_id vm1|arc1 -> Azure resource ID (Compute VM or Arc mac
 pkg_env="$lab/pbb-package.env"   # PKG_URI, PKG_SHA256, PKG_VERSION of the package under test (lab-only file)
 [ -f "$pkg_env" ] && . "$pkg_env"
 finish() { if [ $fails -eq 0 ]; then return 0; else echo "  $fails check(s) failed"; return 1; fi; }
+prefix_of() { echo "$sub/$rg/$(vm_real "$1")" | tr 'A-Z' 'a-z'; }
+verify_blobs() { # verify_blobs <machine> <last N> [extra args]: run guest/verify-blobs.ps1 on dc (the lab reader)
+  m="$1"; n="$2"; shift 2
+  (cd "$lab" && scripts/vmssh dc "if (-not (Test-Path C:\\\\BbDev\\\\src\\\\package)) { 'NO-SRC' }" 2>/dev/null) | grep -q NO-SRC && \
+    echo "  (dc has no C:\\BbDev\\src: run tests/run.sh L05 or T01 first)"
+  guest dc verify-blobs.ps1 -Account "$sa" -Prefix "$(prefix_of "$m")" -Last "$n" "$@"; }
