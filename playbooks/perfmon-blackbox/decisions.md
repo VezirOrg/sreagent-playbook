@@ -375,3 +375,14 @@ resource only** (never the resource group or subscription; same pattern as lab17
 register row; the role is removed at teardown. **The SP never approves agent actions.** "For now": the least-privilege
 path (**SRE Agent Author + Standard User**; Learn lists Author as able to edit the agent's configuration but not to
 approve actions) is to be tried later and documented for adopters in the README.
+
+## P31: standing permission for lab pre-releases rc.N (Emre, 2026-10-11, "RC-SERBEST")
+
+Further **lab** pre-releases `perfmon-blackbox/v1.0.0-rc.N` may be published without asking each time, under
+**exactly** the rc.1 conditions (P29): prerelease, not latest, a single asset `PerfmonBlackbox.zip`, every extracted
+file scrub-checked clean (denylist, secret patterns, no lab host, user or path), the SHA-256 recorded here and used as
+the policies' `contentHash`, notes "Lab test build, not for use". Each URL + SHA goes to the vezir right after
+publishing. It does **not** cover v1.0.0 or any non-prerelease: that stays Emre's release gate.
+
+- **rc.2** (boot reason derived from the boot time, for T08): `PerfmonBlackbox.zip` SHA-256
+  `CC42AF186D13D622FA8342D8941AF079157DFCB585DA4164508103FCDDDEE7A0` (T01 green on dc; 12 files scrub-checked clean).
