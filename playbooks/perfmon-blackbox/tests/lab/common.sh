@@ -16,11 +16,11 @@ real1=$(vm_real vm1)
 mask() { # IDs, GUIDs and the real VM name never reach the terminal or evidence files
   BB_REAL="${real1:-NOREALNAME}" perl -pe 's#/subscriptions/[0-9a-f-]{36}#/subscriptions/<sub>#g; s#[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}#<guid>#g; s#\Q$ENV{BB_REAL}\E#vm1#gi'; }
 sshuser() { if [ "$1" = arc1 ]; then echo "--user ${VM_ADMIN_USERNAME:-azureuser}"; fi; }   # arc1 is not domain-joined
-v() { m=$(vm_real "$1"); u=$(sshuser "$1"); shift; (cd "$lab" && scripts/vmssh $u "$m" "$@") 2>&1 | grep -v '^direnv:' | mask; }
+v() { _vm=$(vm_real "$1"); _u=$(sshuser "$1"); shift; (cd "$lab" && scripts/vmssh $_u "$_vm" "$@") 2>&1 | grep -v '^direnv:' | mask; }
 guest() { # guest <machine> <tests/lab/guest/x.ps1> [args]: run an in-guest check under Windows PowerShell 5.1 (P25)
-  m=$(vm_real "$1"); u=$(sshuser "$1"); f="$here/guest/$2"; shift 2
-  (cd "$lab" && scripts/vmssh $u "$m" "New-Item -ItemType Directory -Force C:\\BbDev\\t | Out-Null" >/dev/null 2>&1 && scripts/vmscp $u "$m" "$f" "C:/BbDev/t/$(basename "$f")" >/dev/null 2>&1 &&
-   scripts/vmssh $u "$m" "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\BbDev\\t\\$(basename "$f") $*") 2>&1 | grep -v '^direnv:' | mask; }
+  _vm=$(vm_real "$1"); _u=$(sshuser "$1"); _f="$here/guest/$2"; shift 2
+  (cd "$lab" && scripts/vmssh $_u "$_vm" "New-Item -ItemType Directory -Force C:\\BbDev\\t | Out-Null" >/dev/null 2>&1 && scripts/vmscp $_u "$_vm" "$_f" "C:/BbDev/t/$(basename "$_f")" >/dev/null 2>&1 &&
+   scripts/vmssh $_u "$_vm" "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\BbDev\\t\\$(basename "$_f") $*") 2>&1 | grep -v '^direnv:' | mask; }
 machine_id() { # machine_id vm1|arc1 -> Azure resource ID (Compute VM or Arc machine)
   case "$1" in arc1) echo "/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.HybridCompute/machines/arc1" ;;
     *) echo "/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Compute/virtualMachines/$(vm_real "$1")" ;; esac; }
@@ -29,10 +29,10 @@ pkg_env="$lab/pbb-package.env"   # PKG_URI, PKG_SHA256, PKG_VERSION of the packa
 finish() { if [ $fails -eq 0 ]; then return 0; else echo "  $fails check(s) failed"; return 1; fi; }
 prefix_of() { echo "$sub/$rg/$(vm_real "$1")" | tr 'A-Z' 'a-z'; }
 verify_blobs() { # verify_blobs <machine> <last N> [extra args]: run guest/verify-blobs.ps1 on dc (the lab reader)
-  m="$1"; n="$2"; shift 2
+  _bm="$1"; _bn="$2"; shift 2
   (cd "$lab" && scripts/vmssh dc "if (-not (Test-Path C:\\\\BbDev\\\\src\\\\package)) { 'NO-SRC' }" 2>/dev/null) | grep -q NO-SRC && \
     echo "  (dc has no C:\\BbDev\\src: run tests/run.sh L05 or T01 first)"
-  guest dc verify-blobs.ps1 -Account "$sa" -Prefix "$(prefix_of "$m")" -Last "$n" "$@"; }
+  guest dc verify-blobs.ps1 -Account "$sa" -Prefix "$(prefix_of "$_bm")" -Last "$_bn" "$@"; }
 ga_json() { # ga_json <machine>: the guest assignment plus its latest report's resources, as one JSON object
   base="https://management.azure.com$(machine_id "$1")/providers/Microsoft.GuestConfiguration/guestConfigurationAssignments/PerfmonBlackbox"
   a=$(az rest --method get --url "$base?api-version=2022-01-25" -o json 2>/dev/null) || { echo '{}'; return; }
