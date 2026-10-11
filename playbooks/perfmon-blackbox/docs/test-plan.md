@@ -48,18 +48,13 @@ a test for every stage, end to end, the last one being the analysis). Design: `d
 
 ### T16 scoring (ground truth from planted problems)
 
-`tests/lab/make-trouble.ps1` (synthetic, no real names) runs on the machine during the captured day and plants:
-only problems **this counter set can show** (design §2.5): a process whose Private Bytes grow per hour (a leak;
-no request-based rate, the set has no request counter), a CPU-bound burst ≥ 10 minutes, a disk-latency episode
-≥ 5 minutes, a NIC burst, recurring 20–40 s stalls (the OPEN-2 case, scored as 'found', not by verdict word), and
-quiet periods. Its own log is the ground truth (times,
-process, sizes). The rubric gives points for: right capture identified (latest zip, host, time range); each
-planted problem found with its time ± 2 samples and its driver; correct verdict words under the VERDICT CEILING;
-no invented problem; rules of SKILL.md followed (no raw data, `LINK:` lines for causal claims). The scorer
-(`tests/scoring/score.py`) is deterministic: it checks the report text against the ground truth with fixed rules
-and prints the points per item. Threshold proposed: **80 %**, every planted problem found. The rubric does not
-take a side on OPEN-1/OPEN-2 (P8). With CHOICE 8 = keep the skill as is, the CPU items can only be scored once the
-skill reads `Processor Information`; the rubric then scores what v2.0 can see and lists the rest.
+`tests/lab/guest/make-trouble.ps1` (synthetic, no real names) plants, for 45 minutes, **only a memory leak and a CPU
+burst** (decisions P43: "CPU ve memory problemini yakalaması yeterli"; stalls removed by P34, disk and network by P43);
+its `truth.json` is the ground truth. Before scoring, the plants are verified in the capture (P42); a plant that did not
+take effect makes the run invalid. The scorer (`tests/scoring/score.py`, rules in `tests/scoring/rubric.md`) is
+deterministic: latest zip named, host, time range, the leak (process and rate within 40 %) and the CPU burst (time
+± 2 min and driver) found, verdict words, nothing invented (a disk or network problem claimed counts as invented), causal
+claims backed by `LINK:`, no raw data. **Pass = score ≥ 80, both plants found, nothing invented.**
 
 ## Local tests (no Azure; CI)
 
@@ -77,7 +72,7 @@ skill reads `Processor Information`; the rubric then scores what v2.0 can see an
 
 build lab → `infra/` deploy → T13, T14 → T01 → publish package (release asset of a pre-release tag) → T02, T03 →
 wait for compliance → T04, T05, T06, T07 → T06b, T06c (small `MaxSizeMB`) → back to 512 → T07b →
-`make-trouble.ps1` during a captured window → T08 → T09 (two exports), T10, T10b, T10c, T11, T12 → T15 → T16. All green on **both** `vm1` and
+`make-trouble.ps1` (leak + CPU) during a captured window → T08 → T09 (two exports), T10, T10b, T10c, T11, T12 → T15 → T16. All green on **both** `vm1` and
 `arc1` = DoD centre met. Then README-only fresh-eyes deploy into a second clean lab, which must reach the same green
 (DoD 2).
 

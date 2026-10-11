@@ -83,5 +83,5 @@ time it caused).
 
 - **T15**: the agent, in its own terminal, fetches the newest zip of a server with the skill, checks the hash and
   converts it with zero errors (green on the Azure VM and the Arc server).
-- **T16**: known problems are planted on the server for 70 minutes ([load-generation.md](load-generation.md)); the agent
+- **T16**: a memory leak and a CPU burst are planted on the server for 45 minutes ([load-generation.md](load-generation.md)); the agent
   is asked in a new thread; its report is scored against the ground truth ([tests.md](tests.md#analysis)).

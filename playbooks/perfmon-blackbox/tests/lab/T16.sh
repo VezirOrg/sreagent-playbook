@@ -16,7 +16,7 @@ if [ "$step" = start ]; then
   v "$m" 'Get-Process bb* -ErrorAction SilentlyContinue | Stop-Process -Force; if (Test-Path T:\) { $null = Format-Volume -DriveLetter T -FileSystem NTFS -NewFileSystemLabel bbdisk -Confirm:$false -Force; "T: reformatted, free $([int]((Get-PSDrive T).Free / 1MB)) MB" }; Remove-Item C:\bbio -Recurse -Force -ErrorAction SilentlyContinue'
   guest "$m" export-now.ps1 | tail -2
   guest "$m" make-trouble.ps1 -Start
-  echo "planted load started; run 'T16.sh $m finish' after ~72 min"; exit 0
+  echo "planted load started; run 'T16.sh $m finish' after ~47 min"; exit 0
 fi
 guest "$m" make-trouble.ps1 -Status > "$ev/T16-$m-truth.raw" 2>&1
 python3 -c 'import json,sys; t=json.load(open(sys.argv[1])); sys.exit(0 if t.get("ended") else 1)' "$ev/T16-$m-truth.raw" 2>/dev/null || { echo "planted load not finished yet"; exit 1; }

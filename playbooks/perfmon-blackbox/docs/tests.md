@@ -83,8 +83,8 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 - **L08 policy generator.** Two definitions, one resource type each, the same parameters, the parameter hash in step
   with the configuration parameters, the package hash pinned, and the ABAC condition evaluates to the exact expected
   text.
-- **L09 scorer.** A report naming every planted problem scores 100; a missing disk episode, a disk mention without a
-  latency, a wrong leak rate or an invented problem lose points.
+- **L09 scorer.** A report naming both planted problems scores 100; a missing CPU burst, a wrong leak rate or an
+  invented problem (also a network or disk problem claimed) lose points; a negated cause or an area called fine does not.
 
 ## Stage tests (lab)
 
@@ -120,7 +120,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
   1.2, public network access disabled, approved private endpoint).
 - **T15** the agent, in its own terminal, fetches the newest zip with the skill, checks the hash and converts it with
   zero errors.
-- **T16** the planted load runs for 70 minutes ([load-generation.md](load-generation.md)); the agent, asked in a new
-  thread to analyse the latest capture, names the zip, finds the leak (rate within 40 %), the CPU burst, the disk
-  latency and the network burst at their times, invents nothing, and keeps to the skill's rules. Pass = score ≥ 80 and
-  all four problems found.
+- **T16** a memory leak and a CPU burst are planted for 45 minutes ([load-generation.md](load-generation.md)); the
+  agent, asked in a new thread to analyse the latest capture, names the zip, finds the leak (rate within 40 %) and the
+  CPU burst at its time with its driver, invents nothing (a disk or network problem claimed counts as invented), and
+  keeps to the skill's rules. The plants are verified in the capture first. Pass = score ≥ 80, both found (P43).

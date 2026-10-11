@@ -2,8 +2,7 @@
 
 > **Summary.** For the end-to-end test the lab makes a server misbehave in known ways for 70 minutes, then asks the
 > SRE Agent to analyse the latest capture and scores its report against what was planted. The load comes from plain
-> Windows PowerShell 5.1: copies of the built-in `powershell.exe` renamed `bbleak.exe`, `bbcpu.exe`, `bbdisk.exe` and
-> `bbnic.exe`, started by a one-off SYSTEM task. Nothing is installed. The script writes `truth.json` (what ran,
+> Windows PowerShell 5.1: copies of the built-in `powershell.exe` renamed `bbleak.exe` and `bbcpu.exe`, started by a one-off SYSTEM task. Nothing is installed. The script writes `truth.json` (what ran,
 > when) as the ground truth. Lab only: never part of the package.
 >
 > Script: [`tests/lab/guest/make-trouble.ps1`](../tests/lab/guest/make-trouble.ps1). Scorer:
@@ -13,13 +12,19 @@
 
 | Plant | Process | When | Intensity | Shows in |
 |---|---|---|---|---|
-| Memory leak | `bbleak.exe` | 0 → 70 | +600 MiB per hour, one PID (≈ 700 MB in total) | `Process(bbleak)\Private Bytes`, `Working Set`; `Memory\Available MBytes` |
+| Memory leak | `bbleak.exe` | 0 → 45 | +600 MiB per hour, one PID (≈ 450 MB in total) | `Process(bbleak)\Private Bytes`, `Working Set`; `Memory\Available MBytes` |
 | CPU burst | `bbcpu.exe` | +10, 12 min | one busy thread per logical CPU (machine ≈ 100 %) | `Processor Information(_Total)\% Processor Time`, `Process(bbcpu)\% Processor Time`, queue length |
-| Disk latency | `bbdisk.exe` | +32, 6 min | 32 threads of random 4 KiB write-through writes on C: (queue depth 32) | `LogicalDisk(C:)\Avg. Disk sec/Write`, queue lengths, idle time |
-| Network burst | `bbnic.exe` | +45, 6 min | 1,400-byte UDP datagrams in a tight loop to a lab host | `Network Interface(*)\Bytes Total/sec` |
 
-**Removed:** a "stall" plant (all CPUs busy for 30 s, twice). Emre closed OPEN-2 for v1.0.0 (decisions P34): the skill
-treats 30-second events as blips by design, so they are neither planted nor scored.
+**Only memory and CPU are planted** (Emre, decisions P43). Removed on the way, each for a reason:
+- a 30-s **stall** plant: the skill treats 30-second events as blips by design (OPEN-2 closed, P34);
+- a **disk-latency** plant: in four runs it failed to load the disk (an ambiguous `FileStream` constructor in Windows
+  PowerShell 5.1, then a scratch volume left full), and it needed an uncached lab data disk (P39, P42);
+- a **network** burst: a test process cannot get near the share of an Azure vNIC's bandwidth the skill flags, so
+  "network fine" was always the skill's correct verdict.
+The skill itself still checks disk and network; only the test does not plant them.
+
+Before a run is scored, the plants are checked in the capture (P42): CPU above 85 % for most of the burst, the leaking
+process present and growing. A run whose plant did not take effect is invalid, not scored.
 
 ## Why renamed copies of powershell.exe
 
@@ -53,7 +58,7 @@ $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File $dir\make-troubl
 `-Stop` ends everything at once:
 
 ```powershell
-Get-Process -Name bbleak, bbcpu, bbdisk, bbnic -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process -Name bbleak, bbcpu -ErrorAction SilentlyContinue | Stop-Process -Force
 & schtasks.exe /delete /tn '\BbDev\MakeTrouble' /f
 ```
 
@@ -71,7 +76,7 @@ while ((Get-Date) -lt $end) {
 }
 ```
 
-**Parallel work inside one process** (used by `bbcpu.exe` and `bbdisk.exe`):
+**Parallel work inside one process** (used by `bbcpu.exe`):
 
 ```powershell
 function Invoke-Pool([int]$n, [scriptblock]$body, $arg) {
@@ -90,32 +95,12 @@ function Invoke-Pool([int]$n, [scriptblock]$body, $arg) {
 Invoke-Pool $cpus { param($end, $i) while ((Get-Date) -lt $end) { $null = [math]::Sqrt(12345) } } (Get-Date).AddSeconds(720)
 ```
 
-**Disk latency** (`bbdisk.exe`): 32 threads, each with its own 256 MB file, random 4 KiB writes that bypass the cache.
-
-```powershell
-Invoke-Pool 32 { param($end, $i)
-  $f = 'C:\BbDev\trouble\io\' + $i + '.bin'
-  $fs = New-Object IO.FileStream($f, 'Create', 'ReadWrite', 'None', 4096, [IO.FileOptions]::WriteThrough)
-  $fs.SetLength(256MB); $b = New-Object byte[] 4096; $r = New-Object Random($i)
-  while ((Get-Date) -lt $end) { $fs.Position = [int64]$r.Next(0, 65535) * 4096; $fs.Write($b, 0, 4096) }
-  $fs.Close(); Remove-Item $f
-} (Get-Date).AddSeconds(360)
-```
-
-**Network burst** (`bbnic.exe`): UDP to the discard port of a lab host in the same VNet.
-
-```powershell
-$u = New-Object Net.Sockets.UdpClient; $u.Connect('dc', 9); $b = New-Object byte[] 1400
-while ((Get-Date) -lt $end) { for ($i = 0; $i -lt 2000; $i++) { [void]$u.Send($b, $b.Length) } }
-$u.Close()
-```
-
 ## Ground truth and cleanup
 
 - `C:\BbDev\trouble\truth.json` gets one entry per plant with its real start and end time (local time of the server),
   the driver and, for the leak, the planted rate. T16 adds the latest zip's own window (`capture_first`,
   `capture_last`) before scoring.
-- Each bb process ends at its end time; `bbleak` is stopped at +70 min; `bbdisk` deletes its files. `-Stop` kills any
+- Each bb process ends at its end time; `bbleak` is stopped at +45 min. `-Stop` kills any
   leftover and removes the task. The copies and `truth.json` live in `C:\BbDev`, which is removed at the end of the
   lab work.
-- `-Scale 0.03` runs the whole timeline in about two minutes (a dry run of the script itself).
+- `-Scale 0.03` runs the whole timeline in under two minutes (a dry run of the script itself).
