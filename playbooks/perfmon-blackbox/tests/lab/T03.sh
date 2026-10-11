@@ -9,7 +9,7 @@ for kind in vm arc; do
   j=$(az policy assignment show -n "pbb-$kind" --scope "$scope" -o json 2>/dev/null) || { bad "pbb-$kind missing"; continue; }
   pid=$(echo "$j" | python3 -c 'import json,sys; print(json.load(sys.stdin)["identity"]["principalId"])')
   [ -n "$pid" ] && ok "pbb-$kind has a system identity" || bad "pbb-$kind without identity"
-  roles=$(az role assignment list --assignee "$pid" --all --query "[].[roleDefinitionName, scope, condition != null]" -o tsv | sed "s#$sa_id#<storage>#; s#$scope\$#<rg>#" | sort | tr '\t' ' ')
+  roles=$(az role assignment list --assignee "$pid" --all --query "[].[roleDefinitionName, scope, condition != null]" -o tsv 2>/dev/null | tr '\t' '|' | awk -F'|' -v sa="$sa_id" -v rg="$scope" '{ s=$2; if (s==sa) s="<storage>"; else if (s==rg) s="<rg>"; print $1" "s" "$3 }' | sort)
   exp=$(printf '%s\n' 'Guest Configuration Resource Contributor <rg> False' 'PerfMon Blackbox Deployer <rg> False' 'Role Based Access Control Administrator <storage> True' | sort)
   if [ "$roles" = "$exp" ]; then ok "pbb-$kind roles exactly as designed"; else bad "pbb-$kind roles:"; echo "$roles" | mask; fi
   if [ $kind = vm ]; then
