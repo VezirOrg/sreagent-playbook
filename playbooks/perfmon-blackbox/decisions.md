@@ -475,3 +475,12 @@ offsets; target = an **uncached** 4 GiB lab data disk `T:` on vm1 (the OS disk's
 60 s: Avg. Disk sec/Write 179 ms average (queue ≈ 8, 174 MB/s), memory flat. Lab changes (register row updated): the
 data disk, and vm1's `patchMode` set to `AutomaticByPlatform`, which the template's hotpatch image requires for any VM
 update. The scorer's "invented problem" rule no longer counts a line that calls the area fine (run 2: "PTEs … fine").
+
+## P40: a hole before a wrapped ring is an overrun (session 2, 2026-10-11)
+
+T06c on arc1 (1 s, 32 MB, 13 min without an export) showed a 212-s hole between the re-create ring and the new ring
+labelled `collector_restart`; in truth the new ring had wrapped and overwritten its own first 3.5 minutes. Between two
+rings the cause is now `buffer_overrun` when the later ring had wrapped, `machine_off` when the earlier one was closed by
+a boot, else `collector_restart`. T06c/T06d are re-run with an export right after the change lands (at 1 s a 16–32 MB
+ring holds only 5–10 minutes). In rc.6.
+

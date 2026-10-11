@@ -407,8 +407,10 @@ function Find-BbGaps {
         $limit = 2 * [math]::Max((& $partIv $a.Part), (& $partIv $b.Part))
         if ($sec -le $limit) { continue }
         if ($a.Part -ne $b.Part) {
+            # between two rings: if the LATER ring had wrapped, its own oldest samples were overwritten (P40)
             $cause = 'collector_restart'
-            if ($PartInfo.Count -gt $a.Part -and $PartInfo[$a.Part].Reason -eq 'boot') { $cause = 'machine_off' }
+            if ($PartInfo.Count -gt $b.Part -and $PartInfo[$b.Part].Wrapped) { $cause = 'buffer_overrun' }
+            elseif ($PartInfo.Count -gt $a.Part -and $PartInfo[$a.Part].Reason -eq 'boot') { $cause = 'machine_off' }
         } else { $cause = 'missing_samples' }
         $gaps += [ordered]@{ from = $a.Time.ToString('yyyy-MM-dd HH:mm:ss.fff'); to = $b.Time.ToString('yyyy-MM-dd HH:mm:ss.fff'); seconds = [math]::Round($sec, 3); cause = $cause }
     }

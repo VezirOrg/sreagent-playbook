@@ -147,6 +147,13 @@ Describe 'Gaps and their causes' {
         $g[0].cause | Should -Be 'machine_off'
         $g[1].cause | Should -Be 'collector_restart'
     }
+    It 'a hole before a ring that wrapped is a buffer_overrun, not a restart (P40)' {
+        $pi = @([pscustomobject]@{ Reason = 'recreate'; Wrapped = $true; Interval = 1 }, [pscustomobject]@{ Reason = 'export'; Wrapped = $true; Interval = 1 })
+        $g = Find-BbGaps -Rows @(Rows @(0, 1, 2, 215, 216) @(0, 0, 0, 1, 1)) -IntervalSeconds 1 -LastTs $script:T0 -PartInfo $pi
+        $g[-1].cause | Should -Be 'buffer_overrun'
+        $pi[1].Wrapped = $false
+        (Find-BbGaps -Rows @(Rows @(0, 1, 2, 215, 216) @(0, 0, 0, 1, 1)) -IntervalSeconds 1 -LastTs $script:T0 -PartInfo $pi)[-1].cause | Should -Be 'collector_restart'
+    }
     It 'judges each ring by its own interval after an interval change (P37)' {
         # ring 0 recorded at 10 s, ring 1 at 1 s; the configured interval is now 1 s
         $secs = @(0, 10, 20, 30, 33, 34, 35, 36)
