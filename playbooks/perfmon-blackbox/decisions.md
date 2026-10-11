@@ -526,3 +526,26 @@ of the range is not covered (before the oldest zip — 30-day lifecycle —, aft
 report's Capture section lists every zip used. A new analysis test plants leak + CPU across an export boundary and asks
 with a range spanning both zips (T17). New skill version (v2.2): the current skill is backed up (zip → Drive) before
 every upload; the package is not affected.
+
+## P45: the package comes from GitHub or from the adopter's own storage (Emre, 2026-10-11)
+
+"Hem GitHub hem de storage account seçeneğimiz olsun policy'de." Real servers often cannot reach github.com.
+
+- **Policy parameter `PackageContainerResourceId`** (both definitions; default empty). Empty = **GitHub mode**: the
+  release asset URL, as today. Set (the resource ID of a blob container) = **storage mode**: the guest assignment's
+  `contentUri` is `https://<account>.blob.<suffix>/<container>/PerfmonBlackbox.zip` and `contentManagedIdentity` is
+  `system`, i.e. the machine downloads the package with its **system-assigned identity** (what
+  `New-GuestConfigurationPolicy -UseSystemAssignedIdentity` writes; GA on Azure VMs and Arc, Windows agent ≥ 1.29.98.0
+  per the Machine Configuration Windows agent release notes, July 2025; user-assigned identities are not supported on
+  Arc and are not used). **No SAS anywhere.**
+- **Read access per machine**: the DINE nested deployment also assigns **Storage Blob Data Reader on the package
+  container only** to the machine's system identity (the data container stays write-only). The policy identity's RBAC
+  Administrator delegation condition allows exactly the Writer and the Data Reader roles. Recommended layout: a
+  container `packages` in the same private-endpoint storage account (infra creates it), so servers need no internet at
+  all for the package.
+- **Same zip both ways**: `contentHash` is pinned to the release's SHA-256 in both modes; the adopter copies the release
+  zip unchanged into the container (deploy.md shows the copy and the hash check).
+- **Not a package change** (no rc): policy generator, infra, lab scripts, docs and tests only.
+- **Tests:** T18a GitHub mode (proven by T02/T04/T07–T12 on vm1 and arc1), T18b storage mode on arc1, T18c storage mode
+  on vm1 (temporary, then back to GitHub), T18d no reader role → no download, T18e a different zip under the same name
+  → rejected by the hash, the old configuration stays. The fresh-eyes deploy in the second lab uses storage mode.
