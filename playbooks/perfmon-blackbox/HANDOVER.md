@@ -1,4 +1,18 @@
-# perfmon-blackbox: PLAN-OK (P19, rev 3, 10 s / 512 MB / export 4 h); implementation not started; lab18 UP with 4 collectors running.
+# perfmon-blackbox: IMPLEMENTING (session 2): local stage + package code green (L01-L07, Pester L05); next T01 build, infra, policies; lab18 UP.
+
+
+## Session 2 progress (2026-10-11, live; rewritten at close)
+
+- P20 (collector files were never committed: root `.gitignore` `files/` swallowed `package/files/`; now
+  `package/collector/`, root R16 narrowed the pattern), P21 (export rolls the collector), P22–P27 recorded.
+- **Storm answered (P27): no storm.** Formula: full set ≈ 4.5 KB + 0.53 KB × processes per sample. BbStorm stopped
+  (readback done); BbWrap1/2 + BbFull10 still running on vm1.
+- Done: skill v2.1 (`perfmon_fetch_latest.py`, Processor Information), synthetic generator, local tests L01–L04,
+  L06, L07 green; package: `PerfmonBlackboxDsc` R1–R6, `PerfmonBlackbox.Common.ps1`, Start/Export scripts (5.1,
+  ASCII), `build.ps1`; Pester L05 24/24 + PSScriptAnalyzer 5.1 compat clean on dc (`C:\BbDev`, P24).
+- Next: T01 (build + local compliance on a lab VM scratch), infra, policies, vm1 T04–T16, then arc1.
+
+## Brief from session 1 (kept until close)
 
 Playbook: **perfmon-blackbox**. This file is the brief for the next session (opened with
 `pj-open PLAYBOOK=perfmon-blackbox`). Read `../../CLAUDE.md`, then `CLAUDE.md`, this file, `decisions.md` (P1–P19),

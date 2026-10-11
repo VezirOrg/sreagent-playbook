@@ -308,3 +308,36 @@ servers (no PowerShell 7, no other runtime). Concretely:
 5.1, so not used), `Invoke-WebRequest` for the upload (`Put Blob` up to 32 MiB, otherwise `Put Block` in 8 MiB blocks +
 `Put Block List`), bearer token from IMDS (Azure VM) or the HIMDS challenge flow (Arc). No azcopy, no az CLI, no Az
 modules on servers. The lab measures zip time and size per export (T09 evidence).
+
+## P27: P16/P18 results: no G3 event storm; bytes per sample = a + b × processes (session 2, 2026-10-11)
+
+**Storm (P18, T06f part 1), answered:** on `dc` (no IIS, no ASP.NET), the full set with G3 forced, 1 s, 32 min
+(09:53:25–10:26:13Z): Diagnosis-PLA/Operational logged **9 events, all in the start minute** (6 × ID 1010 Error, one
+per G3 counter: "could not be added to collector Counters, error code 0xC0000BB8", plus 1000/1001/1003 start info)
+and **nothing afterwards** (one 1005 at stop). Application: 0–2 events per minute, same sources as the 10-min baseline
+(SPP, WDATP), none from the set. System: 12 Service Control Manager events in the start minute, then 0–4 per minute
+(service noise, as in the baseline). The collector ran and recorded every other counter: 1,933 samples in 32 min at 1 s
+(no drop), 1,449 counter instances (Process 1,360, LogicalDisk 40, Processor Information 20, NIC 8, Memory 10,
+System 3, TCP 7, Paging File 1), 127 MB. **No storm: one error per missing counter at each collector start, none per
+sample.**
+
+**Finding for G3 auto-detect:** `.NET CLR Memory` *exists* as an object on `dc` (`Get-Counter -ListSet`), yet PLA
+could not add its two counters (0xC0000BB8) and recorded none of them. So "object exists" is not "PLA records it".
+Harmless (start-time errors only), and R2 compares against its own expected list, so there is no drift loop. To check
+on a web box (T06f part 2): whether CLR counters are recorded where .NET Framework processes run.
+
+**Formula (P16 c, from existing data only, as the vezir asked; no synthetic load step).** Inputs: lab18 vm1 (113
+processes) 52.4 KB/sample with the 36, 66.6 KB with the full set; lab18 dc (118 processes, full set, G3 not
+recorded) 65.7 KB; and the per-sample value counts of four real captures (counts only, in `files/`): three servers on
+exactly the 36 at 1 s with **300–365 processes per sample** (median 303, 339, 349; 2,512–2,873 values per sample, of
+which ~85 not per process), one web server on a 187-counter set at 10 s with ~81 processes. A `.blg` costs about
+**45–54 bytes per value** per sample, and values = (Process counters × processes) + machine-wide values, so:
+
+- **full set (36 + G1 + G2, 10 Process counters): bytes/sample ≈ 4.5 KB + 0.53 KB × processes**
+- **the 36 only (8 Process counters): bytes/sample ≈ 3.5 KB + 0.43 KB × processes**
+
+Hours held by 512 MB, full set at the 10 s default: 100 processes ≈ 26 h, 200 ≈ 13.5 h, 300 ≈ 9 h, 350 ≈ 7.8 h,
+400 ≈ 6.9 h, 500 ≈ 5.5 h. **ExportEveryHours = 4 stays**: R6 (needs ≥ 1.5 × 4 = 6 h) turns NonCompliant only above
+~460 processes. For comparison, the real 36-counter servers at their own 1 s would hold only ≈ 1 h in 512 MB. R6 uses
+this formula before the first export (then the measured value); the README quotes the table. The wrap proof and the
+10 s full-set measurement (BbWrap1/2, BbFull10 on vm1) confirm it later.

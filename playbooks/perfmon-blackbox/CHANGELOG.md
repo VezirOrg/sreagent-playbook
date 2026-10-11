@@ -17,3 +17,7 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
 - 2026-10-11: synthetic capture generator `tests/synth/make_capture.py`, local tests L01–L04, L07 (`tests/run.sh`).
 - 2026-10-11: P22 (Process set stays), P23 (implementation choices), P24 (Windows dev over SSH on lab VMs), P25
   (Windows PowerShell 5.1 on servers, runtime split), P26 (export uses only what ships with Windows Server).
+- 2026-10-11: package code: `PerfmonBlackboxDsc` (R1–R6, class-based), `PerfmonBlackbox.Common.ps1`,
+  `Start-PerfmonBlackbox.ps1`, `Export-PerfmonBlackbox.ps1` (Windows PowerShell 5.1, ASCII), `PerfmonBlackbox.config.ps1`,
+  `build.ps1`; Pester L05 (24 tests incl. export end to end on synthetic `.blg`) and PSScriptAnalyzer 5.1 rules,
+  run on a lab VM by `tests/run.sh L05`. P27: storm answered (none), bytes-per-sample formula.

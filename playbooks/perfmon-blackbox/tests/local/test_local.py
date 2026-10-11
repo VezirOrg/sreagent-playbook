@@ -257,6 +257,14 @@ class L04FetchLatest(unittest.TestCase):
 
 
 class L07Template(unittest.TestCase):
+    def test_server_scripts_ascii(self):
+        # Windows PowerShell 5.1 reads a BOM-less UTF-8 script as ANSI: server code stays pure ASCII (P25)
+        for d, _, fs in os.walk(os.path.join(PB, 'package')):
+            for f in fs:
+                if f.endswith(('.ps1', '.psm1', '.psd1', '.txt', '.xml')):
+                    data = open(os.path.join(d, f), 'rb').read()
+                    self.assertTrue(all(b < 128 for b in data), f)
+
     """The template holds exactly the 36 lines of the counter list, no location, date or machine field;
     placeholders only {{MaxSizeMB}} and {{SampleIntervalSeconds}}."""
 
