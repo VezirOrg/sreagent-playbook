@@ -185,6 +185,8 @@ def definition(kind, content_uri, content_hash, version):
                         'existenceCondition': {'allOf': [
                             {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/complianceStatus', 'equals': 'Compliant'},
                             {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/parameterHash', 'equals': parameter_hash()},
+                            # P32: a new package (release) makes machines on the old one non-compliant -> remediated
+                            {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.contentHash', 'equals': content_hash},
                         ]},
                         'deployment': {'properties': {
                             'mode': 'incremental',

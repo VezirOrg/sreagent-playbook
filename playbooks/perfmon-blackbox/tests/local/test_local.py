@@ -330,6 +330,7 @@ class L08Policies(unittest.TestCase):
             names = [c['name'] for c in gc['configurationParameter']]
             self.assertTrue(all(n.startswith('[BlackboxFiles]Files;') for n in names))
             h = det['existenceCondition']['allOf'][1]['equals']
+            self.assertEqual(det['existenceCondition']['allOf'][2]['equals'], 'AB' * 32)  # P32
             self.assertEqual(re.findall(r"'(\[BlackboxFiles\][^']+)'", h), names)
 
     def test_writer_role_condition(self):

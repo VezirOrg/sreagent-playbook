@@ -386,3 +386,11 @@ publishing. It does **not** cover v1.0.0 or any non-prerelease: that stays Emre'
 
 - **rc.2** (boot reason derived from the boot time, for T08): `PerfmonBlackbox.zip` SHA-256
   `CC42AF186D13D622FA8342D8941AF079157DFCB585DA4164508103FCDDDEE7A0` (T01 green on dc; 12 files scrub-checked clean).
+
+## P32: the DINE existence condition also pins the package hash (session 2, 2026-10-11)
+
+The cmdlet-style existence condition (Compliant + `parameterHash`) never re-deploys a guest assignment whose machine is
+Compliant, so a new package version would not reach machines that already run the old one. The definitions add a
+third condition, `guestConfigurationAssignments/guestConfiguration.contentHash` equals the definition's `contentHash`:
+after a definition update (new release), every machine on the old package is non-compliant for the policy and the
+next remediation moves it to the new package. This is the adopter upgrade path (README).

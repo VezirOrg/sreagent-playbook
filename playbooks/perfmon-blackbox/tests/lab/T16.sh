@@ -16,6 +16,14 @@ guest "$m" make-trouble.ps1 -Status > "$ev/T16-$m-truth.raw" 2>&1
 python3 -c 'import json,sys; t=json.load(open(sys.argv[1])); sys.exit(0 if t.get("ended") else 1)' "$ev/T16-$m-truth.raw" 2>/dev/null || { echo "planted load not finished yet"; exit 1; }
 e=$(guest "$m" export-now.ps1); echo "$e" | tail -3
 zip=$(echo "$e" | grep '^last_blob:' | sed 's/^last_blob: //; s#.*/##')
+# the capture range the agent should quote is the latest zip's own window (a scheduled export may have cut the load)
+win=$(verify_blobs "$m" 1 -AllowIncomplete | grep 'manifest:' | head -1)
+python3 -c '
+import json, re, sys
+t = json.load(open(sys.argv[1], encoding="utf-8-sig"))
+m = re.search(r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\.\d+ \.\. (\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)", sys.argv[2])
+if m: t["capture_first"], t["capture_last"] = m.group(1), m.group(2)
+json.dump(t, open(sys.argv[1], "w"), indent=1)' "$ev/T16-$m-truth.raw" "$win"
 q="Analyse the latest PerfMon capture of the server $name with your perfmon-triage skill. The captures are in the storage account $sa (container perfmon). Fetch the latest one yourself and give your report."
 (cd "$lab" && scripts/ask-agent "$q" 2>&1) | grep -v '^direnv:' > "$ev/T16-$m-thread.raw"
 python3 -c '
