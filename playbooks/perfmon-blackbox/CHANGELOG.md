@@ -23,3 +23,6 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
   run on a lab VM by `tests/run.sh L05`. P27: storm answered (none), bytes-per-sample formula.
 - 2026-10-11: `infra/main.bicep` (private storage, PE, lifecycle 30 d, write-only custom role, agent readers); T01, T13, T14 green on lab18.
 - 2026-10-11: `build.ps1` neutralises the MOF's build host/user/paths; pre-release `perfmon-blackbox/v1.0.0-rc.1` (P29) for the lab.
+- 2026-10-11: **lab18 vm1, policy-deployed (rc.1): T04, T06, T07, T09, T10, T11, T12 green**; first export uploaded with the
+  VM's own identity (201), roll gap 1.7–2.7 s, consecutive exports continuous (no gap, no overlap), a machine cannot
+  write elsewhere or read. T04/T06e read the assignment report API; verifier decodes the list response's BOM under 5.1.

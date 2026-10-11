@@ -33,3 +33,15 @@ verify_blobs() { # verify_blobs <machine> <last N> [extra args]: run guest/verif
   (cd "$lab" && scripts/vmssh dc "if (-not (Test-Path C:\\\\BbDev\\\\src\\\\package)) { 'NO-SRC' }" 2>/dev/null) | grep -q NO-SRC && \
     echo "  (dc has no C:\\BbDev\\src: run tests/run.sh L05 or T01 first)"
   guest dc verify-blobs.ps1 -Account "$sa" -Prefix "$(prefix_of "$m")" -Last "$n" "$@"; }
+ga_json() { # ga_json <machine>: the guest assignment plus its latest report's resources, as one JSON object
+  base="https://management.azure.com$(machine_id "$1")/providers/Microsoft.GuestConfiguration/guestConfigurationAssignments/PerfmonBlackbox"
+  a=$(az rest --method get --url "$base?api-version=2022-01-25" -o json 2>/dev/null) || { echo '{}'; return; }
+  r=$(az rest --method get --url "$base/reports?api-version=2022-01-25" -o json 2>/dev/null || echo '{"value":[]}')
+  python3 -c '
+import json, sys
+a = json.loads(sys.argv[1])["properties"]; v = json.loads(sys.argv[2]).get("value") or []
+v.sort(key=lambda x: x["properties"].get("endTime") or "")
+res = (v[-1]["properties"].get("details") or {}).get("resources", []) if v else []
+a["resources"] = [{"id": (x.get("properties") or {}).get("ResourceId"), "status": x.get("complianceStatus"),
+                   "reasons": " | ".join(y.get("phrase", "") for y in x.get("reasons") or [])} for x in res]
+print(json.dumps(a))' "$a" "$r"; }

@@ -9,7 +9,8 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $tok = ((Invoke-WebRequest -UseBasicParsing -Headers @{ Metadata = 'true' } 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fstorage.azure.com%2F').Content | ConvertFrom-Json).access_token
 $h = @{ Authorization = "Bearer $tok"; 'x-ms-version' = '2023-11-03' }
 $base = "https://$Account.blob.core.windows.net/$Container"
-[xml]$x = (Invoke-WebRequest -UseBasicParsing -Headers $h "$base`?restype=container&comp=list&include=metadata&prefix=$([uri]::EscapeDataString($Prefix + '/'))").Content.TrimStart([char]0xFEFF)
+$lr = Invoke-WebRequest -UseBasicParsing -Headers $h "$base`?restype=container&comp=list&include=metadata&prefix=$([uri]::EscapeDataString($Prefix + '/'))"
+[xml]$x = [Text.Encoding]::UTF8.GetString($lr.RawContentStream.ToArray()).TrimStart([char]0xFEFF)
 $blobs = @($x.EnumerationResults.Blobs.Blob | Where-Object { $_.Name -like '*.zip' } | Sort-Object { ($_.Name -split '_')[-1] })
 "blobs under prefix: $($blobs.Count)"
 $fail = 0
