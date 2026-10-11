@@ -10,7 +10,7 @@ q="Skill check, no analysis. Use your perfmon-triage skill files. In your termin
 out=$(cd "$lab" && scripts/ask-agent "$q" 2>&1 | grep -v '^direnv:' | mask); echo "$out" | tail -40
 zipline=$(echo "$newest" | grep '^zip ' | head -1 | sed 's/^zip //; s/:.*//; s#.*/##')
 rows=$(echo "$newest" | grep 'manifest:' | head -1 | sed -E 's/.*rows ([0-9]+).*/\1/')
-echo "$out" | grep -q "$(echo "$zipline" | sed "s/$name/vm1/I")" && ok "agent picked the newest zip" || bad "agent did not name the newest zip ($zipline)"
+echo "$out" | grep -qF "$zipline" && ok "agent picked the newest zip" || bad "agent did not name the newest zip ($zipline)"
 for k in unparsed_paths bad_cells short_rows; do echo "$out" | grep -Eq "$k[^0-9]*0\b" && ok "$k = 0" || bad "$k not 0"; done
 echo "$out" | grep -Eq "rows[^0-9]*$rows\b" && ok "rows = manifest rows ($rows)" || bad "rows differ from the manifest ($rows)"
 echo "$out" | grep -qi 'sha256: OK' && ok 'manifest hash checked' || bad 'no hash check line'
