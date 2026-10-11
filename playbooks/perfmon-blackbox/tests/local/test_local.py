@@ -372,6 +372,8 @@ class L08Policies(unittest.TestCase):
             self.assertEqual(p['parameters']['PackageContainerResourceId']['defaultValue'], '')
             det = p['policyRule']['then']['details']
             res = det['deployment']['properties']['template']['resources']
+            # contentManagedIdentity is silently dropped by older API versions (P47)
+            self.assertGreaterEqual(res[0]['apiVersion'], '2024-04-05')
             gc = res[0]['properties']['guestConfiguration']
             self.assertIn("if(empty(parameters('PackageContainerResourceId')), 'https://example.invalid/PerfmonBlackbox.zip'", gc['contentUri'])
             self.assertIn(".blob.core.windows.net/", gc['contentUri'])

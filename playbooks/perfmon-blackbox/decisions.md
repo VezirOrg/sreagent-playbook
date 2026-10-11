@@ -571,3 +571,12 @@ backstop the Export task also gets **RestartOnFailure (15 min, 3 times)**, and `
 stays, so a retry never overlaps a scheduled run. (Task Scheduler's restart acts on a failed start rather than on a
 non-zero exit code, which is why the retry lives in the script.) Test: storage blocked by name on one machine, an
 export started, the block lifted after ~3 min: the same run uploads at its +5-min attempt, 0 gaps, continuous.
+
+## P47: the guest assignment is created with API 2024-04-05 (defect found in T18b, 2026-10-11)
+
+T18b (arc1, storage mode) failed: the agent logged "Managed identity not provided, defaulting to sas uri token" and the
+private storage answered 409 (public access not permitted). Cause: the policy template created the guest assignment
+with `apiVersion 2022-01-25`; `contentManagedIdentity` exists only from `2024-04-05` (Learn: API change log for
+guestConfigurationAssignments), so ARM dropped it without an error. Our defect, not a platform limit: no stop under
+P45. Fix: the template uses `2024-04-05`; L08 asserts the version. No SAS was ever used or offered: the failed download
+left the server on its current (GitHub-mode) configuration. T18b is rerun with the redeployed definitions.

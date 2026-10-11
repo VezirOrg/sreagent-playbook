@@ -159,7 +159,7 @@ def definition(kind, content_uri, content_hash, version):
                        'PackageContainerResourceId': {'type': 'string'}})
     machine_id = f"[resourceId('{k['type']}', parameters('machineName'))]"
     gc_assignment = {
-        'apiVersion': '2022-01-25',
+        'apiVersion': '2024-04-05',  # contentManagedIdentity exists only from 2024-04-05 (P47)
         'type': k['assignment_type'],
         'name': f"[concat(parameters('machineName'), '/Microsoft.GuestConfiguration/{NAME}')]",
         'location': "[parameters('location')]",
