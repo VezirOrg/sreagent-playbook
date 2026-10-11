@@ -580,3 +580,8 @@ with `apiVersion 2022-01-25`; `contentManagedIdentity` exists only from `2024-04
 guestConfigurationAssignments), so ARM dropped it without an error. Our defect, not a platform limit: no stop under
 P45. Fix: the template uses `2024-04-05`; L08 asserts the version. No SAS was ever used or offered: the failed download
 left the server on its current (GitHub-mode) configuration. T18b is rerun with the redeployed definitions.
+
+Addendum (T18b second run, 2026-10-11): with 2024-04-05 the agent downloads "from private blob using managed identity";
+it then got 403 because the per-server reader grant had failed. The arc assignment identity's RBAC Administrator
+assignment still carried the pre-P45 condition (Writer only): `az role assignment create` returns an existing assignment
+unchanged. `lab-policy.sh` now updates a differing condition in place; `deploy.md` warns adopters who upgrade.

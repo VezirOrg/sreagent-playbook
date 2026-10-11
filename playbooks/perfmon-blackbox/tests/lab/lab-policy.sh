@@ -19,6 +19,13 @@ mi_roles() { # mi_roles <principalId> <role> <scope> [condition]
   if [ -n "${4:-}" ]; then
     az role assignment create --assignee-object-id "$1" --assignee-principal-type ServicePrincipal --role "$2" --scope "$3" \
       --condition "$4" --condition-version 2.0 -o none
+    # create returns an existing assignment unchanged, with its old condition (P47): update it in place
+    ra=$(az role assignment list --assignee-object-id "$1" --role "$2" --scope "$3" --query "[0]" -o json)
+    if [ "$(echo "$ra" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("condition") or "")')" != "$4" ]; then
+      f=$(mktemp); echo "$ra" | COND="$4" python3 -c 'import json,os,sys; d=json.load(sys.stdin); d["condition"]=os.environ["COND"]; d["conditionVersion"]="2.0"; print(json.dumps(d))' > "$f"
+      az role assignment update --role-assignment "@$f" -o none; rm -f "$f"
+      echo "  (condition of '$2' updated)"
+    fi
   else
     az role assignment create --assignee-object-id "$1" --assignee-principal-type ServicePrincipal --role "$2" --scope "$3" -o none
   fi

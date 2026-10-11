@@ -118,7 +118,10 @@ az policy remediation create -n pbb-vm-1 --policy-assignment pbb-vm -g <rg>    #
 ```
 
 The condition allows exactly the Writer role and the built-in Storage Blob Data Reader (`2a2b9908-…`, granted only in
-storage mode, on the package container). Repeat for `perfmon-blackbox-arc` (`pbb-arc`). Wait a minute after the role assignments before the remediation.
+storage mode, on the package container). **Upgrading from a setup without storage mode:** `az role assignment
+create` returns an existing assignment unchanged, with its old condition; then update the condition
+(`az role assignment update`) or the reader grant fails with "does not have permission to perform action
+roleAssignments/write". Repeat for `perfmon-blackbox-arc` (`pbb-arc`). Wait a minute after the role assignments before the remediation.
 
 What happens per server: the guest assignment `PerfmonBlackbox` is created; one role assignment of the Writer role on
 the container lets the server write only under `<subscriptionId>/<resourceGroup>/<server>/`; within 15–30 minutes the
