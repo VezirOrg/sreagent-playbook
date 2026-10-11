@@ -56,7 +56,15 @@ $cpus = [Environment]::ProcessorCount
 $m = 60 * $Scale   # seconds per timeline minute
 $t = [ordered]@{ host = $env:COMPUTERNAME.ToLowerInvariant(); utc_offset = ([TimeZoneInfo]::Local.BaseUtcOffset.ToString()); started = (Now); cpus = $cpus; problems = @() }
 Save $t
-$spin = "`$e=(Get-Date).AddSeconds({0}); `$j=1..{1} | % {{ Start-Job {{ param(`$x) while((Get-Date) -lt `$x){{ `$null=[math]::Sqrt(12345) }} }} -ArgumentList `$e }}; `$j | Wait-Job | Out-Null"
+# every load runs in its OWN bb*.exe process (runspaces, not Start-Job children, which would show as powershell#N)
+$pool = @'
+function Invoke-Pool([int]$n, [scriptblock]$body, $arg) {
+  $p = [runspacefactory]::CreateRunspacePool(1, $n); $p.Open(); $h = @()
+  for ($i = 0; $i -lt $n; $i++) { $ps = [powershell]::Create(); $ps.RunspacePool = $p; [void]$ps.AddScript($body).AddArgument($arg).AddArgument($i); $h += ,@($ps, $ps.BeginInvoke()) }
+  foreach ($x in $h) { [void]$x[0].EndInvoke($x[1]); $x[0].Dispose() }; $p.Close()
+}
+'@
+$spinTpl = "Invoke-Pool {1} {{ param(`$end, `$i) while ((Get-Date) -lt `$end) {{ `$null = [math]::Sqrt(12345) }} }} (Get-Date).AddSeconds({0})"
 # leak: allocate and touch memory every 10 s, kept referenced (one PID for the whole run)
 $leakSec = [int](70 * $m)
 $leak = Start-Bb 'bbleak' ("`$l=New-Object System.Collections.ArrayList; `$end=(Get-Date).AddSeconds($leakSec); `$step=[int]($LeakMBPerHour*1MB/360); while((Get-Date) -lt `$end){ `$b=New-Object byte[] `$step; for(`$i=0;`$i -lt `$b.Length;`$i+=4096){`$b[`$i]=1}; [void]`$l.Add(`$b); Start-Sleep 10 }")
@@ -70,19 +78,20 @@ foreach ($p in $plan) {
     switch ($p.id) {
         'cpu' {
             $d = [int](12 * $m); $from = Now
-            $pr = Start-Bb 'bbcpu' ($spin -f $d, $cpus); $pr.WaitForExit()
+            $pr = Start-Bb 'bbcpu' ($pool + ($spinTpl -f $d, $cpus)); $pr.WaitForExit()
             $t.problems += [ordered]@{ id = 'cpu'; driver = 'bbcpu'; counter = 'Processor Information\% Processor Time'; from = $from; to = (Now); minutes = 12 * $Scale }
         }
         'stall' {
             $from = Now
-            $pr = Start-Bb 'bbstall' ($spin -f 30, $cpus); $pr.WaitForExit()
+            $pr = Start-Bb 'bbstall' ($pool + ($spinTpl -f ([int](30 * [Math]::Max($Scale, 0.1))), $cpus)); $pr.WaitForExit()
             $st = @($t.problems | Where-Object { $_.id -eq 'stall' })
             if (-not $st.Count) { $t.problems += [ordered]@{ id = 'stall'; driver = 'bbstall'; episodes = @() }; $st = @($t.problems | Where-Object { $_.id -eq 'stall' }) }
             $st[0].episodes += [ordered]@{ from = $from; to = (Now); seconds = 30 }
         }
         'disk' {
             $d = [int](6 * $m); $from = Now
-            $io = "`$e=(Get-Date).AddSeconds($d); `$j=1..8 | % { Start-Job { param(`$x,`$n) `$f='C:\BbDev\trouble\io'+`$n+'.bin'; `$fs=New-Object IO.FileStream(`$f,'Create','ReadWrite','None',4096,[IO.FileOptions]::WriteThrough); `$fs.SetLength(1GB); `$b=New-Object byte[] 4096; `$r=New-Object Random; while((Get-Date) -lt `$x){ `$fs.Position=[int64]`$r.Next(0,262143)*4096; `$fs.Write(`$b,0,4096); `$fs.Flush(`$true) }; `$fs.Close(); Remove-Item `$f } -ArgumentList `$e,`$_ }; `$j | Wait-Job | Out-Null"
+            # 32 writers with write-through 4 KiB random I/O: queue depth 32 against the disk's IOPS cap = latency
+            $io = $pool + "New-Item -ItemType Directory -Force C:\BbDev\trouble\io | Out-Null; Invoke-Pool 32 { param(`$end, `$i) `$f = 'C:\BbDev\trouble\io\' + `$i + '.bin'; `$fs = New-Object IO.FileStream(`$f, 'Create', 'ReadWrite', 'None', 4096, [IO.FileOptions]::WriteThrough); `$fs.SetLength(256MB); `$b = New-Object byte[] 4096; `$r = New-Object Random(`$i); while ((Get-Date) -lt `$end) { `$fs.Position = [int64]`$r.Next(0, 65535) * 4096; `$fs.Write(`$b, 0, 4096) }; `$fs.Close(); Remove-Item `$f } (Get-Date).AddSeconds($d)"
             $pr = Start-Bb 'bbdisk' $io; $pr.WaitForExit()
             $t.problems += [ordered]@{ id = 'disk'; driver = 'C:'; counter = 'LogicalDisk\Avg. Disk sec/Write'; from = $from; to = (Now); minutes = 6 * $Scale }
         }
