@@ -355,3 +355,12 @@ this formula before the first export (then the measured value); the README quote
   in its own order: the Tests compare accordingly.
 - The package file is `PerfmonBlackbox.zip` (the name must equal the configuration name; the version lives in the
   release tag and the policy's `contentHash`), not `PerfmonBlackbox_<ver>.zip` as T01's row said.
+
+## P29: lab package = GitHub pre-release `perfmon-blackbox/v1.0.0-rc.1` (Emre, 2026-10-11, answer (a))
+
+For the lab runs before v1.0.0, the package is published as a GitHub **pre-release** `perfmon-blackbox/v1.0.0-rc.1`
+in the public repo: `PerfmonBlackbox.zip` is its only asset; notes "lab test build, not for use"; marked prerelease,
+**not latest**; deleted or superseded at v1.0.0. The vezir's condition: release assets bypass the git scrub hooks, so
+before the upload the zip is extracted and `scripts/scrub-check.sh` runs over every file in it (denylist, secret
+patterns, no machine names, no lab paths); the zip's SHA-256 is recorded here and is the policies' `contentHash`.
+Pushing to origin/main mid-session (rebase + fast-forward) is allowed for this.
