@@ -494,3 +494,6 @@ At a 1-s interval every export marked its zip `complete: false`: the roll of P21
 **`export_roll`**, and a roll hole of ≤ 10 s does **not** make `complete` false (`complete` means "no unexpected
 loss"). A longer hole at that place keeps `collector_restart` and does. At the 10-s default nothing changes (the roll
 fits within two intervals). In rc.7.
+- **rc.7** (P41: `export_roll`): `PerfmonBlackbox.zip` SHA-256
+  `011ABABE14A8F4D720DAE32025679821569CAE18071EE06696F2F923441B673B` (L05 34/34, T01 green on dc; 12 files
+  scrub-checked clean before the upload).

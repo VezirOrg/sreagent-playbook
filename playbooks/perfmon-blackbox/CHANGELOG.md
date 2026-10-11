@@ -33,3 +33,4 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
 - 2026-10-11: rc.4 (P36: a resource's Test never throws; self-heals ACL-locked files).
 - 2026-10-11: rc.5 (P37: gaps and 'wrapped' judged per ring, bounded event text).
 - 2026-10-11: rc.6 (P40: a hole before a wrapped ring is reported as buffer_overrun).
+- 2026-10-11: rc.7 (P41: the export's own short roll is an expected export_roll gap).
