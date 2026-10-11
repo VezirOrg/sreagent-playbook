@@ -17,6 +17,12 @@ README; tests/lab/lab-policy.sh does it in the lab).
 
 Usage:
   build_policies.py --content-uri <https://.../PerfmonBlackbox.zip> --content-hash <sha256> --version 1.0.0 [--out policy/out]
+    -> perfmon-blackbox-vm.json, perfmon-blackbox-arc.json: the package from the GitHub release asset (contentUri)
+  ... --package-container-id <blob container resource ID>
+    -> perfmon-blackbox-vm-storage.json, perfmon-blackbox-arc-storage.json: the same zip from your container, downloaded
+       with the machine's system identity (no SAS), plus Storage Blob Data Reader on that container per machine (P48).
+       The mode is fixed in the definition (metadata and deployment): the service syncs the guest assignment from the
+       metadata. Never assign both modes over the same machine (both write the guest assignment PerfmonBlackbox).
 Standard library only.
 """
 import argparse
@@ -28,17 +34,17 @@ GC_CONTRIBUTOR = '088ab73d-1256-47ae-bea9-9de8e7131f31'   # built-in: Guest Conf
 RBAC_ADMIN = 'f58310d9-a9f6-439a-9e8d-f62e7b41a168'       # built-in: Role Based Access Control Administrator
 READER = 'acdd72a7-3385-48ef-bd42-f606fba81ae7'           # built-in: Reader (to read the machine's identity)
 BLOB_READER = '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1'      # built-in: Storage Blob Data Reader (package container, P45)
-PKG = "parameters('PackageContainerResourceId')"
-# split() of a padded string: indexes [2], [4], [8] exist even when the parameter is empty (both if() branches may be
-# evaluated)
-PKGP = f"split(concat({PKG}, '//////////////'), '/')"
 
 
-def package_uri_expr(github_uri):
-    """P45: GitHub mode (parameter empty) or storage mode (https://<account>.blob.core.windows.net/<container>/<name>.zip).
-    A policy/ARM expression body, without the surrounding brackets."""
-    return (f"if(empty({PKG}), '{github_uri}', concat('https://', {PKGP}[8], '.blob.core.windows.net/', "
-            f"last(split({PKG}, '/')), '/{NAME}.zip'))")
+def package_container(resource_id):
+    """P48: storage mode. '/subscriptions/<s>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/<a>/
+    blobServices/default/containers/<c>' -> (subscription, resource group, account, container, package URI)."""
+    parts = resource_id.strip('/').split('/')
+    if (len(parts) != 12 or parts[0].lower() != 'subscriptions' or parts[2].lower() != 'resourcegroups'
+            or parts[5].lower() != 'microsoft.storage' or parts[6].lower() != 'storageaccounts' or parts[10].lower() != 'containers'):
+        raise ValueError('not a blob container resource ID')
+    sub, rg, account, container = parts[1], parts[3], parts[7], parts[11]
+    return sub, rg, account, container, f'https://{account}.blob.core.windows.net/{container}/{NAME}.zip'
 
 
 def reader_template():
@@ -137,8 +143,11 @@ def role_template():
     }
 
 
-def definition(kind, content_uri, content_hash, version):
+def definition(kind, content_uri, content_hash, version, package_container_id=None):
     k = KIND[kind]
+    storage = package_container(package_container_id) if package_container_id else None
+    if storage:
+        content_uri = storage[4]
     params = {}
     for p, default, desc in PARAMS:
         params[p] = {'type': 'String', 'metadata': {'displayName': p, 'description': desc}}
@@ -147,16 +156,10 @@ def definition(kind, content_uri, content_hash, version):
     params['WriterRoleDefinitionId'] = {'type': 'String', 'metadata': {
         'displayName': 'WriterRoleDefinitionId',
         'description': 'Resource ID of the custom role "PerfMon Blackbox Writer" (infra output writerRoleDefinitionId).'}}
-    params['PackageContainerResourceId'] = {'type': 'String', 'defaultValue': '', 'metadata': {
-        'displayName': 'PackageContainerResourceId',
-        'description': ('Empty: download the package from the GitHub release asset. Else the resource ID of a blob container '
-                        'that holds the same PerfmonBlackbox.zip: the machine downloads it with its system-assigned identity '
-                        '(no SAS) and gets Storage Blob Data Reader on that container only.')}}
     params['effect'] = {'type': 'String', 'defaultValue': 'DeployIfNotExists', 'allowedValues': ['DeployIfNotExists', 'Disabled'],
                         'metadata': {'displayName': 'Effect'}}
     dep_params = {p: {'type': 'string'} for p, _, _ in PARAMS}
-    dep_params.update({'machineName': {'type': 'string'}, 'location': {'type': 'string'}, 'WriterRoleDefinitionId': {'type': 'string'},
-                       'PackageContainerResourceId': {'type': 'string'}})
+    dep_params.update({'machineName': {'type': 'string'}, 'location': {'type': 'string'}, 'WriterRoleDefinitionId': {'type': 'string'}})
     machine_id = f"[resourceId('{k['type']}', parameters('machineName'))]"
     gc_assignment = {
         'apiVersion': '2024-04-05',  # contentManagedIdentity exists only from 2024-04-05 (P47)
@@ -164,8 +167,7 @@ def definition(kind, content_uri, content_hash, version):
         'name': f"[concat(parameters('machineName'), '/Microsoft.GuestConfiguration/{NAME}')]",
         'location': "[parameters('location')]",
         'properties': {'guestConfiguration': {
-            'name': NAME, 'version': version, 'contentUri': '[' + package_uri_expr(content_uri) + ']', 'contentHash': content_hash,
-            'contentManagedIdentity': f"[if(empty({PKG}), json('null'), 'system')]",
+            'name': NAME, 'version': version, 'contentUri': content_uri, 'contentHash': content_hash,
             'contentType': 'Custom', 'assignmentType': 'ApplyAndAutoCorrect',
             'configurationParameter': [{'name': cfg_name(p), 'value': f"[parameters('{p}')]"} for p, _, _ in PARAMS],
         }},
@@ -189,31 +191,38 @@ def definition(kind, content_uri, content_hash, version):
             'template': role_template(),
         },
     }
+    if storage:
+        # P48: the system identity downloads the package; the same literal is in the metadata (the service syncs from it)
+        gc_assignment['properties']['guestConfiguration']['contentManagedIdentity'] = 'system'
     reader = {
-        'condition': f"[not(empty({PKG}))]",
         'apiVersion': '2022-09-01',
         'type': 'Microsoft.Resources/deployments',
         'name': "[concat('perfmon-blackbox-pkgreader-', uniqueString(parameters('machineName'), resourceGroup().id))]",
-        'subscriptionId': f"[if(empty({PKG}), subscription().subscriptionId, {PKGP}[2])]",
-        'resourceGroup': f"[if(empty({PKG}), resourceGroup().name, {PKGP}[4])]",
+        'subscriptionId': storage[0] if storage else '',
+        'resourceGroup': storage[1] if storage else '',
         'properties': {
             'mode': 'Incremental',
             'expressionEvaluationOptions': {'scope': 'inner'},
             'parameters': {
                 'principalId': {'value': f"[reference({machine_id[1:-1]}, '{k['api']}', 'full').identity.principalId]"},
-                'storageAccountName': {'value': f"[if(empty({PKG}), 'none', {PKGP}[8])]"},
-                'containerName': {'value': f"[if(empty({PKG}), 'none', last(split({PKG}, '/')))]"},
+                'storageAccountName': {'value': storage[2] if storage else ''},
+                'containerName': {'value': storage[3] if storage else ''},
             },
             'template': reader_template(),
         },
     }
     deployment_parameters = {p: {'value': f"[parameters('{p}')]"} for p, _, _ in PARAMS}
     deployment_parameters.update({'machineName': {'value': "[field('name')]"}, 'location': {'value': "[field('location')]"},
-                                  'WriterRoleDefinitionId': {'value': "[parameters('WriterRoleDefinitionId')]"},
-                                  'PackageContainerResourceId': {'value': f"[{PKG}]"}})
+                                  'WriterRoleDefinitionId': {'value': "[parameters('WriterRoleDefinitionId')]"}})
+    meta_gc = {'name': NAME, 'version': version, 'contentType': 'Custom', 'contentUri': content_uri,
+               'contentHash': content_hash, 'assignmentType': 'ApplyAndAutoCorrect',
+               'configurationParameter': {p: cfg_name(p) for p, _, _ in PARAMS}}
+    if storage:
+        meta_gc['contentManagedIdentity'] = 'system'
     return {
         'properties': {
-            'displayName': f'perfmon-blackbox: PerfMon black-box recorder on Windows {k["display"]}',
+            'displayName': f'perfmon-blackbox: PerfMon black-box recorder on Windows {k["display"]}'
+                           + (' (package from your storage)' if storage else ''),
             'policyType': 'Custom',
             'mode': 'Indexed',
             'description': ('Keeps a PerfMon Data Collector Set running as a black box (binary circular log) and exports the '
@@ -224,11 +233,7 @@ def definition(kind, content_uri, content_hash, version):
                 'category': 'Guest Configuration',
                 'version': version,
                 'requiredProviders': ['Microsoft.GuestConfiguration'],
-                'guestConfiguration': {
-                    'name': NAME, 'version': version, 'contentType': 'Custom', 'contentUri': content_uri,
-                    'contentHash': content_hash, 'assignmentType': 'ApplyAndAutoCorrect',
-                    'configurationParameter': {p: cfg_name(p) for p, _, _ in PARAMS},
-                },
+                'guestConfiguration': meta_gc,
             },
             'parameters': params,
             'policyRule': {
@@ -246,8 +251,8 @@ def definition(kind, content_uri, content_hash, version):
                             {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/parameterHash', 'equals': parameter_hash()},
                             # P32: a new package (release) makes machines on the old one non-compliant -> remediated
                             {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.contentHash', 'equals': content_hash},
-                            # P45: a switch between GitHub and storage mode redeploys the assignment
-                            {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.contentUri', 'equals': '[' + package_uri_expr(content_uri) + ']'},
+                            # P45: a machine still on the other mode's source is redeployed
+                            {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.contentUri', 'equals': content_uri},
                         ]},
                         'deployment': {'properties': {
                             'mode': 'incremental',
@@ -256,7 +261,7 @@ def definition(kind, content_uri, content_hash, version):
                                 '$schema': 'https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#',
                                 'contentVersion': '1.0.0.0',
                                 'parameters': dep_params,
-                                'resources': [gc_assignment, role, reader],
+                                'resources': [gc_assignment, role] + ([reader] if storage else []),
                             },
                         }},
                     },
@@ -271,15 +276,23 @@ def main():
     ap.add_argument('--content-uri', required=True)
     ap.add_argument('--content-hash', required=True)
     ap.add_argument('--version', default='1.0.0')
+    ap.add_argument('--package-container-id', help='storage mode (P48): resource ID of the blob container that holds the '
+                    'same PerfmonBlackbox.zip; the machines download it with their system identity')
     ap.add_argument('--out', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out'))
     a = ap.parse_args()
     if not a.content_uri.startswith('https://'):
         ap.error('contentUri must be https')
+    if a.package_container_id:
+        try:
+            package_container(a.package_container_id)
+        except ValueError as e:
+            ap.error(str(e))
     os.makedirs(a.out, exist_ok=True)
+    suffix = '-storage' if a.package_container_id else ''
     for kind in ('vm', 'arc'):
-        path = os.path.join(a.out, f'perfmon-blackbox-{kind}.json')
+        path = os.path.join(a.out, f'perfmon-blackbox-{kind}{suffix}.json')
         with open(path, 'w', encoding='utf-8') as f:
-            json.dump(definition(kind, a.content_uri, a.content_hash.upper(), a.version), f, indent=2)
+            json.dump(definition(kind, a.content_uri, a.content_hash.upper(), a.version, a.package_container_id), f, indent=2)
             f.write('\n')
         print(path)
 

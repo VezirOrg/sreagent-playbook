@@ -11,6 +11,7 @@
 | Identity | Right | Scope | Why |
 |---|---|---|---|
 | each server (system-assigned) | **PerfMon Blackbox Writer** (custom: `blobs/write`, `blobs/add/action` only) **with an ABAC condition** | the `perfmon` container | upload its own zips |
+| each server (system-assigned), storage mode only (P48) | Storage Blob Data Reader | the package container (e.g. `packages`) | download the package with its own identity, no SAS |
 | policy assignment identity | Guest Configuration Resource Contributor | the servers' scope | create the guest assignment |
 | policy assignment identity | Reader | the servers' scope | read each server's identity (to grant it the Writer role) |
 | policy assignment identity | **PerfMon Blackbox Deployer** (custom: `Microsoft.Resources/deployments/*`, resource group read) | the storage's resource group | deploy the per-server role assignment there; every resource in that deployment is still checked against the identity's own rights |

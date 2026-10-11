@@ -585,3 +585,23 @@ Addendum (T18b second run, 2026-10-11): with 2024-04-05 the agent downloads "fro
 it then got 403 because the per-server reader grant had failed. The arc assignment identity's RBAC Administrator
 assignment still carried the pre-P45 condition (Writer only): `az role assignment create` returns an existing assignment
 unchanged. `lab-policy.sh` now updates a differing condition in place; `deploy.md` warns adopters who upgrade.
+
+## P48: the package mode is chosen when the definitions are generated (the vezir for Emre, 2026-10-11; replaces the P45 parameter)
+
+Found in T18b: storage-mode download with the system identity works on Arc (agent log 21:00:40Z: "from private blob
+using managed identity", downloaded, validated, applied). Ten minutes later a first-party Guest Configuration app (not the
+policy identity) PUT the guest assignment again, and the agent went back to the GitHub URI with "Managed identity not
+provided". Learn: the machine configuration service creates the guest assignment from the definition's
+`metadata.guestConfiguration`. Ours was static (GitHub URI, no identity), so a mode chosen by an assignment parameter is
+overwritten. Microsoft's `New-GuestConfigurationPolicy -UseSystemAssignedIdentity` writes `contentManagedIdentity:
+"system"` and the storage `contentUri` into that metadata and the deployment alike.
+
+Decision: `build_policies.py --package-container-id <container resource ID>` generates storage-mode definitions with
+the storage URI and `system` as literals in the metadata and the deployment, plus the per-server Storage Blob Data
+Reader grant on that container. The assignment parameter `PackageContainerResourceId` is removed. Conditions (the
+vezir): (1) distinct definition names per mode: `perfmon-blackbox-vm` / `perfmon-blackbox-vm-storage`,
+`perfmon-blackbox-arc` / `perfmon-blackbox-arc-storage`; (2) both write the same guest assignment `PerfmonBlackbox`:
+never assign both modes over the same machine; to switch, unassign the old one, assign the new one, remediate. T18c
+follows exactly that and shows no flapping (no first-party PUT back and forth); (3) the GitHub-mode definitions ship
+prebuilt as today; storage mode is always generated with the adopter's own container ID (one command in deploy.md).
+Emre's "both options in the policy" stays met: both modes ship.

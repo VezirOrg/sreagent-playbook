@@ -4,6 +4,10 @@
 #   direnv exec . playbooks/perfmon-blackbox/tests/lab/lab-policy.sh prereq                       # prerequisites only
 #   direnv exec . playbooks/perfmon-blackbox/tests/lab/lab-policy.sh <contentUri> <sha256> [version] [k=v ...]
 #     k=v: policy parameter overrides, e.g. MaxSizeMB=16 SampleIntervalSeconds=1 (T06b-T06e)
+#     PackageContainerResourceId=<container ID>: storage mode (P48): definitions perfmon-blackbox-<kind>-storage and
+#       assignments pbb-<kind>-storage; without it GitHub mode (perfmon-blackbox-<kind>, pbb-<kind>). The other mode's
+#       assignment of the same kind is removed first, with its identity's role assignments (P48: never both modes over
+#       one machine; switch = unassign, assign, remediate).
 # ARC_VM=<Azure VM name of arc1> keeps the arc1 Azure VM out of the VM policy and the VM prerequisites (notScopes).
 # Idempotent. Prints names and states only (IDs masked).
 . "$(dirname "$0")/common.sh"
@@ -46,8 +50,13 @@ done
 [ "${1:-}" = prereq ] && exit 0
 
 uri="${1:?contentUri}"; hash="${2:?sha256}"; ver="${3:-1.0.0}"; shift 2; [ $# -gt 0 ] && shift
+pkg=""; rest=""
+for a in "$@"; do case "$a" in PackageContainerResourceId=*) pkg="${a#*=}" ;; *) rest="$rest $a" ;; esac; done
+set -- $rest
+sfx=""; other="-storage"; [ -n "$pkg" ] && { sfx="-storage"; other=""; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
-python3 -I "$pb/policy/build_policies.py" --content-uri "$uri" --content-hash "$hash" --version "$ver" --out "$tmp" >/dev/null
+python3 -I "$pb/policy/build_policies.py" --content-uri "$uri" --content-hash "$hash" --version "$ver" --out "$tmp" \
+  ${pkg:+--package-container-id "$pkg"} >/dev/null
 writer=$(az role definition list --custom-role-only true --scope "$scope" --query "[?roleName=='PerfMon Blackbox Writer'].id | [0]" -o tsv)
 writer_guid=$(echo "$writer" | sed 's#.*/##')
 params=$(python3 -c '
@@ -57,16 +66,22 @@ for kv in sys.argv[3:]:
     k, v = kv.split("=", 1); p[k] = v
 print(json.dumps({k: {"value": v} for k, v in p.items()}))' "$sa_id" "$writer" "$@")
 for kind in ${KINDS:-vm arc}; do
-  f="$tmp/perfmon-blackbox-$kind.json"
+  # P48: unassign the other mode first (its identity's role assignments too, so none are left orphaned)
+  if old=$(az policy assignment show -n "pbb-$kind$other" --scope "$scope" --query identity.principalId -o tsv 2>/dev/null) && [ -n "$old" ]; then
+    for ra in $(az role assignment list --assignee-object-id "$old" --all --query "[].id" -o tsv); do az role assignment delete --ids "$ra" -o none; done
+    az policy assignment delete -n "pbb-$kind$other" --scope "$scope" -o none
+    echo "removed assignment pbb-$kind$other (other mode) and its role assignments"
+  fi
+  f="$tmp/perfmon-blackbox-$kind$sfx.json"
   python3 -c 'import json,sys; d=json.load(open(sys.argv[1]))["properties"]; [json.dump(d[k], open(sys.argv[2]+"."+k, "w")) for k in ("policyRule","parameters","metadata")]' "$f" "$f"
-  az policy definition create -n "perfmon-blackbox-$kind" --display-name "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["properties"]["displayName"])' "$f")" \
+  az policy definition create -n "perfmon-blackbox-$kind$sfx" --display-name "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["properties"]["displayName"])' "$f")" \
     --mode Indexed --rules "$f.policyRule" --params "$f.parameters" --metadata "@$f.metadata" -o none 2>/dev/null || \
-  az policy definition create -n "perfmon-blackbox-$kind" --mode Indexed --rules "$f.policyRule" --params "$f.parameters" -o none
+  az policy definition create -n "perfmon-blackbox-$kind$sfx" --mode Indexed --rules "$f.policyRule" --params "$f.parameters" -o none
   ns=""; [ "$kind" = vm ] && ns="$vmnot"
-  az policy assignment create -n "pbb-$kind" --display-name "perfmon-blackbox lab ($kind)" --policy "perfmon-blackbox-$kind" \
+  az policy assignment create -n "pbb-$kind$sfx" --display-name "perfmon-blackbox lab ($kind$sfx)" --policy "perfmon-blackbox-$kind$sfx" \
     --scope "$scope" --mi-system-assigned --location "$loc" --params "$params" ${ns:+--not-scopes $ns} -o none
-  pid=$(az policy assignment show -n "pbb-$kind" --scope "$scope" --query identity.principalId -o tsv)
-  echo "assignment pbb-$kind"
+  pid=$(az policy assignment show -n "pbb-$kind$sfx" --scope "$scope" --query identity.principalId -o tsv)
+  echo "assignment pbb-$kind$sfx"
   mi_roles "$pid" 'Guest Configuration Resource Contributor' "$scope"
   mi_roles "$pid" Reader "$scope"
   mi_roles "$pid" 'PerfMon Blackbox Deployer' "$scope"
@@ -78,6 +93,6 @@ done
 echo "waiting 60 s for the role assignments to propagate, then remediation"
 sleep 60
 for kind in ${KINDS:-vm arc}; do
-  az policy remediation create -n "pbb-$kind-$(date -u +%H%M%S)" --policy-assignment "pbb-$kind" -g "$rg" --resource-discovery-mode "${REMEDIATION_MODE:-ReEvaluateCompliance}" -o none
-  echo "remediation started for pbb-$kind"
+  az policy remediation create -n "pbb-$kind$sfx-$(date -u +%H%M%S)" --policy-assignment "pbb-$kind$sfx" -g "$rg" --resource-discovery-mode "${REMEDIATION_MODE:-ReEvaluateCompliance}" -o none
+  echo "remediation started for pbb-$kind$sfx"
 done

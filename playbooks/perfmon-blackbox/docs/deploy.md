@@ -56,25 +56,34 @@ done
 `perfmon-blackbox-vm` targets `Microsoft.Compute/virtualMachines` (Windows), `perfmon-blackbox-arc` targets
 `Microsoft.HybridCompute/machines` (Windows). Create only the one(s) you need.
 
-## 2b. Where the servers get the package: GitHub or your storage (P45)
+## 2b. Where the servers get the package: GitHub or your storage (P45, P48)
 
-Two modes, chosen per assignment with the parameter **`PackageContainerResourceId`**:
+Two modes. The mode is part of the **policy definition** (Machine Configuration builds each server's guest assignment
+from the definition's metadata, so it cannot be an assignment parameter):
 
-| Mode | Parameter | The server downloads from | Needs |
+| Mode | Definitions | The server downloads from | Needs |
 |---|---|---|---|
-| GitHub (default) | empty | the release asset on github.com | outbound HTTPS to github.com (and its download host) |
-| **Storage** | the resource ID of a blob container, e.g. the `packages` container that `infra/main.bicep` creates | `https://<account>.blob.core.windows.net/<container>/PerfmonBlackbox.zip`, with **its own system-assigned identity** (no SAS) | the private endpoint (same as for the uploads): **no internet at all** for the package |
+| GitHub (default) | `perfmon-blackbox-vm`, `perfmon-blackbox-arc` (step 2 as is) | the release asset on github.com | outbound HTTPS to github.com (and its download host) |
+| **Storage** | `perfmon-blackbox-vm-storage`, `perfmon-blackbox-arc-storage`, generated with your container's ID | `https://<account>.blob.core.windows.net/<container>/PerfmonBlackbox.zip`, with **its own system-assigned identity** (no SAS) | the private endpoint (same as for the uploads): **no internet at all** for the package |
 
-In storage mode the policy also grants each server **Storage Blob Data Reader on that container only**; the capture
-container stays write-only. The `contentHash` is the release's SHA-256 in both modes, so it is the same zip either way:
-copy the release zip **unchanged** into the container and check the hash.
+In storage mode each server also gets **Storage Blob Data Reader on that container only**; the capture container stays
+write-only. The `contentHash` is the release's SHA-256 in both modes, so it is the same zip either way: copy the release
+zip **unchanged** into the container and check the hash.
 
 ```sh
 curl -sL -o PerfmonBlackbox.zip <release asset URL>
 shasum -a 256 PerfmonBlackbox.zip            # must equal the SHA-256 in the release notes
 # from a host that reaches the storage's private endpoint, with Storage Blob Data Contributor on the container:
 az storage blob upload --auth-mode login --account-name <account> -c packages -n PerfmonBlackbox.zip -f PerfmonBlackbox.zip --overwrite
+# the storage-mode definitions (packageContainerResourceId is an output of infra/main.bicep):
+python3 policy/build_policies.py --content-uri <release asset URL> --content-hash <sha256> --version <x.y.z> \
+  --package-container-id <packageContainerResourceId> --out policy/out
+# -> policy/out/perfmon-blackbox-vm-storage.json, perfmon-blackbox-arc-storage.json: create them as in step 2 (name = file name)
 ```
+
+**Never assign both modes over the same machine**: both write the guest assignment `PerfmonBlackbox` and would keep
+overwriting each other. To switch a scope: delete the old assignment (and its identity's role assignments), create the
+new one with its roles (step 3), remediate. The collector keeps running through the switch.
 
 A different file under that name is refused by the server's hash check (the server keeps its current configuration).
 
@@ -96,8 +105,8 @@ Older agents: use GitHub mode.
 az policy assignment create -n pbb-vm --policy perfmon-blackbox-vm --scope <scope> \
   --mi-system-assigned --location <region> \
   --params '{"StorageAccountResourceId":{"value":"<storageAccountResourceId>"},
-             "WriterRoleDefinitionId":{"value":"<writerRoleDefinitionId>"},
-             "PackageContainerResourceId":{"value":""}}'      # or the package container's ID for storage mode
+             "WriterRoleDefinitionId":{"value":"<writerRoleDefinitionId>"}}'
+# storage mode: --policy perfmon-blackbox-vm-storage (and an assignment name of its own, e.g. pbb-vm-storage)
 pid=$(az policy assignment show -n pbb-vm --scope <scope> --query identity.principalId -o tsv)
 ```
 

@@ -366,27 +366,40 @@ class L08Policies(unittest.TestCase):
             self.assertEqual(re.findall(r"'(\[BlackboxFiles\][^']+)'", h), names)
 
     def test_package_source_modes(self):
-        # P45: empty PackageContainerResourceId = GitHub, else storage with the system identity and a reader role
-        for d in self.d.values():
-            p = d['properties']
-            self.assertEqual(p['parameters']['PackageContainerResourceId']['defaultValue'], '')
-            det = p['policyRule']['then']['details']
-            res = det['deployment']['properties']['template']['resources']
-            # contentManagedIdentity is silently dropped by older API versions (P47)
-            self.assertGreaterEqual(res[0]['apiVersion'], '2024-04-05')
-            gc = res[0]['properties']['guestConfiguration']
-            self.assertIn("if(empty(parameters('PackageContainerResourceId')), 'https://example.invalid/PerfmonBlackbox.zip'", gc['contentUri'])
-            self.assertIn(".blob.core.windows.net/", gc['contentUri'])
-            self.assertEqual(gc['contentManagedIdentity'], "[if(empty(parameters('PackageContainerResourceId')), json('null'), 'system')]")
-            reader = res[2]
-            self.assertEqual(reader['condition'], "[not(empty(parameters('PackageContainerResourceId')))]")
-            ra = reader['properties']['template']['resources'][0]['properties']
-            self.assertTrue(ra['roleDefinitionId'].endswith("'2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')]"))
-            self.assertNotIn('condition', ra)  # read on the package container only, no other scope
-            uris = [c['equals'] for c in det['existenceCondition']['allOf'] if c['field'].endswith('guestConfiguration.contentUri')]
-            self.assertEqual(uris, [gc['contentUri']])
-            # every split index goes through the padded string (the parameter may be empty)
-            self.assertNotRegex(json.dumps(d), r"split\(parameters\('PackageContainerResourceId'\), '/'\)\[")
+        # P48: the mode is fixed when the definitions are generated, in the metadata and the deployment alike (the
+        # service syncs the guest assignment from the metadata)
+        import build_policies as bp
+        cid = ('/subscriptions/sub-x/resourceGroups/rg-x/providers/Microsoft.Storage/'
+               'storageAccounts/stexample/blobServices/default/containers/packages')
+        uri = 'https://stexample.blob.core.windows.net/packages/PerfmonBlackbox.zip'
+        for kind in ('vm', 'arc'):
+            for storage in (False, True):
+                d = bp.definition(kind, 'https://example.invalid/PerfmonBlackbox.zip', 'AB' * 32, '1.0.0', cid if storage else None)
+                p = d['properties']
+                self.assertNotIn('PackageContainerResourceId', p['parameters'])
+                det = p['policyRule']['then']['details']
+                res = det['deployment']['properties']['template']['resources']
+                # contentManagedIdentity is silently dropped by older API versions (P47)
+                self.assertGreaterEqual(res[0]['apiVersion'], '2024-04-05')
+                gc = res[0]['properties']['guestConfiguration']; meta = p['metadata']['guestConfiguration']
+                want = uri if storage else 'https://example.invalid/PerfmonBlackbox.zip'
+                self.assertEqual((gc['contentUri'], meta['contentUri']), (want, want))
+                self.assertEqual((gc.get('contentManagedIdentity'), meta.get('contentManagedIdentity')),
+                                 ('system', 'system') if storage else (None, None))
+                uris = [c['equals'] for c in det['existenceCondition']['allOf'] if c['field'].endswith('guestConfiguration.contentUri')]
+                self.assertEqual(uris, [want])
+                self.assertEqual(len(res), 3 if storage else 2)
+                if storage:
+                    reader = res[2]
+                    self.assertEqual((reader['subscriptionId'], reader['resourceGroup']), ('sub-x', 'rg-x'))
+                    self.assertEqual(reader['properties']['parameters']['storageAccountName']['value'], 'stexample')
+                    self.assertEqual(reader['properties']['parameters']['containerName']['value'], 'packages')
+                    ra = reader['properties']['template']['resources'][0]['properties']
+                    self.assertTrue(ra['roleDefinitionId'].endswith("'2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')]"))
+                    self.assertNotIn('condition', ra)  # read on the package container only, no other scope
+                self.assertNotIn('PackageContainerResourceId', json.dumps(d))
+        with self.assertRaises(ValueError):
+            bp.package_container('/subscriptions/x/resourceGroups/y/providers/Microsoft.Storage/storageAccounts/z')
 
     def test_writer_role_condition(self):
         det = self.d['vm']['properties']['policyRule']['then']['details']

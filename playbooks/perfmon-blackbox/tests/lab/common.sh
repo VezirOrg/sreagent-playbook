@@ -35,7 +35,7 @@ verify_blobs() { # verify_blobs <machine> <last N> [extra args]: run guest/verif
   guest dc verify-blobs.ps1 -Account "$sa" -Prefix "$(prefix_of "$_bm")" -Last "$_bn" "$@"; }
 ga_json() { # ga_json <machine>: the guest assignment plus its latest report's resources, as one JSON object
   base="https://management.azure.com$(machine_id "$1")/providers/Microsoft.GuestConfiguration/guestConfigurationAssignments/PerfmonBlackbox"
-  a=$(az rest --method get --url "$base?api-version=2022-01-25" -o json 2>/dev/null) || { echo '{}'; return; }
+  a=$(az rest --method get --url "$base?api-version=2024-04-05" -o json 2>/dev/null) || { echo '{}'; return; }
   r=$(az rest --method get --url "$base/reports?api-version=2022-01-25" -o json 2>/dev/null || echo '{"value":[]}')
   python3 -c '
 import json, sys
