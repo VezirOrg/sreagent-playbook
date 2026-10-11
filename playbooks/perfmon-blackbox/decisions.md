@@ -367,3 +367,11 @@ Pushing to origin/main mid-session (rebase + fast-forward) is allowed for this.
 - **rc.1 package:** `PerfmonBlackbox.zip`, SHA-256 `EFE14BE1E44F6EA4C7BB908C8CE764C2396F3816FEFABF5F71451F74B80B81AA`
   (built by T01 on dc, T01 green; 12 files extracted and scrub-checked clean; `build.ps1` now neutralises the MOF's
   build host, user and source paths, which the DSC compiler writes in).
+
+## P30: the lab SP is SRE Agent Administrator on the lab18 agent, "for now" (Emre, 2026-10-11, answer (b))
+
+To deploy skill v2.1 for T15/T16, the lab service principal gets **SRE Agent Administrator on the lab18 agent
+resource only** (never the resource group or subscription; same pattern as lab17 D63). The reason is in the lab
+register row; the role is removed at teardown. **The SP never approves agent actions.** "For now": the least-privilege
+path (**SRE Agent Author + Standard User**; Learn lists Author as able to edit the agent's configuration but not to
+approve actions) is to be tried later and documented for adopters in the README.

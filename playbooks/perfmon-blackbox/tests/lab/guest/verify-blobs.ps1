@@ -34,6 +34,12 @@ foreach ($b in $pick) {
     $expRows = [math]::Floor($span / $man.interval_s) + 1
     "  manifest: seq $($man.seq) rows $($man.rows) (window expects ~$expRows) $($man.first_sample) .. $($man.last_sample) complete=$($man.complete) gaps=$(@($man.gaps).Count) roll_s=$($man.roll_seconds) buffer_h=$($man.buffer_hours) identity=$($man.identity) csv hash ok=$okHash pdh=$($head.StartsWith('"(PDH-CSV 4.0)')) missing counters=$($missing.Count)"
     foreach ($g in @($man.gaps)) { "  gap $($g.from) .. $($g.to) $($g.seconds) s $($g.cause)" }
+    foreach ($src in @($man.sources)) { "  source $($src.name) $($src.bytes) B rows $($src.rows) wrapped=$($src.wrapped)" }
+    $ts = @(Get-Content $csv | Select-Object -Skip 1 | ForEach-Object { $_.Substring(1, 23) })
+    $fmt = 'MM/dd/yyyy HH:mm:ss.fff'; if ($ts.Count -and [int]$ts[0].Substring(0, 2) -gt 12) { $fmt = 'dd/MM/yyyy HH:mm:ss.fff' }
+    $dts = @($ts | ForEach-Object { [datetime]::ParseExact($_, $fmt, [Globalization.CultureInfo]::InvariantCulture) })
+    $steps = @(for ($i = 1; $i -lt $dts.Count; $i++) { ($dts[$i] - $dts[$i - 1]).TotalSeconds }) | Sort-Object
+    if ($steps.Count) { "  median_step $([math]::Round($steps[[int]($steps.Count / 2)], 3)) s; last 60 samples median $([math]::Round((@($steps | Select-Object -Last 60) | Sort-Object)[[int]([math]::Min(60, $steps.Count) / 2)], 3)) s" }
     if (-not $okHash -or -not $head.StartsWith('"(PDH-CSV 4.0)') -or $missing.Count) { $fail = 1 }
     if ($man.complete -and [math]::Abs($man.rows - $expRows) -gt [math]::Max(1, 0.01 * $expRows)) { "  rows off by more than 1 %"; $fail = 1 }
     if (-not $man.complete -and -not $AllowIncomplete) { "  incomplete"; $fail = 1 }

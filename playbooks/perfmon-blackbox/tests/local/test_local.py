@@ -338,7 +338,13 @@ class L08Policies(unittest.TestCase):
         self.assertEqual(role['resourceGroup'], "[split(parameters('StorageAccountResourceId'), '/')[4]]")
         ra = role['properties']['template']['resources'][0]['properties']
         self.assertEqual(ra['conditionVersion'], '2.0')
-        self.assertTrue(ra['condition'].endswith("StringStartsWith ''', parameters('prefix'), '/'))')]"))
+        self.assertTrue(ra['condition'].endswith("StringStartsWith ''', parameters('prefix'), '/''))')]"))
+        # evaluate the ARM concat by hand: the result must be the exact ABAC condition for a sample prefix
+        lits = re.findall(r"'((?:[^']|'')*)'", ra['condition'][len('[concat('):-2])
+        parts = [x.replace("''", "'") for x in lits]
+        cond = parts[0] + 'sub/rg/m' + parts[-1]
+        self.assertTrue(cond.endswith("StringStartsWith 'sub/rg/m/'))"), cond)
+        self.assertEqual(cond.count('('), cond.count(')'))
         self.assertIn('blobs/write', ra['condition'])
         self.assertIn('toLower(', role['properties']['parameters']['prefix']['value'])
 

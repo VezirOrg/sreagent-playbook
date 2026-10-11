@@ -76,7 +76,8 @@ def parameter_hash():
 def abac_condition_expr():
     """ARM expression building the ABAC condition for the machine's prefix (template parameter 'prefix')."""
     head = f"((!(ActionMatches{{'{WRITE}'}}) AND !(ActionMatches{{'{ADD}'}})) OR ({PATH} StringStartsWith '"
-    return "[concat('" + head.replace("'", "''") + "', parameters('prefix'), '/" + "'))')]"
+    # the condition ends with  <prefix>/'))  : as an ARM string literal that is  '/''))'
+    return "[concat('" + head.replace("'", "''") + "', parameters('prefix'), '/''))')]"
 
 
 def role_template():
