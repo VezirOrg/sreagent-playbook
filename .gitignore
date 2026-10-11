@@ -1,0 +1,10 @@
+# secrets — never committed (Emre, 2026-10-11)
+.env
+.env.*
+.envrc
+# Drive mapping (private artifacts, real/masked data)
+files
+files/
+__pycache__/
+*.pyc
+.DS_Store
