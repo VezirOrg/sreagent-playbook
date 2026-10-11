@@ -147,6 +147,22 @@ Describe 'Gaps and their causes' {
         $g[0].cause | Should -Be 'machine_off'
         $g[1].cause | Should -Be 'collector_restart'
     }
+    It 'judges each ring by its own interval after an interval change (P37)' {
+        # ring 0 recorded at 10 s, ring 1 at 1 s; the configured interval is now 1 s
+        $secs = @(0, 10, 20, 30, 33, 34, 35, 36)
+        $parts = @(0, 0, 0, 0, 1, 1, 1, 1)
+        $pi = @([pscustomobject]@{ Reason = 'recreate'; Wrapped = $false; Interval = 10 }, [pscustomobject]@{ Reason = 'export'; Wrapped = $false; Interval = 1 })
+        (Find-BbGaps -Rows @(Rows $secs $parts) -IntervalSeconds 1 -LastTs $script:T0.AddSeconds(-10) -PartInfo $pi).Count | Should -Be 0
+        $g = Find-BbGaps -Rows @(Rows @(0, 10, 40) @(0, 0, 0)) -IntervalSeconds 1 -LastTs $script:T0.AddSeconds(-10) -PartInfo $pi
+        $g.Count | Should -Be 1
+        $g[0].cause | Should -Be 'missing_samples'
+    }
+    It 'pending names carry the reason and the ring size' {
+        Get-BbPendingReason '20261011-120000-00-recreate-m512.blg' | Should -Be 'recreate'
+        Get-BbPendingMaxMB '20261011-120000-00-recreate-m512.blg' | Should -Be 512
+        Get-BbPendingReason '20261011-120000-00-export.blg' | Should -Be 'export'
+        Get-BbPendingMaxMB '20261011-120000-00-export.blg' | Should -Be 0
+    }
     It 'missing_samples inside one part' {
         (Find-BbGaps -Rows @(Rows @(10, 20, 90) @(0, 0, 0)) -IntervalSeconds 10 -LastTs $script:T0)[0].cause | Should -Be 'missing_samples'
     }

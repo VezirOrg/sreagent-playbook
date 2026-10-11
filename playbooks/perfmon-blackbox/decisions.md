@@ -445,3 +445,11 @@ with a locked file). In rc.4.
 - **rc.4** (P36: Test never throws, so rc.4 self-heals machines locked by the P33 bug): `PerfmonBlackbox.zip` SHA-256
   `F9D4CB5BE4351A507EC16CC07ACD9132AD563839C5020F9642FB409DDDF8A736` (L05 30/30, T01 green on dc; 12 files scrub-checked
   clean before the upload).
+
+## P37: rings are judged by their own interval and size (session 2, 2026-10-11)
+
+T06d on arc1 (interval 10 s → 1 s, MaxSizeMB 512 → 16) produced an export with 649 false `missing_samples` gaps and a
+false `buffer_overrun`: the gap rule used the NEW interval for samples recorded at the old one, and "wrapped" was judged
+against the NEW size. Fix: each pending ring carries its own size limit in its name (`…-<reason>-m<MaxSizeMB>.blg`),
+its interval is the median step of its own samples, inside-ring holes use that interval, holes between rings the larger
+of the two. The incomplete-export event text is bounded (first 10 gaps; the manifest has all). In rc.5.

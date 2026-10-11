@@ -202,7 +202,7 @@ function Get-BbBlgInfo {
 function Move-BbBufferToPending {
     # keep the current (stopped) ring as a pending buffer before any (re)start: a circular log restarted with
     # overwrite would wipe it (design sec. 2.2 step 0). Reason: export | boot | recreate | start.
-    param([Parameter(Mandatory)][string]$Reason, $Paths = (Get-BbPaths), [datetime]$Now = (Get-Date))
+    param([Parameter(Mandatory)][string]$Reason, $Paths = (Get-BbPaths), [datetime]$Now = (Get-Date), [int]$MaxSizeMB = 0)
     $moved = @()
     $files = @(Get-ChildItem -LiteralPath $Paths.Blg -Filter *.blg -ErrorAction SilentlyContinue)
     if ($files.Count) { $null = New-Item -ItemType Directory -Force -Path $Paths.Pending }
@@ -217,7 +217,11 @@ function Move-BbBufferToPending {
         if ($f.Length -le 0) { Remove-Item -LiteralPath $f.FullName -Force; continue }
         $why = $Reason
         if ($bootTime) { if ($f.LastWriteTime -lt $bootTime) { $why = 'boot' } else { $why = 'start' } }
-        $name = '{0}-{1:D2}-{2}.blg' -f $Now.ToString('yyyyMMdd-HHmmss'), $n, $why
+        # the ring's own size limit goes into the name: after a MaxSizeMB change the export must judge 'wrapped'
+        # against the size the ring was recorded with (decisions P37)
+        $mx = ''
+        if ($MaxSizeMB -gt 0) { $mx = "-m$MaxSizeMB" }
+        $name = '{0}-{1:D2}-{2}{3}.blg' -f $Now.ToString('yyyyMMdd-HHmmss'), $n, $why, $mx
         Move-Item -LiteralPath $f.FullName -Destination (Join-Path $Paths.Pending $name)
         $moved += $name
         $n++
@@ -227,8 +231,25 @@ function Move-BbBufferToPending {
 
 function Get-BbPendingReason {
     param([Parameter(Mandatory)][string]$Name)
-    if ($Name -match '^\d{8}-\d{6}-\d{2}-(\w+)\.blg$') { return $Matches[1] }
+    if ($Name -match '^\d{8}-\d{6}-\d{2}-([a-z]+)(-m\d+)?\.blg$') { return $Matches[1] }
     return 'unknown'
+}
+
+function Get-BbPendingMaxMB {
+    # the MaxSizeMB a pending ring was recorded with (0 = unknown)
+    param([Parameter(Mandatory)][string]$Name)
+    if ($Name -match '-m(\d+)\.blg$') { return [int]$Matches[1] }
+    return 0
+}
+
+function Get-BbMedianStep {
+    # median seconds between consecutive rows (0 when fewer than 2 rows)
+    param($Rows)
+    if ($Rows.Count -lt 2) { return 0 }
+    $steps = New-Object System.Collections.Generic.List[double]
+    for ($i = 1; $i -lt $Rows.Count; $i++) { $steps.Add(($Rows[$i].Time - $Rows[$i - 1].Time).TotalSeconds) }
+    $steps.Sort()
+    return $steps[[int]($steps.Count / 2)]
 }
 
 # ---------- PDH CSV: read, merge, filter, validate ----------
@@ -352,8 +373,18 @@ function Find-BbGaps {
     param([Parameter(Mandatory)]$Rows, [Parameter(Mandatory)][int]$IntervalSeconds, $LastTs, [object[]]$PartInfo = @(),
           [object[]]$Drops = @())
     $gaps = @()
-    $limit = 2 * $IntervalSeconds
     if (-not $Rows.Count) { return , $gaps }
+    # each part (pending ring) is judged by its OWN interval: after an interval change the older rings were recorded
+    # at the old one (decisions P37). PartInfo[i].Interval = median step of that ring; 0/absent = IntervalSeconds.
+    $iv = @{}
+    for ($k = 0; $k -lt $PartInfo.Count; $k++) {
+        $x = 0
+        if ($PartInfo[$k].PSObject.Properties['Interval']) { $x = [double]$PartInfo[$k].Interval }
+        if ($x -le 0) { $x = $IntervalSeconds }
+        $iv[$k] = $x
+    }
+    $partIv = { param($k) if ($iv.ContainsKey($k)) { $iv[$k] } else { [double]$IntervalSeconds } }
+    $limit = 2 * [math]::Max([double]$IntervalSeconds, (& $partIv $Rows[0].Part))
     if ($null -ne $LastTs) {
         $first = $Rows[0].Time
         $sec = ($first - $LastTs).TotalSeconds
@@ -373,6 +404,7 @@ function Find-BbGaps {
     for ($i = 1; $i -lt $Rows.Count; $i++) {
         $a = $Rows[$i - 1]; $b = $Rows[$i]
         $sec = ($b.Time - $a.Time).TotalSeconds
+        $limit = 2 * [math]::Max((& $partIv $a.Part), (& $partIv $b.Part))
         if ($sec -le $limit) { continue }
         if ($a.Part -ne $b.Part) {
             $cause = 'collector_restart'
@@ -600,7 +632,10 @@ function Invoke-BbRoll {
     param([Parameter(Mandatory)][string]$Reason)
     $t0 = Get-Date
     $null = Stop-BbCollector
-    $moved = Move-BbBufferToPending -Reason $Reason
+    $mx = 0
+    $c = Get-BbCollector
+    if ($c) { $mx = $c.MaxSizeMB }
+    $moved = Move-BbBufferToPending -Reason $Reason -MaxSizeMB $mx
     Limit-BbLocalKeep
     $null = Start-BbCollector
     [pscustomobject]@{ Stopped = $t0; Started = (Get-Date); Moved = $moved }
@@ -617,9 +652,10 @@ function Install-BbCollector {
     foreach ($d in $p.Blg, $p.Pending, $p.Work) { $null = New-Item -ItemType Directory -Force -Path $d }
     $file = Join-Path $p.Work 'PerfmonBlackbox.filled.xml'
     [System.IO.File]::WriteAllText($file, $xml, [System.Text.Encoding]::Unicode)
-    if (Get-BbCollector) {
+    $old = Get-BbCollector
+    if ($old) {
         $null = Stop-BbCollector
-        $null = Move-BbBufferToPending -Reason 'recreate'
+        $null = Move-BbBufferToPending -Reason 'recreate' -MaxSizeMB $old.MaxSizeMB
         $null = Invoke-BbTool logman.exe @('delete', $script:BbSetName)
     } else {
         $null = Move-BbBufferToPending -Reason 'recreate'
@@ -874,8 +910,11 @@ function Invoke-BbExport {
             if (-not $part.Rows.Count) { $unreadable += $f.Name; continue }
             $parts += $part
             $partFiles += $f
+            $ringMB = Get-BbPendingMaxMB $f.Name
+            if ($ringMB -le 0) { $ringMB = $cfg['MaxSizeMB'] }
             $partInfo += [pscustomobject]@{ Name = $f.Name; Reason = (Get-BbPendingReason $f.Name); Bytes = $f.Length
-                Rows = $part.Rows.Count; Wrapped = ($f.Length -ge 0.95 * $cfg['MaxSizeMB'] * 1MB) }
+                Rows = $part.Rows.Count; Interval = (Get-BbMedianStep $part.Rows); MaxSizeMB = $ringMB
+                Wrapped = ($f.Length -ge 0.95 * $ringMB * 1MB) }
         }
         if ($unreadable.Count) { Write-BbLog "unreadable pending buffers kept for the next run: $($unreadable -join ', ')" 'WARN' }
 
@@ -992,7 +1031,8 @@ function Invoke-BbExport {
         if ($complete) {
             Write-BbEvent "PerfmonBlackbox export $($manifest.seq) uploaded: $blob ($($rows.Count) samples, complete)" 'Information' 1002
         } else {
-            $g = ($gaps | ForEach-Object { "$($_.cause) $($_.from)..$($_.to)" }) -join '; '
+            $g = (@($gaps | Select-Object -First 10) | ForEach-Object { "$($_.cause) $($_.from)..$($_.to)" }) -join '; '
+            if ($gaps.Count -gt 10) { $g += "; ... $($gaps.Count - 10) more (see the manifest)" }
             Write-BbEvent "PerfmonBlackbox export $($manifest.seq) uploaded INCOMPLETE: $blob; gaps: $g" 'Warning' 2002
         }
         $result.Result = 'uploaded'
