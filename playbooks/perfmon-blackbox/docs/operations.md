@@ -41,6 +41,7 @@
 |---|---|---|
 | `buffer_overrun` | the ring overwrote samples before they were exported | the export was late or failed too long, or the buffer is too small: see R6 |
 | `machine_off` | the server was down between two rings | none; the time it was off |
+| `export_roll` | the previous export's own collector restart (a few seconds; only visible at intervals under ~5 s) | none; it does not make `complete` false |
 | `collector_restart` | the collector was restarted (re-create, start) | none if short; repeated restarts: check the event log |
 | `local_cap` | closed rings were dropped by `LocalKeepMB` (exports failing for long) | fix the upload path (network, DNS, role), consider a larger `LocalKeepMB` |
 | `missing_samples` | holes inside one ring | the collector was starved or paused; check the system around that time |

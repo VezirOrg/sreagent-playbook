@@ -393,6 +393,7 @@ function Find-BbGaps {
             $p0 = $null
             if ($PartInfo.Count -gt $Rows[0].Part) { $p0 = $PartInfo[$Rows[0].Part] }
             if ($p0 -and $p0.Wrapped) { $cause = 'buffer_overrun' }
+            elseif ($sec -le 10 + $limit) { $cause = 'export_roll' }   # the previous export's own roll (P41)
             else {
                 foreach ($d in $Drops) {
                     if ([datetime]$d.from -lt $first -and [datetime]$d.to -gt $LastTs) { $cause = 'local_cap' }
@@ -946,7 +947,8 @@ function Invoke-BbExport {
 
         # 3 holes
         $gaps = Find-BbGaps -Rows $rows -IntervalSeconds $iv -LastTs $lastTs -PartInfo $partInfo -Drops @($state['local_cap_drops'])
-        $complete = ($gaps.Count -eq 0)
+        # a short roll of the previous export is expected and named, not a loss of data (P41)
+        $complete = (@($gaps | Where-Object { $_.cause -ne 'export_roll' }).Count -eq 0)
 
         # 4 validate
         $required = @(Read-BbCounterFile (Join-Path $CollectorDir 'PerfmonBlackbox.counters.txt'))

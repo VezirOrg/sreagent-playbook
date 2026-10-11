@@ -147,6 +147,12 @@ Describe 'Gaps and their causes' {
         $g[0].cause | Should -Be 'machine_off'
         $g[1].cause | Should -Be 'collector_restart'
     }
+    It 'the previous export roll is an export_roll gap (P41)' {
+        $pi = @([pscustomobject]@{ Reason = 'export'; Wrapped = $false; Interval = 1 })
+        $g = Find-BbGaps -Rows @(Rows @(3, 4, 5) @(0, 0, 0)) -IntervalSeconds 1 -LastTs $script:T0 -PartInfo $pi
+        $g[0].cause | Should -Be 'export_roll'
+        (Find-BbGaps -Rows @(Rows @(40, 41) @(0, 0)) -IntervalSeconds 1 -LastTs $script:T0 -PartInfo $pi)[0].cause | Should -Be 'collector_restart'
+    }
     It 'a hole before a ring that wrapped is a buffer_overrun, not a restart (P40)' {
         $pi = @([pscustomobject]@{ Reason = 'recreate'; Wrapped = $true; Interval = 1 }, [pscustomobject]@{ Reason = 'export'; Wrapped = $true; Interval = 1 })
         $g = Find-BbGaps -Rows @(Rows @(0, 1, 2, 215, 216) @(0, 0, 0, 1, 1)) -IntervalSeconds 1 -LastTs $script:T0 -PartInfo $pi

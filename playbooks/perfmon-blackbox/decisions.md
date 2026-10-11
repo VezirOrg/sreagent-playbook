@@ -486,3 +486,11 @@ ring holds only 5–10 minutes). In rc.6.
 
 - **rc.6** (P40): `PerfmonBlackbox.zip` SHA-256 `5B4D37FF31E0013F8D9A4960045E90260CAE0FBAE6E443ED95BEADAAF6F9DFE3`
   (L05 33/33, T01 green on dc; 12 files scrub-checked clean before the upload).
+
+## P41: the export's own roll is a named, expected gap (session 2, 2026-10-11)
+
+At a 1-s interval every export marked its zip `complete: false`: the roll of P21 (stop → move → start, ≈ 2 s) exceeds
+2 × interval at the start of every window. The seconds are really lost, so they stay in `gaps[]`, but with the cause
+**`export_roll`**, and a roll hole of ≤ 10 s does **not** make `complete` false (`complete` means "no unexpected
+loss"). A longer hole at that place keeps `collector_restart` and does. At the 10-s default nothing changes (the roll
+fits within two intervals). In rc.7.
