@@ -1,6 +1,7 @@
 # perfmon-blackbox: design (for Emre's approval, PLAN GATE)
 
-Status: **DRAFT rev 2 for approval**, 2026-10-11. Nothing here is built. Emre's decisions are in `../decisions.md`
+Status: **DRAFT rev 3 for approval**, 2026-10-11 (rev 3: P16–P18: interval parameter, capacity check, counter
+groups G1–G3 with web auto-detect). Nothing here is built. Emre's decisions are in `../decisions.md`
 (P1–P15); this file turns them into a design. Choices Emre has **not** made yet are marked **[CHOICE n]** and listed
 together in §8, each with a recommendation.
 
@@ -18,7 +19,7 @@ choice.
  │  └ package PerfmonBlackbox (AuditAndSet)       │◄── guest assignment ◄── Policy (VM)  or  Policy (Arc)
  │      parameters: MaxSizeMB, SampleInterval, …  │      (DINE, two definitions, P2, P14)
  │      1 files in C:\ProgramData\PerfmonBlackbox\
- │      2 Data Collector Set "PerfmonBlackbox": 36 counters, BINARY CIRCULAR, max MaxSizeMB (P11, P13)
+ │      2 Data Collector Set "PerfmonBlackbox": 36 + G1 + G2 (+ G3 where web objects exist), BINARY CIRCULAR, max MaxSizeMB
  │      3 collector Running, continuously
  │      4 task Boot   (at startup, SYSTEM): keep the old buffer as "pending", then logman start
  │      5 task Export (scheduled, SYSTEM): window since last good export → CSV → zip(+manifest) → upload
@@ -66,9 +67,22 @@ A changed `MaxSizeMB` or interval on the assignment reaches the machine at the n
 R2 become non-compliant, Set re-creates the collector with the new values, and nothing recorded so far is lost
 (it is kept as a pending buffer and exported).
 
-### 2.1 The collector template (P11, P12, P13)
+### 2.1 The collector template (P11, P12, P13, P18)
 
-- `package/files/PerfmonBlackbox.counters.txt`: Emre's **36 counters, verbatim** (LogicalDisk ×6, Memory ×8,
+Counter set = Emre's **36** (unchanged) + **G1** system-wide (12) + **G2** per process (2) = **50 lines**, plus **G3**
+web (6) **only where its counter objects exist** (CHOICE 10, below). One file per group in `package/files/`.
+All of it is deployed by Azure Policy + Machine Configuration; nothing is Group Policy.
+
+**G3 auto-detect (vezir's proposal, CHOICE 10).** R2's `Test` builds the expected list as 36 + G1 + G2 + the G3
+lines whose object exists now (`Get-Counter -ListSet` for `ASP.NET`, `ASP.NET Applications`, `.NET CLR Memory`,
+`Web Service`). A machine that gains IIS later no longer matches the expected list at the next Machine
+Configuration check (≤ 15 min); `Set` re-creates the collector through the pending-buffer path (§2.2 step 0), so no
+sample is lost. Missing counters are never configured; there is no G3 parameter. Whether configuring missing
+counters would even hurt (event-log storm) is measured in the lab (P18 question, T06f).
+
+
+- `package/files/PerfmonBlackbox.counters.txt`: Emre's **36 counters, verbatim**; `…-g1-system.txt`, `…-g2-process.txt`,
+  `…-g3-web.txt`: the groups of P18 (LogicalDisk ×6, Memory ×8,
   Process ×8, Network Interface ×3, Processor Information ×5, TCPv4 ×3, TCPv6 ×3). The tests read the same file.
 - `package/files/PerfmonBlackbox.template.xml`: sanitized Data Collector Set: those counters; binary log
   (`LogFileFormat=3`), circular (`LogCircular`), overwrite, `Duration=0` (continuous), no schedule, no
@@ -119,7 +133,11 @@ is uploaded and verified.
    pending buffers fully exported and the local zip. On failure → keep everything; the next run exports a longer
    window from the same `last_ts` (no gap), as long as the ring still holds it (otherwise step 3 reports it).
 
-### 2.3 How many hours does the buffer hold? (P15; estimate now, measured by T07b)
+### 2.3 How many hours does the buffer hold? (P15; estimate now, measured by T07b and the P16 lab run)
+
+**Rev 3:** with G1 + G2 the per-process part grows from 8 to 10 counters (≈ +25 % per sample), so the hours below
+shrink by about a fifth for the full set. The lab measures both sets side by side (P16, P18); the measured formula
+`bytes/sample ≈ a + b × processes` replaces this estimate.
 
 A binary log stores, per sample, a raw value per counter instance plus, for wildcard objects, the instance
 names. Rough size per sample on a typical 4-vCPU Windows Server 2022 VM:
@@ -178,6 +196,12 @@ more processes; an override can, and R6 then says so.
 resource ID (IMDS/HIMDS metadata). Unique across Azure VMs and Arc servers of the same name. §3.2 uses the same string.
 
 ### 2.5 What the skill loses with this counter set (P11: listed for Emre, not filled)
+
+**Rev 3 (P18):** G1 restores the System checks (queue, context switches, up time), hard faults, paging file and
+LogicalDisk idle/queue; G3 (on web boxes) restores ASP.NET queueing, request rate (so request-based `leak_rate`
+works again) and the managed heap. Still missing after P18: the `Processor` object (the template has
+`Processor Information`; skill change, CHOICE 8), `% DPC Time` / `% Interrupt Time`, `PhysicalDisk`, `HTTP Service
+Request Queues`. The table below is the 36-only view.
 
 The skill (v2.0, copied, P7) was written for a wider capture. With exactly these 36 counters:
 
@@ -317,3 +341,4 @@ playbooks/perfmon-blackbox/
 | CHOICE 7 | Package hosting | public GitHub Release asset · adopter-hosted | Release asset (+ self-host section in README) |
 | **CHOICE 8** | **Skill vs. this counter set** (§2.5) | adapt skill v2.1 to the 36 counters (at least `Processor Information`) · keep the skill, accept "not in capture" | **adapt the skill** (no new counters); the lost checks (System, PhysicalDisk, paging, .NET, ASP.NET, request-based leak rate) are listed in the report's "not checked" section |
 | **CHOICE 9** | **Capacity check as compliance reason** (vezir's proposal, §2.6) | R6 audit resource with the numbers in the NonCompliant reason · no check (loss only in the manifest) | **R6**: a misfit shows in Azure Policy before data is lost |
+| **CHOICE 10** | **G3 web counters** (P18; vezir's proposal) | **auto-detect**: G3 only where its objects exist, re-checked every 15 min (no parameter) · always configured · parameter | **auto-detect**, if the lab shows no event-log harm either way it is still the cleaner choice (missing counters never configured) |
