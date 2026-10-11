@@ -1,4 +1,4 @@
-# perfmon-blackbox: IMPLEMENTING (session 2): most stages green on vm1 + arc1; T16 vm1 100 (P43); P46 retry committed (rc.8 to build); T18b: identity download proven on Arc; P47/P48 fixed; stability check in flight.
+# perfmon-blackbox: IMPLEMENTING (session 2): most stages green on vm1 + arc1; T16 vm1 100 (P43); P46 retry committed (rc.8 to build); T18b: identity download proven on Arc; P47/P48 fixed; LAB DOWN since 21:45Z (not ours), resume recipe below.
 
 
 ## Session 2 progress (2026-10-11, live; rewritten at close)
@@ -23,8 +23,34 @@
   neither the lab SP nor a user (not the 19:00 schedules). Restart only with the owner's OK. Resume: start dc, vm1, arc1;
   after ~15 min check the arc1 agent log for "from private blob using managed identity" on two pulls with no
   "Managed identity not provided"; then T18.sh arc1 storage.
-- **Resume recipe T18b:** `direnv exec . sh playbooks/perfmon-blackbox/tests/lab/T18.sh arc1 storage` (run.sh passes
-  only the machine). Lab assignments now: pbb-vm (GitHub), pbb-arc-storage.
+- **LAB DOWN since 21:45:26Z (2026-10-11):** dc, vm1, arc1 deallocated by an app identity that is not the lab SP,
+  not a managed identity of the subscription, with no role assignment visible here (inherited from above); the same
+  caller wrote other resources earlier that day. Not the rig, not the vezir; the vezir asked Emre. **Do not start the
+  VMs or touch Azure until the owner says so.**
+- **Resume recipe (once the owner allows the lab up)**, all from the repo root, every az call via `direnv exec .`:
+  1. Start dc, vm1, arc1 (`az vm start -g <lab rg> -n <name>`; dc first, DNS). Wait until `v arc1 hostname` answers.
+  2. **T18b (decides P48):** state left behind: assignments `pbb-vm` (GitHub) and `pbb-arc-storage`; arc1 holds Reader
+     on `packages` and Writer on `perfmon`. Watch the arc1 agent log
+     (`C:\ProgramData\GuestConfig\arc_policy_logs\gc_agent.log`, every 10 min a pull) and the activity log for
+     PUTs on arc1's guest assignment. Pass = every pull says `from private blob using managed identity` with no
+     `Managed identity not provided`, **including the first pull after a first-party service PUT** (the 21:07 pattern;
+     21:38:33 was the last one seen, its following pull never ran), over at least two pulls; then
+     `direnv exec . sh playbooks/perfmon-blackbox/tests/lab/T18.sh arc1 storage` (call T18.sh directly: run.sh passes
+     only the machine). The watcher used is in the session scratchpad (`_watch.sh`); any loop over the two logs does.
+     Fail (a flip back to GitHub) = stop and report to the owner.
+  3. **rc.8 (P46, P31 standing permission):** `tests/run.sh T01 dc` (build + compliance on dc) → unpack the built zip
+     into an empty dir and `scripts/scrub-check.sh` every file → write the SHA-256 into decisions.md under P46
+     (`- **rc.8** …`, like rc.7) and **commit that first** → `gh release create perfmon-blackbox/v1.0.0-rc.8`
+     (prerelease, not latest, the zip as the only asset, notes "Lab test build, not for use") → update the lab-only
+     `pbb-package.env` (PKG_URI, PKG_SHA256, PKG_VERSION) → report URL + SHA to the owner.
+  4. **Roll rc.8 out:** vm1 via `lab-params.sh` (GitHub mode, as now). arc1 stays in storage mode: first
+     `lab-package.sh` (copies the release zip unchanged into `packages`, hash checked), then
+     `lab-params.sh machine=arc1 PackageContainerResourceId=<packages container ID>`.
+  5. **P46 lab test (vm1):** block the storage name in the hosts file (as in T10c), start an export
+     (`guest vm1 export-now.ps1` or the Export task), unblock after ~3 min; pass = `export.log` shows
+     `upload attempt 1 failed … retry in 300 s`, then `uploaded on attempt 2` at about +5 min, the zip in storage,
+     manifest with 0 gaps. Record in tests.md and tell the owner (and the v1.0.0 estimate impact).
+  6. Then T18c (vm1 storage and back, by the P48 switch procedure, watch for flapping), T18d/e/f, T16 run 5, T17.
 - **Next:** T18b → rc.8 (T01, scrub, SHA in decisions first, publish P31) → P46 lab test (hosts block, retry at +5 min,
   0 gaps) → T18c/d/e/f → T16 run 5 (arc1; vm1 after its next export) → T17 → T08/T07b arc1 → T06f part 2 →
   least-privilege agent role (P30) → docs pass (incl. the vezir's naming item: "Azure Machine Configuration" in prose, "Guest Configuration" only for real identifiers; one-line note in architecture.md "formerly guest configuration; replaces Automation State Configuration (retiring 2027-09-30) and the DSC extension" + Learn link whats-new/migrating-from-azure-automation, verify the date there) → fresh-eyes deploy; v1.0.0 = Emre's gate.
