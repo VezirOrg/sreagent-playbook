@@ -6,3 +6,5 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
 
 - 2026-10-11: playbook created. Design and test plan drafted for approval. Skill v2.0, `deploy-skill.sh` and the
   CSV masker copied in verbatim (provenance in `decisions.md` P7).
+- 2026-10-11: design and test plan rev 2 (P11–P15): Emre's 36 counters as a sanitized template, binary circular
+  log with `MaxSizeMB` (default 512) on both policies, export around the circular file, buffer-hour estimate.

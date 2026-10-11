@@ -1,4 +1,4 @@
-# perfmon-blackbox: round 1 done (docs + safety); design and test plan wait at the PLAN GATE for Emre. No Azure yet.
+# perfmon-blackbox: design/test plan rev 2 (Emre's 36 counters, 512 MB circular) wait at the PLAN GATE; LAB-KUR partial go: buffer measurement on vm1.
 
 Playbook: **perfmon-blackbox** (R12: sessions name their playbook). Read `decisions.md` next.
 
@@ -6,8 +6,11 @@ Playbook: **perfmon-blackbox** (R12: sessions name their playbook). Read `decisi
 
 - Emre's decisions of 2026-10-11 are recorded: `decisions.md` P1–P10 (what, two policies, skill, phase 2, success
   criterion, lab, provenance, OPEN method questions, no Azure this round, stop conditions).
-- **PLAN GATE, waiting for Emre:** `docs/design.md` (with CHOICE 1–7, each with a recommendation) and
-  `docs/test-plan.md` (T01–T16 lab, L01–L06 local). **No lab and no Azure change before his approval.**
+- **PLAN GATE, waiting for Emre:** `docs/design.md` **rev 2** (CHOICE 1–8; 1 = sample interval, 2 = export cadence,
+  8 = skill vs. the 36-counter set) and `docs/test-plan.md` rev 2 (T01–T16 + T06b/T06c/T07b/T10b/T10c, L01–L07).
+- Rev 2 = Emre's input P11–P15: exactly his 36 counters (sanitized template committed, original stays in
+  `files/emre-inputs/`), binary circular 512 MB, `MaxSizeMB` policy parameter on both policies, export window with
+  no gap/no overlap and loss reported in the manifest. Skill gaps with this set: design §2.5.
 - **OPEN for Emre (P8):** OPEN-1 (rule 6: every "because" needs a `link_test`) and OPEN-2 (5-minute VERDICT
   CEILING keeps a user-named recurring 20–40 s stall at warning). Not decided; do not change the skill on them.
 - Code brought in verbatim with provenance (P7): skill v2.0 (`skill/perfmon-triage/`), `scripts/deploy-skill.sh`,

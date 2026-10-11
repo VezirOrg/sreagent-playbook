@@ -108,3 +108,42 @@ Round 1 = docs and safety only. Then the **PLAN GATE**: design (`docs/design.md`
 Stop and report instead of working around if: a real name or a secret would enter the repo; **Machine
 Configuration cannot do a required step** (for example the upload with the machine identity on Arc); **Arc cannot
 be tested in a lab**.
+
+## P11: counters = exactly Emre's 36 (Emre, 2026-10-11; replaces the counter list drafted in design §2.1)
+
+The collector records **exactly the 36 counters of Emre's PerfMon template**, no more, no fewer. **Do not add
+counters.** Where the skill loses inputs because of this, the gap is listed for Emre (design §2.5), not filled.
+
+- Original: `files/emre-inputs/VitalSigns_Template.original.xml` (Drive; UTF-16; SHA-256
+  `3ff1b9c63d2088e612767c0c26a11d6c30db04f756f6d65ab213cc8dc50f2af8`). It holds a **real machine name** (in
+  `LatestOutputLocation`) and dated output paths, so it **never enters the repo as it is**.
+- Committed instead (generated from the original by extracting only the `<Counter>` elements):
+  `package/files/PerfmonBlackbox.counters.txt` (the 36 counters, verbatim) and
+  `package/files/PerfmonBlackbox.template.xml` (sanitized Data Collector Set: those counters + the settings below;
+  no machine name, no dated path, no `LatestOutputLocation`; UTF-8, because the scrub check refuses binary-looking
+  UTF-16; the package converts it if `logman import` needs UTF-16).
+- The machine name was not on the shared denylist: it is now in `files/denylist-extra.txt` (R13), and the vezir is
+  asked to get it into the shared one.
+
+## P12: the original's run settings are not taken over (Emre, 2026-10-11)
+
+The original has `SampleInterval=1` and `Duration=10800` (3 h). A black box runs **continuously**: the template
+has `Duration=0` and no schedule. The **sample interval is OPEN** (design CHOICE 1); it is not picked silently.
+
+## P13: binary circular file, 512 MB (Emre, 2026-10-11)
+
+The collector writes a **binary circular** log (`bincirc`; `logman … -f bincirc -max <MB>`): when the file reaches
+its maximum it overwrites the oldest samples, so the **last MaxSizeMB of data is always on disk**. Default 512 MB.
+
+## P14: MaxSizeMB is a policy parameter on both policies (Emre, 2026-10-11)
+
+`MaxSizeMB` (integer MB, default **512**) is a **policy parameter** on **both** definitions (VM and Arc), passed to
+the package as a Machine Configuration configuration parameter. Tests must prove: the file **never exceeds**
+MaxSizeMB; it **really wraps** (oldest samples gone, newest present); a **changed value reaches the machine and
+resizes** the collector.
+
+## P15: export around the circular file (Emre, 2026-10-11; replaces design CHOICE 2 of the first draft)
+
+The export covers **the window since the last successful export, with no gap and no overlap**. The design states
+how many hours 512 MB holds at 1 s and at 15 s for this counter set (estimate now, **measured in the lab**), and
+what happens when the window outgrows the buffer: **data loss is detected and reported in the manifest**.
