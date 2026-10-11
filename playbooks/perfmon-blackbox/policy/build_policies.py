@@ -27,6 +27,39 @@ NAME = 'PerfmonBlackbox'
 GC_CONTRIBUTOR = '088ab73d-1256-47ae-bea9-9de8e7131f31'   # built-in: Guest Configuration Resource Contributor
 RBAC_ADMIN = 'f58310d9-a9f6-439a-9e8d-f62e7b41a168'       # built-in: Role Based Access Control Administrator
 READER = 'acdd72a7-3385-48ef-bd42-f606fba81ae7'           # built-in: Reader (to read the machine's identity)
+BLOB_READER = '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1'      # built-in: Storage Blob Data Reader (package container, P45)
+PKG = "parameters('PackageContainerResourceId')"
+# split() of a padded string: indexes [2], [4], [8] exist even when the parameter is empty (both if() branches may be
+# evaluated)
+PKGP = f"split(concat({PKG}, '//////////////'), '/')"
+
+
+def package_uri_expr(github_uri):
+    """P45: GitHub mode (parameter empty) or storage mode (https://<account>.blob.core.windows.net/<container>/<name>.zip).
+    A policy/ARM expression body, without the surrounding brackets."""
+    return (f"if(empty({PKG}), '{github_uri}', concat('https://', {PKGP}[8], '.blob.core.windows.net/', "
+            f"last(split({PKG}, '/')), '/{NAME}.zip'))")
+
+
+def reader_template():
+    """Nested template (storage mode only): Storage Blob Data Reader on the package container for the machine."""
+    return {
+        '$schema': 'https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#',
+        'contentVersion': '1.0.0.0',
+        'parameters': {k: {'type': 'string'} for k in ('principalId', 'storageAccountName', 'containerName')},
+        'resources': [{
+            'type': 'Microsoft.Storage/storageAccounts/blobServices/containers/providers/roleAssignments',
+            'apiVersion': '2022-04-01',
+            'name': "[concat(parameters('storageAccountName'), '/default/', parameters('containerName'), '/Microsoft.Authorization/', "
+                    "guid(parameters('storageAccountName'), parameters('containerName'), parameters('principalId'), 'package-reader'))]",
+            'properties': {
+                'roleDefinitionId': f"[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '{BLOB_READER}')]",
+                'principalId': "[parameters('principalId')]",
+                'principalType': 'ServicePrincipal',
+                'description': 'perfmon-blackbox: read the Machine Configuration package (system identity download)',
+            },
+        }],
+    }
 
 # policy parameter -> (default, description); all strings (Machine Configuration parameters must be strings)
 PARAMS = [
@@ -114,10 +147,16 @@ def definition(kind, content_uri, content_hash, version):
     params['WriterRoleDefinitionId'] = {'type': 'String', 'metadata': {
         'displayName': 'WriterRoleDefinitionId',
         'description': 'Resource ID of the custom role "PerfMon Blackbox Writer" (infra output writerRoleDefinitionId).'}}
+    params['PackageContainerResourceId'] = {'type': 'String', 'defaultValue': '', 'metadata': {
+        'displayName': 'PackageContainerResourceId',
+        'description': ('Empty: download the package from the GitHub release asset. Else the resource ID of a blob container '
+                        'that holds the same PerfmonBlackbox.zip: the machine downloads it with its system-assigned identity '
+                        '(no SAS) and gets Storage Blob Data Reader on that container only.')}}
     params['effect'] = {'type': 'String', 'defaultValue': 'DeployIfNotExists', 'allowedValues': ['DeployIfNotExists', 'Disabled'],
                         'metadata': {'displayName': 'Effect'}}
     dep_params = {p: {'type': 'string'} for p, _, _ in PARAMS}
-    dep_params.update({'machineName': {'type': 'string'}, 'location': {'type': 'string'}, 'WriterRoleDefinitionId': {'type': 'string'}})
+    dep_params.update({'machineName': {'type': 'string'}, 'location': {'type': 'string'}, 'WriterRoleDefinitionId': {'type': 'string'},
+                       'PackageContainerResourceId': {'type': 'string'}})
     machine_id = f"[resourceId('{k['type']}', parameters('machineName'))]"
     gc_assignment = {
         'apiVersion': '2022-01-25',
@@ -125,7 +164,8 @@ def definition(kind, content_uri, content_hash, version):
         'name': f"[concat(parameters('machineName'), '/Microsoft.GuestConfiguration/{NAME}')]",
         'location': "[parameters('location')]",
         'properties': {'guestConfiguration': {
-            'name': NAME, 'version': version, 'contentUri': content_uri, 'contentHash': content_hash,
+            'name': NAME, 'version': version, 'contentUri': '[' + package_uri_expr(content_uri) + ']', 'contentHash': content_hash,
+            'contentManagedIdentity': f"[if(empty({PKG}), json('null'), 'system')]",
             'contentType': 'Custom', 'assignmentType': 'ApplyAndAutoCorrect',
             'configurationParameter': [{'name': cfg_name(p), 'value': f"[parameters('{p}')]"} for p, _, _ in PARAMS],
         }},
@@ -149,9 +189,28 @@ def definition(kind, content_uri, content_hash, version):
             'template': role_template(),
         },
     }
+    reader = {
+        'condition': f"[not(empty({PKG}))]",
+        'apiVersion': '2022-09-01',
+        'type': 'Microsoft.Resources/deployments',
+        'name': "[concat('perfmon-blackbox-pkgreader-', uniqueString(parameters('machineName'), resourceGroup().id))]",
+        'subscriptionId': f"[if(empty({PKG}), subscription().subscriptionId, {PKGP}[2])]",
+        'resourceGroup': f"[if(empty({PKG}), resourceGroup().name, {PKGP}[4])]",
+        'properties': {
+            'mode': 'Incremental',
+            'expressionEvaluationOptions': {'scope': 'inner'},
+            'parameters': {
+                'principalId': {'value': f"[reference({machine_id[1:-1]}, '{k['api']}', 'full').identity.principalId]"},
+                'storageAccountName': {'value': f"[if(empty({PKG}), 'none', {PKGP}[8])]"},
+                'containerName': {'value': f"[if(empty({PKG}), 'none', last(split({PKG}, '/')))]"},
+            },
+            'template': reader_template(),
+        },
+    }
     deployment_parameters = {p: {'value': f"[parameters('{p}')]"} for p, _, _ in PARAMS}
     deployment_parameters.update({'machineName': {'value': "[field('name')]"}, 'location': {'value': "[field('location')]"},
-                                  'WriterRoleDefinitionId': {'value': "[parameters('WriterRoleDefinitionId')]"}})
+                                  'WriterRoleDefinitionId': {'value': "[parameters('WriterRoleDefinitionId')]"},
+                                  'PackageContainerResourceId': {'value': f"[{PKG}]"}})
     return {
         'properties': {
             'displayName': f'perfmon-blackbox: PerfMon black-box recorder on Windows {k["display"]}',
@@ -187,6 +246,8 @@ def definition(kind, content_uri, content_hash, version):
                             {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/parameterHash', 'equals': parameter_hash()},
                             # P32: a new package (release) makes machines on the old one non-compliant -> remediated
                             {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.contentHash', 'equals': content_hash},
+                            # P45: a switch between GitHub and storage mode redeploys the assignment
+                            {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.contentUri', 'equals': '[' + package_uri_expr(content_uri) + ']'},
                         ]},
                         'deployment': {'properties': {
                             'mode': 'incremental',
@@ -195,7 +256,7 @@ def definition(kind, content_uri, content_hash, version):
                                 '$schema': 'https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#',
                                 'contentVersion': '1.0.0.0',
                                 'parameters': dep_params,
-                                'resources': [gc_assignment, role],
+                                'resources': [gc_assignment, role, reader],
                             },
                         }},
                     },

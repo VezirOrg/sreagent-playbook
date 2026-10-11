@@ -64,6 +64,15 @@ resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@20
   properties: { publicAccess: 'None' }
 }
 
+@description('Container for the Machine Configuration package when the policies use storage mode (P45); machines get read on it only.')
+param packageContainerName string = 'packages'
+
+resource packages 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobs
+  name: packageContainerName
+  properties: { publicAccess: 'None' }
+}
+
 resource lifecycle 'Microsoft.Storage/storageAccounts/managementPolicies@2023-05-01' = {
   parent: sa
   name: 'default'
@@ -165,4 +174,5 @@ output storageAccountName string = sa.name
 output containerName string = container.name
 output writerRoleDefinitionId string = writerRole.id
 output deployerRoleDefinitionId string = deployerRole.id
+output packageContainerResourceId string = packages.id
 output blobEndpoint string = sa.properties.primaryEndpoints.blob

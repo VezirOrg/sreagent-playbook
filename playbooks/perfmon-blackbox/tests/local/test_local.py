@@ -365,6 +365,27 @@ class L08Policies(unittest.TestCase):
             self.assertEqual(det['existenceCondition']['allOf'][2]['equals'], 'AB' * 32)  # P32
             self.assertEqual(re.findall(r"'(\[BlackboxFiles\][^']+)'", h), names)
 
+    def test_package_source_modes(self):
+        # P45: empty PackageContainerResourceId = GitHub, else storage with the system identity and a reader role
+        for d in self.d.values():
+            p = d['properties']
+            self.assertEqual(p['parameters']['PackageContainerResourceId']['defaultValue'], '')
+            det = p['policyRule']['then']['details']
+            res = det['deployment']['properties']['template']['resources']
+            gc = res[0]['properties']['guestConfiguration']
+            self.assertIn("if(empty(parameters('PackageContainerResourceId')), 'https://example.invalid/PerfmonBlackbox.zip'", gc['contentUri'])
+            self.assertIn(".blob.core.windows.net/", gc['contentUri'])
+            self.assertEqual(gc['contentManagedIdentity'], "[if(empty(parameters('PackageContainerResourceId')), json('null'), 'system')]")
+            reader = res[2]
+            self.assertEqual(reader['condition'], "[not(empty(parameters('PackageContainerResourceId')))]")
+            ra = reader['properties']['template']['resources'][0]['properties']
+            self.assertTrue(ra['roleDefinitionId'].endswith("'2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')]"))
+            self.assertNotIn('condition', ra)  # read on the package container only, no other scope
+            uris = [c['equals'] for c in det['existenceCondition']['allOf'] if c['field'].endswith('guestConfiguration.contentUri')]
+            self.assertEqual(uris, [gc['contentUri']])
+            # every split index goes through the padded string (the parameter may be empty)
+            self.assertNotRegex(json.dumps(d), r"split\(parameters\('PackageContainerResourceId'\), '/'\)\[")
+
     def test_writer_role_condition(self):
         det = self.d['vm']['properties']['policyRule']['then']['details']
         role = det['deployment']['properties']['template']['resources'][1]

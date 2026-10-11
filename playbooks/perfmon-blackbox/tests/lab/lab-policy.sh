@@ -63,7 +63,9 @@ for kind in ${KINDS:-vm arc}; do
   mi_roles "$pid" 'Guest Configuration Resource Contributor' "$scope"
   mi_roles "$pid" Reader "$scope"
   mi_roles "$pid" 'PerfMon Blackbox Deployer' "$scope"
-  cond="((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$writer_guid})) AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$writer_guid}))"
+  cond="((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$writer_guid, 2a2b9908-6ea1-4ae2-8e65-a410df84e7d1})) AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$writer_guid, 2a2b9908-6ea1-4ae2-8e65-a410df84e7d1}))"
+  # the delegation also allows the built-in Storage Blob Data Reader (2a2b9908-…): storage mode grants it on the package
+  # container (P45)
   mi_roles "$pid" 'Role Based Access Control Administrator' "$sa_id" "$cond"
 done
 echo "waiting 60 s for the role assignments to propagate, then remediation"
