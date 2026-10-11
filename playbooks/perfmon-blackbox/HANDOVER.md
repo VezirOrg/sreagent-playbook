@@ -1,23 +1,20 @@
-# perfmon-blackbox: IMPLEMENTING (session 2): policy-deployed on lab18 vm1, stages T01-T15 green on vm1 (T08 waits rc.2); T16 load running; arc1 building.
+# perfmon-blackbox: IMPLEMENTING (session 2): vm1 + arc1 policy-deployed (rc.3), stages green on both except T06b-e/T08/T10b-c/T16; wrap proven; T16 run 2 running.
 
 
 ## Session 2 progress (2026-10-11, live; rewritten at close)
 
-- Decisions P20–P30 recorded (collector files, export roll, Process set, implementation choices, dev over SSH,
-  PowerShell 5.1 hard rule + runtime split, export only with built-in tools, storm/formula, T01 facts, rc.1
-  pre-release, lab SP agent admin for now). Root: R16 (.gitignore), R17 + addendum (built-in role IDs allow-listed).
-- **Green:** local L01–L09; L05 (26 Pester + PSScriptAnalyzer 5.1) on dc; T01 (build + local compliance, dc);
-  T02, T03, T13, T14; vm1: T04, T05, T06, T07, T09, T10, T11, T12, T15. First policy-deployed export uploaded with
-  the VM's own identity; exports continuous; T12 negative cases all 403.
-- **Lab18 now holds** (all registered in the template repo's lab register row): storage `stbb…` (PE, private),
-  custom roles Writer/Deployer, policies `pbb-vm`, `pbb-arc`, `pbb-gc-prereq` on the RG (dc and arc1 in notScopes),
-  dc's identity = lab verifier (Blob Data Reader), lab SP = SRE Agent Administrator on the agent (P30, remove at
-  teardown), skill perfmon-triage v2.1 on the agent, GitHub pre-release `perfmon-blackbox/v1.0.0-rc.1`.
-- **Running:** T16 planted load on vm1 (make-trouble, started 11:57Z, ends ~13:07Z; then `T16.sh vm1 finish`);
-  arc1 being built (`lab-arc1.sh`); BbWrap1/2 full at ~13:03Z (wrap readout), BbFull10 full ~08:59Z 10-12.
-- **Pending fixes for rc.2:** boot reason derived from the boot time (Move-BbBufferToPending), needed for T08.
-- Next: T16 finish (scored), T08 after rc.2, T06b–e/T10b/T10c (parameter cycles), arc1 T04–T16, CI job (root),
-  README cost section, fresh-eyes deploy.
+- Decisions P20–P34 (P31 standing permission for lab rc.N; P32 package hash in the existence condition; P33 ACL bug
+  + stale-size finding; P34 OPEN-2 closed for v1.0.0 + wrap proof). Root: R16, R17 (+ Reader addendum), R18 (CI).
+- **Green:** L01–L09; L05 on dc and in CI (Windows runner); T01; T02, T03, T13, T14; **vm1:** T04–T07, T07b, T09–T12,
+  T15; **arc1 (Arc, HIMDS):** T04–T07, T09–T12, T15. P10 risk cleared (Machine Configuration does every step on Arc).
+- **Wrap proven** (BbWrap1/2, P34); storm none, formula (P27); BbFull10 still running (full ~08:59Z 10-12).
+- **Releases (lab pre-releases, P29/P31):** rc.1 EFE14BE1…, rc.2 CC42AF18…, **rc.3 2F9E19F4…** (P33 ACL fix). vm1 is on
+  rc.3 (upgrade via P32 worked); arc1 is being moved to rc.3 with MaxSizeMB=16 / 1 s / 24 h (its rc.1 files were
+  locked by the P33 bug when its parameters changed: rc.3 must self-heal them, to verify).
+- **Running:** T16 run 2 on vm1 (13:41:44Z–~14:52Z; then `tests/lab/T16.sh vm1 finish`). Run 1: agent found CPU, leak,
+  NIC; missed 30-s stalls → OPEN-2 decided (P34).
+- Next: arc1 on rc.3 → T06b/T06d/T06e/T10b there, then T06c (32 MB), back to defaults; T08 (reboot) on arc1 and vm1;
+  T10c; T16 on arc1; README review + fresh-eyes deploy; remove the lab SP's agent admin role at teardown (P30).
 
 ## Brief from session 1 (kept until close)
 
