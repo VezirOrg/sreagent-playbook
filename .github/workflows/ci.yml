@@ -1,0 +1,27 @@
+name: ci
+on:
+  push:
+    branches: [main]
+    tags: ['*/v*']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: scrub check self-test
+        run: scripts/scrub-check.sh --self-test
+      - name: scrub check (tree; CI has no denylist, the hooks check names locally)
+        env:
+          SCRUB_ALLOW_NO_DENYLIST: '1'
+        run: scripts/scrub-check.sh
+      - name: python compiles
+        run: |
+          files=$(git ls-files '*.py')
+          [ -z "$files" ] || python3 -m py_compile $files
+      - name: shell syntax
+        run: for f in $(git ls-files '*.sh' '.githooks/*'); do sh -n "$f" || bash -n "$f"; done

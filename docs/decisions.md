@@ -1,0 +1,104 @@
+# Repo-wide decisions
+
+Only decisions that hold for the whole repository. Playbook decisions live in `playbooks/<name>/decisions.md`.
+Numbered R1, R2, …; never renumbered. A changed decision gets a new number that says which one it replaces.
+
+## R1: what this repo is (Emre, 2026-10-11)
+
+`VezirOrg/sreagent-playbook` is a multi-solution repository of reference implementations ("playbooks") for Azure
+SRE Agent. They are working and versioned, with **no support promise**. The README says: **not an official
+Microsoft product**.
+
+## R2: public from the first commit (Emre, 2026-10-11)
+
+The repository becomes **public** right after the first round (docs and safety). Every commit, file name and
+commit message is treated as public from the first one. (The rig's default for project repos is "private"; Emre's
+word for this repo overrides it.) Flipping the visibility is done on Emre's word through the vezir, not by a
+project session on its own.
+
+## R3: licences (Emre, 2026-10-11)
+
+- Code in this repo: MIT, copyright line "the sreagent-playbook authors" (`LICENSE`).
+- Blog posts: CC BY 4.0. They live in the blog repo (`sreagent-blog`, published at sreagent.emreguclu.io), never
+  here.
+
+## R4: blog and repo (Emre, 2026-10-11)
+
+The blog announces each playbook and carries the guides. Each post links to a **release tag** in this repo. The
+repo carries the code, the adopter README, the tests and the record.
+
+## R5: layout (Emre, 2026-10-11)
+
+- Root `CLAUDE.md`: shared rules plus an **index** of playbooks (name, path, one-line purpose, "read its HANDOVER
+  first"). No status in it.
+- Root `HANDOVER.md`: thin: repo status and links to each playbook's HANDOVER. The rig reads its first line.
+- `docs/decisions.md`: repo-wide decisions only (this file). `docs/definition-of-done.md`: the DoD.
+- `playbooks/<name>/`: its own `CLAUDE.md` (only if it has rules of its own), `HANDOVER.md`, `decisions.md`,
+  `README.md`, `CHANGELOG.md`, `tests/`.
+
+## R6: releases (Emre, 2026-10-11)
+
+Per-playbook tags `<name>/vX.Y.Z`. A playbook's package (zip) is a **GitHub Release asset**, never committed.
+
+## R7: data (Emre, 2026-10-11)
+
+Tests use **synthetic data only**. Real or masked third-party data never enters the repo; it stays in `files/`
+(Google Drive, gitignored). Source CSVs, mappings and the denylist are copied by the blog session into
+`files/source-data/`.
+
+## R8: HANDOVER rule (Emre, 2026-10-11)
+
+Each playbook's `HANDOVER.md` is updated at every critical moment **and** at session close. The root
+`HANDOVER.md` too.
+
+## R9: credentials (Emre, 2026-10-11)
+
+`.env` is a symlink to the lab credentials file; `.envrc` sets local az/azd config dirs. Every `az`/`azd` command
+runs as `direnv exec . <command>`. Values are never printed. `.env`, `.envrc` and `files/` are gitignored and never
+committed.
+
+## R10: safety gates (2026-10-11, this round's ask from Emre)
+
+`scripts/scrub-check.sh` plus versioned git hooks (`.githooks/`, installed by `scripts/install-hooks.sh`):
+
+- **pre-commit** checks staged file names and contents; **commit-msg** checks the message; **pre-push** re-checks
+  every commit being pushed (names, contents, messages), so a commit made before the hooks were installed is still
+  caught.
+- Blocked: `.env`/`.envrc` files, anything under `files/`, keys and certificates, capture and data files (`.blg`,
+  `.etl`, `.db`, `.sqlite`, `.zip`, …), mapping/denylist files, CSV files outside
+  `playbooks/*/tests/fixtures/synthetic/`, any binary file; secret patterns (storage keys, SAS signatures, JWTs,
+  private keys, tokens, password assignments); GUIDs, private IPv4 addresses and e-mail addresses (except
+  `scripts/scrub-allow.txt` and the commit trailer address); every **denylist name**.
+- The denylist is read from `files/source-data/denylist.txt` (or `SCRUB_DENYLIST`), never committed, matched like
+  the masker (case-insensitive; 5+ characters anywhere, shorter only as a whole word). **No denylist = fail.**
+  CI has no denylist and runs with `SCRUB_ALLOW_NO_DENYLIST=1`, so the denylist gate is local (hooks) only.
+- Output never shows the matched text: only check, place, and for the denylist the entry number and length.
+
+Interim (2026-10-11): until the blog session copies the denylist into `files/source-data/`, the session points
+`SCRUB_DENYLIST` at the blog project's private denylist (read-only, outside both repos).
+
+## R11: labs (Emre, 2026-10-11)
+
+Each project gets its **own** lab, built from the **private lab template** and registered in the template repo's
+`docs/labs.md` (in the same commit as the build or teardown). No lab and no Azure change before Emre approves the
+playbook's design and test plan (the PLAN GATE).
+
+## R12: one session = one playbook (Emre, 2026-10-11)
+
+1. A session works on **exactly one playbook**. It names that playbook at the top of its work and in its HANDOVER
+   entries.
+2. It reads the root `CLAUDE.md` plus that playbook's `CLAUDE.md`, `HANDOVER.md` and `decisions.md`, and writes
+   **only under `playbooks/<its name>/`**.
+3. Changes to `shared/` or to root files (`CLAUDE.md`, `README.md`, `docs/`, CI, `scripts/`, `.githooks/`) are
+   **separate, explicit changes with their own decision entry** in this file. They are never mixed into a
+   playbook commit.
+4. The root `HANDOVER.md` is an **index only**: repo-level status and links to each playbook HANDOVER. A playbook
+   status never lives there, so parallel sessions never conflict on it. (The same holds for the root README and
+   `CLAUDE.md`: no playbook status.)
+5. **Planned, not built yet:** when a second playbook arrives, the rig gets `pj-open PLAYBOOK=<name>`, with one
+   git worktree per playbook and merges to `main`. `CLAUDE.md` is written so it already reads correctly for that
+   future.
+
+First application (2026-10-11): the repo's first round touches both root files and the first playbook; it is
+committed as separate commits: root (R1–R12, shared safety tooling, root docs) first, then
+`playbooks/perfmon-blackbox/` alone.

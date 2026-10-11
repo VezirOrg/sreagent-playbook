@@ -1,0 +1,3 @@
+#!/bin/sh
+# Block .env-like files, data/capture files, secret patterns and denylist names before they are committed.
+exec "$(git rev-parse --show-toplevel)/scripts/scrub-check.sh" --staged

@@ -1,0 +1,3 @@
+# Public values the scrub check may ignore (exact match, case-insensitive), one per line, '#' comments.
+# Only well-known public identifiers belong here (e.g. built-in Azure role definition IDs), each with a comment.
+# Never a subscription, tenant, principal or resource ID of a real environment.

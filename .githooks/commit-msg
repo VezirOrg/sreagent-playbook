@@ -1,0 +1,3 @@
+#!/bin/sh
+# A commit message is public too: same secret and denylist checks.
+exec "$(git rev-parse --show-toplevel)/scripts/scrub-check.sh" --msg "$1"
