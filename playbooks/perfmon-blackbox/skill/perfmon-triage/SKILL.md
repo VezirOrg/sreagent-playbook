@@ -1,14 +1,15 @@
 ---
 name: perfmon-triage
-description: Triage a Windows Performance Monitor (PerfMon) capture given as raw CSV file(s), when the cause of a slow or unresponsive machine is unknown. The skill converts the CSV into a SQLite database with its own script, then checks CPU, memory, disk, network, processes and application counters against a fixed checklist, ranks what would make the machine hard to use, and digs into the top problems (timeline, driver, root-cause chain). Use for PerfMon / perfmon / BLG-exported / relog CSV / performance counter captures, "server is slow", "machine is sluggish".
-compatibility: Python 3 standard library only (csv, sqlite3). No pandas, no package installs. Runs in a terminal with python3.
+description: Triage a Windows Performance Monitor (PerfMon) capture, either the latest perfmon-blackbox capture of a machine fetched from its storage account or raw CSV file(s) given directly, when the cause of a slow or unresponsive machine is unknown. The skill converts the CSV into a SQLite database with its own script, then checks CPU, memory, disk, network, processes and application counters against a fixed checklist, ranks what would make the machine hard to use, and digs into the top problems (timeline, driver, root-cause chain). Use for PerfMon / perfmon / BLG-exported / relog CSV / performance counter captures, "server is slow", "machine is sluggish".
+compatibility: Python 3 standard library only (csv, sqlite3, urllib, zipfile). No pandas, no package installs. Runs in a terminal with python3. Fetching from storage needs read access (Storage Blob Data Reader) on the perfmon container.
 metadata:
-  version: "2.0"
+  version: "2.1"
 ---
 
 # PerfMon triage: CSV → SQLite → analysis
 
-You get one or more PerfMon CSV files and nothing else: no time window, no symptom, no suspect. First **convert**
+You get the name of a machine whose capture the perfmon-blackbox recorder uploads (fetch it first, step −1), or one
+or more PerfMon CSV files, and nothing else: no time window, no symptom, no suspect. First **convert**
 the CSV into a SQLite database with this skill's converter; then work in two phases over that database: **breadth**
 (every resource against a fixed checklist, ranked by impact on usability), then **depth** (only the problems that
 would make the machine hard to use). The data is large; your context is not. **Never look at raw data**: not the
@@ -58,6 +59,26 @@ printout.
   load is a background job or native growth. `link_test()` and `leak_rate()` do this; use them.
 - **Saw-tooth counters** (handles, private bytes) swing up and down within minutes: compare averages over buckets,
   not two single samples.
+
+## Step −1 — Fetch the latest capture of the machine (1 terminal command)
+
+When the request names a machine (not a CSV), its captures are zips in the perfmon-blackbox storage account:
+`perfmon/<subscriptionId>/<resourceGroup>/<machine>/<yyyy>/<mm>/<dd>/<machine>_<from>_<to>.zip`, one per export
+(every few hours). The storage account name is in the request or in the agent's instructions.
+
+```sh
+python3 "$SKILL_DIR/perfmon_fetch_latest.py" --account <storage account> --machine <machine> --out /tmp/perfmon
+# known prefix:          --prefix <subscriptionId>/<resourceGroup>/<machine>
+# the newest N exports:  --last N   (default 1; consecutive parts go into ONE database in step 0)
+# which machines exist:  --list-machines
+```
+
+It picks the newest zip by the window end in its name, checks the CSV against the manifest's SHA-256, unzips it and
+prints: the zip it used, the window, `complete`, buffer hours and every gap (`buffer_overrun`, `collector_restart`,
+`machine_off`, `local_cap`). **Quote the zip name, `complete` and every gap in the report's Capture section**; a gap
+is a hole in the data, not an event of the machine (except `machine_off`). The last line `csv: …` lists the CSV
+file(s) for step 0. Authentication: a managed identity or Azure CLI login of the agent; on HTTP 403 say that the agent
+lacks Storage Blob Data Reader on the container, do not guess.
 
 ## Step 0 — Convert the CSV (1–2 terminal commands)
 
@@ -133,6 +154,10 @@ show(db, "SELECT counter, min_value, max_value FROM counters WHERE object='Memor
 show(db, "SELECT max_value FROM counters WHERE object='Process' AND counter='Working Set' AND instance='_Total'")
 ```
 
+`n_cpu()` counts per-core instances of `Processor`, or of `Processor Information` (instances `_Total`, `0,_Total`,
+`0,0`, …) when the capture has no `Processor` object, as perfmon-blackbox captures do; `triage()` then checks
+`Processor Information` the same way.
+
 Record: time range and zone, interval and gaps, host count, objects present (which apps: IIS, SQL, .NET, …), CPU
 count, **RAM estimate** (RAM is not a counter: ≈ Available MBytes + Process(_Total) Working Set, or bounded by Commit
 Limit), restarts (`System\System Up Time` dropping, or sample gaps).
@@ -178,7 +203,7 @@ Take the problems that make the machine hard to use; if there are none, take the
 
 ## Report (final answer, ≤ 60 lines, no raw data tables)
 
-1. **Capture:** host, time range and zone, interval, gaps or restarts, CPU count, RAM estimate, workload.
+1. **Capture:** the zip used (step −1) with its `complete` flag and gaps, host, time range and zone, interval, gaps or restarts, CPU count, RAM estimate, workload.
 2. **Verdict:** one or two sentences: was the machine hard to use, when, and why (or: not in this capture). The
    verdict word respects the `VERDICT CEILING`.
 3. **Ranked problems** (at most 5): impact (when, how long), evidence (numbers with their printed times), driver,

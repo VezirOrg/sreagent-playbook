@@ -52,6 +52,14 @@ package as Machine Configuration configuration parameters:
 | `ContainerName` | `perfmon` | container for all machines |
 | `LocalKeepMB` | `1024` | cap for pending buffers + not-yet-uploaded zips on the disk (oldest go first, and that loss is reported) |
 
+**Runtime split (P25).** Two runtimes run this package's code on a server, and nothing is installed for either:
+
+| Code | Runs in | Rule |
+|---|---|---|
+| DSC resources R1–R6 (`PerfmonBlackboxDsc`) | the Machine Configuration agent's **own PowerShell 7** (7.1.2 on Windows per Learn), one session per configuration, `PSModulePath` = the package folder | 5.1-compatible syntax; only `logman.exe`, `schtasks.exe` (task XML), `icacls.exe`, .NET; no Windows modules (`ScheduledTasks`, …), which the agent cannot load |
+| `Start-PerfmonBlackbox.ps1`, `Export-PerfmonBlackbox.ps1` (boot, export, upload, capacity measurement) | **Windows PowerShell 5.1** (`powershell.exe`), started by the scheduled tasks as SYSTEM (R3 also starts it) | 5.1 only; lint `PSUseCompatibleSyntax` / `PSUseCompatibleCommands` |
+| package build (`build.ps1`, GuestConfiguration module) | authoring side only (CI Windows runner, lab scratch folder) | never on a customer server |
+
 DSC resources (class-based module `PerfmonBlackboxDsc` inside the package; each with a real `Test`, so the guest
 assignment shows drift per item):
 
@@ -121,15 +129,17 @@ is uploaded and verified.
    event-log warning (source `PerfmonBlackbox`). A loss is **never silent**.
 4. **Validate** the CSV: PDH header; ≥ 1 row; the 36 template counters present (wildcard counters as at least one
    instance); first/last time inside the window. A failed check → nothing uploaded, error event, exit ≠ 0.
-5. **Zip** `export.csv` + `manifest.json`: machine prefix, resource ID, export sequence, window from/to, first/last
+5. **Zip** (with .NET `System.IO.Compression.ZipFile`, which ships with Windows Server; not `Compress-Archive`, which is slow on large files in 5.1) the CSV + `manifest.json`: machine prefix, resource ID, export sequence, window from/to, first/last
    sample, rows, columns, interval, `MaxSizeMB`, package version, `gaps[]`, `complete`, SHA-256 of the CSV.
 6. **Token** for `https://storage.azure.com/` from the machine's **system-assigned identity**: Azure VM → IMDS
    `169.254.169.254` (`Metadata: true`); Arc → `IDENTITY_ENDPOINT` (localhost:40342): first call returns 401 with
    a challenge-file path under `C:\ProgramData\AzureConnectedMachineAgent\Tokens\`, which SYSTEM (a local
    administrator) may read; the call is repeated with `Authorization: Basic <content>`. Never written to disk or
    logs.
-7. **Upload** with REST `PUT Blob` (`BlockBlob`, `Content-MD5`, metadata `sha256`, `seq`, `complete`), no Az
-   module. Path `perfmon/<machine-prefix>/<yyyy>/<mm>/<dd>/<machineName>_<from yyyymmdd-hhmmss>_<to hhmmss>.zip`.
+7. **Upload** with REST, `Invoke-WebRequest` (5.1): `PUT Blob` (`BlockBlob`, `Content-MD5`, metadata `sha256`, `seq`,
+   `complete`) up to 32 MiB; above that `Put Block` in 8 MiB blocks (each with its `Content-MD5`) then `Put Block
+   List` (with `x-ms-blob-content-md5` and the metadata). **Only what ships with Windows Server** (P26): `relog.exe`,
+   `logman.exe`, .NET, `Invoke-WebRequest`; no azcopy, no az CLI, no Az modules. Path `perfmon/<machine-prefix>/<yyyy>/<mm>/<dd>/<machineName>_<from yyyymmdd-hhmmss>_<to hhmmss>.zip`.
 8. **Commit**: on HTTP 201 with the echoed MD5 → write `state.json` (`last_ts` = last exported sample), delete
    pending buffers fully exported and the local zip. On failure → keep everything; the next run exports a longer
    window from the same `last_ts` (no gap), as long as the ring still holds it (otherwise step 3 reports it).

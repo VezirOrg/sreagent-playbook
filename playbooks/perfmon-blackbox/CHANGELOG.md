@@ -11,3 +11,9 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
 - 2026-10-11: P16–P19: lab18 measurement (partial), counter groups G1–G3, interval parameter, capacity check; PLAN-OK
   for design rev 3 (defaults 10 s / 512 MB / export 4 h).
 - 2026-10-11: session 2: P20 collector files committed under `package/collector/` (they never entered git under `package/files/`); P21 the export rolls the collector.
+- 2026-10-11: skill **v2.1**: `perfmon_fetch_latest.py` (step −1: newest zip of a machine, manifest hash check, gaps
+  quoted in the report); `perfq.py` reads `Processor Information` when there is no `Processor` object (CPU count and
+  CPU checks; no false System breaches from a CPU count of 0). Rule 6 and the VERDICT CEILING unchanged (P8).
+- 2026-10-11: synthetic capture generator `tests/synth/make_capture.py`, local tests L01–L04, L07 (`tests/run.sh`).
+- 2026-10-11: P22 (Process set stays), P23 (implementation choices), P24 (Windows dev over SSH on lab VMs), P25
+  (Windows PowerShell 5.1 on servers, runtime split), P26 (export uses only what ships with Windows Server).

@@ -1,4 +1,4 @@
-# perfq.py (perfmon-triage v2) - query helpers for a PerfMon capture converted to SQLite by perfmon_csv_to_sqlite.py
+# perfq.py (perfmon-triage v2.1) - query helpers for a PerfMon capture converted to SQLite by perfmon_csv_to_sqlite.py
 # (tables meta, samples, counters, vals; view perf).
 # Python standard library only. Load with:  exec(open(PERFQ).read()); db = open_db(DB)
 # Every helper prints aggregates, never raw data rows, and caps its output (MAX_ROWS rows, MAX_POINTS points).
@@ -56,9 +56,23 @@ def interval_s(con):
     return float(con.execute("SELECT value FROM meta WHERE key='sample_interval_s'").fetchone()[0])
 
 
+def cpu_object(con):
+    """'Processor' if the capture has it, else 'Processor Information' (same counters; instances '_Total',
+    '0,_Total' per NUMA node, '0,0' per core)."""
+    r = con.execute("SELECT 1 FROM counters WHERE object='Processor' AND counter='% Processor Time' LIMIT 1").fetchone()
+    return 'Processor' if r else 'Processor Information'
+
+
+def _is_total(instance):
+    return instance is None or instance.endswith('_Total')
+
+
 def n_cpu(con):
-    return con.execute("SELECT count(*) FROM counters WHERE object='Processor' AND counter='% Processor Time' "
-                       "AND instance<>'_Total'").fetchone()[0]
+    """Logical CPUs: per-core instances of % Processor Time (Processor, or Processor Information without the
+    '_Total' and '<node>,_Total' instances)."""
+    rows = con.execute("SELECT instance FROM counters WHERE object=? AND counter='% Processor Time'",
+                       (cpu_object(con),)).fetchall()
+    return sum(1 for (i,) in rows if not _is_total(i))
 
 
 def _vals(con, cid, start=None, end=None):
@@ -272,14 +286,22 @@ def triage(con, min_minutes=5):
     """Run CHECKLIST once. Prints one line per check: worst instance, worst value, % samples breaching, longest
     continuous breach. A check matters for usability only if its longest breach >= min_minutes."""
     n = n_cpu(con)
+    cpu_obj = cpu_object(con)
     avail_thr = 500
     r = con.execute("SELECT max_value FROM counters WHERE object='Memory' AND counter='Available MBytes'").fetchone()
-    print(f'logical CPUs: {n}; Available MBytes max seen: {r[0] if r else "n/a"} (RAM is not a counter; estimate it)')
+    print(f'logical CPUs: {n} (from {cpu_obj}); Available MBytes max seen: {r[0] if r else "n/a"} '
+          '(RAM is not a counter; estimate it)')
     lines = []
     for area, obj, ctr, inst, op, thr, why in CHECKLIST:
+        if obj == 'Processor':
+            obj = cpu_obj
         if thr == 'avail':
             thr = avail_thr
         elif callable(thr):
+            if not n:
+                lines.append((area, f'{obj}\\{ctr}', '-', None, None, None, None, None,
+                              'not checked: CPU count unknown (no per-core processor counter)'))
+                continue
             thr = thr(n)
         cids = ids(con, obj, ctr, inst)
         if not cids:
@@ -289,7 +311,7 @@ def triage(con, min_minutes=5):
         worst = None
         for cid in cids:
             inst_name = con.execute('SELECT coalesce(instance,\'\') FROM counters WHERE counter_id=?', (cid,)).fetchone()[0]
-            if inst == '%' and inst_name in EXCL:
+            if inst == '%' and (inst_name in EXCL or (obj == 'Processor Information' and _is_total(inst_name))):
                 continue
             vals = _vals(con, cid)
             if not vals:

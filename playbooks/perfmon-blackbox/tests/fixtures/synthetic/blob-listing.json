@@ -1,0 +1,18 @@
+{
+ "_comment": "Synthetic container listing for L04 (perfmon_fetch_latest selection). Fake subscription and names.",
+ "prefix": "synthsub/rg-synth/synth01",
+ "expect_latest": "synthsub/rg-synth/synth01/2026/10/02/synth01_20261001-220000_20261002-020000.zip",
+ "expect_last2": [
+  "synthsub/rg-synth/synth01/2026/10/02/synth01_20261001-220000_20261002-020000.zip",
+  "synthsub/rg-synth/synth01/2026/10/01/synth01_20261001-180000_20261001-220000.zip"
+ ],
+ "blobs": [
+  ["synthsub/rg-synth/synth01/2026/10/01/synth01_20261001-140000_20261001-180000.zip", "20261001180130"],
+  ["synthsub/rg-synth/synth01/2026/10/01/synth01_20261001-180000_20261001-220000.zip", "20261001220140"],
+  ["synthsub/rg-synth/synth01/2026/10/02/synth01_20261001-220000_20261002-020000.zip", "20261002020150"],
+  ["synthsub/rg-synth/synth010/2026/10/03/synth010_20261002-220000_20261003-020000.zip", "20261003020100"],
+  ["synthsub/rg-other/synth01/2026/10/03/synth01_20261002-220000_20261003-020000.zip", "20261003020100"],
+  ["synthsub/rg-synth/synth01/2026/10/02/notes.txt", "20261003020100"],
+  ["synthsub/rg-synth/synth01/upload-in-progress_20261002-020000_20261002-060000.zip", "20261003020100"]
+ ]
+}
