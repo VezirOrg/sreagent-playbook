@@ -147,3 +147,20 @@ resizes** the collector.
 The export covers **the window since the last successful export, with no gap and no overlap**. The design states
 how many hours 512 MB holds at 1 s and at 15 s for this counter set (estimate now, **measured in the lab**), and
 what happens when the window outgrows the buffer: **data loss is detected and reported in the manifest**.
+
+## P16: LAB-KUR, partial go for one measurement (Emre, 2026-10-11, ahead of PLAN-OK)
+
+Build this project's **own lab now**, for **one measurement only**:
+- From the private lab template, registered in its lab register in the same commit; lab-audit stays clean.
+- **Azure VM only** (`vm1`); `arc1` comes after PLAN-OK. **No policy, no Machine Configuration, no storage design
+  work** yet.
+- **Question (Emre):** how many hours of data do the first 512 MB hold with **his** template (the 36 counters)?
+- **Method:** on `vm1`, create the collector from the sanitized template as a binary circular log, max 512 MB.
+  (a) run at 1 s for 20–30 min; (b) at 15 s for 20–30 min. Measure bytes written per sample and the `Process(*)`
+  instance count; extrapolate to hours per 512 MB; give a formula `bytes/sample ≈ a + b × processes` (real servers
+  run more processes than a lab VM). (c) leave a 1 s run until it really reaches 512 MB and wraps: record the true
+  time to 512 MB and prove the wrap (size stays at the max, the oldest timestamp moves forward). Report (a) and (b)
+  as soon as they exist; (c) may come later.
+- Log everything in the lab log on Drive (`files/lab-log/`). Say which VM size and why.
+- **Stop condition:** the template cannot be imported as is, or logman refuses bincirc with this counter set:
+  report instead of changing counters.
