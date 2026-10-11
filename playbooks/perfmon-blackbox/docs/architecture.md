@@ -1,11 +1,24 @@
 # Architecture
 
-> **Summary.** Azure Policy installs a Machine Configuration package on every targeted Windows server (Azure VM or
-> Arc). The package keeps a binary circular PerfMon log running and exports the window since the last export every few
-> hours to a private storage account, with the server's own identity, into its own folder. The SRE Agent's skill
-> fetches the latest zip of a server and analyses it. Nothing is installed on the servers.
+> **Summary.** Two parts. **The analysis** (the value): ask the SRE Agent about a server; its skill fetches the
+> server's latest capture, analyses it and writes a ranked report with times, drivers and recommendations
+> ([analysis.md](analysis.md)). **The collection** (the input): Azure Policy installs a Machine Configuration package
+> that keeps a binary circular PerfMon log running on every targeted Windows server and exports it every few hours to
+> private storage, with the server's own identity, into its own folder. Nothing is installed on the servers.
 >
 > Draft until v1.0.0.
+
+## What you get
+
+```text
+You:   Analyse the latest PerfMon capture of vm1.
+Agent: Capture: vm1_20261011-134118_20261011-145348.zip, complete, 10 s, 436 samples.
+       1 CPU   100% at 13:52:28, 11.8 min (13:51:58–14:03:38), driver bbcpu        critical
+       5 Leak  bbleak Private Bytes 64 MB → 816 MB (643 MB/h) over 70 min          warning
+       Fine: disk, network, paging file, PTEs. Next: identify the bb* processes.
+```
+
+(Condensed from a lab report: [analysis.md](analysis.md) has the verbatim excerpt.)
 
 ## Picture
 

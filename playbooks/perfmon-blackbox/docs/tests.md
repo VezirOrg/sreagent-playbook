@@ -9,41 +9,59 @@
 
 ## Summary
 
-| Test | Stage | vm1 (Azure VM) | arc1 (Arc) |
+The tests fall into two groups: **collection** (the input: the recorder, the policies, the storage) and **analysis**
+(the value: the agent fetching and analysing the latest capture).
+
+### Analysis
+
+| Test | What | vm1 (Azure VM) | arc1 (Arc) |
 |---|---|---|---|
-| L01 converter | local | green (Mac + CI) | — |
-| L02 perfq triage | local | green | — |
-| L03 masker | local | green | — |
-| L04 fetch-latest selection | local | green | — |
-| L05 export logic (Pester, 5.1) + lint | local (Windows) | green (lab dc + CI Windows runner) | — |
-| L06 repo safety (scrub) | local | green | — |
-| L07 template, ASCII, no lab names | local | green | — |
-| L08 policy generator | local | green | — |
-| L09 T16 scorer | local | green | — |
-| T01 package builds, local compliance | build | green (dc; build also in CI) | — |
-| T02 policy definitions | Azure | green | green |
-| T03 policy assignments and roles | Azure | green | green |
-| T04 guest assignment Compliant | machine | green | green |
-| T05 extension/agent, identity, no pwsh | machine | green | green (IMDS blocked) |
-| T06 collector running as configured | machine | green | green |
-| T06b never exceeds, really wraps | machine | wrap proven by the 512 MB lab runs (P34) | running |
-| T06c changed MaxSizeMB reaches the server | machine | pending | pending |
-| T06d changed interval reaches the server | machine | pending | running |
-| T06e capacity misfit reported | machine | pending | running |
-| T06f G3 without IIS: no event storm; auto-detect | machine | storm part green (dc, P27); auto-detect part pending | — |
-| T07 scheduled tasks | machine | green | green |
-| T07b buffer hours measured | machine | green (21.7 h at 10 s) | pending |
-| T08 reboot | machine | pending (needs rc.3) | pending |
-| T09 two exports, no gap, no overlap | machine | green | green |
-| T10 roll gap ≤ 10 s | machine | green | green |
-| T10b overrun detected | machine | pending | running |
-| T10c failed upload, no gap | machine | pending | — |
-| T11 blob path, hashes, identity | machine | green (IMDS) | green (HIMDS) |
-| T12 cannot write elsewhere | machine | green | green |
-| T13 lifecycle rule | storage | green | — |
-| T14 storage private | storage | green | — |
-| T15 agent fetches and converts | agent | green | green |
-| T16 agent report, scored | agent | run 1: 85/100, missed the 30-s stalls → OPEN-2 closed (P34); run 2 running | pending |
+| L01 converter | CSV → SQLite on synthetic data | green (Mac + CI) | — |
+| L02 perfq triage | checklist finds planted breaches, ceiling | green | — |
+| L04 fetch-latest selection | newest zip, other servers ignored, bad hash rejected | green | — |
+| L09 T16 scorer | the scoring rules | green | — |
+| T15 agent fetches and converts | the agent's own terminal, skill v2.1 | green | green |
+| **T16 agent report, scored** | planted problems vs the agent's report | see history below | pending |
+
+**T16 history** (vm1; pass = score ≥ 80 and every planted problem found):
+
+| Run | Package | Score | Found | Missed | Why |
+|---|---|---|---|---|---|
+| 1 | rc.1 | 85 → FAIL | leak, CPU, NIC (+ a memory episode) | 30-s stalls; disk | stalls are below the skill's 5-min ceiling by design → OPEN-2 closed, stalls removed (P34); disk plant never ran (P39) |
+| 2 | rc.3 | 85 → FAIL | leak, CPU, NIC (+ the memory episode) | disk | the disk plant never ran (P39); the agent rightly reported the disk as fine |
+| 3 | rc.5 | running | | | first run with a working disk plant (179 ms writes measured) |
+
+### Collection
+
+| Test | What | vm1 (Azure VM) | arc1 (Arc) |
+|---|---|---|---|
+| L03 masker | lab-side name masking | green | — |
+| L05 export logic (Pester, 5.1) + lint | merge, gaps, validation, export end to end | green (lab dc + CI Windows runner) | — |
+| L06 repo safety (scrub) | no secret, no real name | green | — |
+| L07 template, ASCII, no lab names | the 36 + groups, shipped files | green | — |
+| L08 policy generator | definitions, hashes, ABAC condition | green | — |
+| T01 package builds, local compliance | build + apply on a clean box | green (dc; build also in CI) | — |
+| T02 policy definitions | type, URL, hash, parameters | green | green |
+| T03 policy assignments and roles | exactly the designed roles | green | green |
+| T04 guest assignment Compliant | all six resources | green | green |
+| T05 extension/agent, identity, no pwsh | | green | green (IMDS blocked) |
+| T06 collector running as configured | counters, format, size, interval | green | green |
+| T06b never exceeds, really wraps | 16 MB ring at 1 s | wrap proven by the 512 MB runs (P34) | green |
+| T06c changed MaxSizeMB reaches the server | 16 → 32 MB | pending | running |
+| T06d changed interval reaches the server | 10 → 1 s | pending | interval green; re-run on rc.5 for a clean manifest (P37) |
+| T06e capacity misfit reported | R6 NonCompliant with the numbers | pending | green |
+| T06f G3 without IIS: no storm; auto-detect | | storm part green (dc, P27); auto-detect pending | pending |
+| T07 scheduled tasks | | green | green |
+| T07b buffer hours measured | | green (21.7 h at 10 s) | pending |
+| T08 reboot | | pending | pending |
+| T09 two exports, no gap, no overlap | | green | green |
+| T10 roll gap ≤ 10 s | | green | green |
+| T10b overrun detected | | pending | green |
+| T10c failed upload, no gap | | pending | — |
+| T11 blob path, hashes, identity | | green (IMDS) | green (HIMDS) |
+| T12 cannot write elsewhere | | green | green |
+| T13 lifecycle rule | | green | — |
+| T14 storage private | | green | — |
 
 ## Local tests
 

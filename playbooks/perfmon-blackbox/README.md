@@ -1,12 +1,15 @@
-# perfmon-blackbox
+# perfmon-blackbox: ask the SRE Agent why a Windows server was slow, any time
 
-A **black-box PerfMon recorder** for Windows servers (Azure VMs and Azure Arc-enabled servers), plus the **Azure SRE
-Agent skill** that analyses the latest capture of a server.
+**Ask the Azure SRE Agent about a server and get a ranked performance report of its latest hours**: what made it hard
+to use, when, for how long, which process drove it, what is leaking, what is fine, and what to do next. The agent's
+skill fetches the server's latest PerfMon capture from your storage and analyses it with fixed rules (no raw data, a
+verdict ceiling, no cause without a test in time). The captures come from a black-box recorder that Azure Policy keeps
+running on every Azure VM and Arc-enabled server: collection is the input, **the analysis is the value**.
 
 > Not an official Microsoft product. Working and versioned, no support promise. See the
 > [repo README](../../README.md).
 
-**Status: release candidate in lab testing** (`perfmon-blackbox/v1.0.0-rc.1` is a lab test build, not for use). This
+**Status: release candidate in lab testing** (the `perfmon-blackbox/v1.0.0-rc.N` pre-releases are lab test builds, not for use). This
 guide becomes final with `perfmon-blackbox/v1.0.0`.
 
 ## What it does
@@ -88,6 +91,7 @@ month per deployment (private endpoint). Details and price source: [docs/cost.md
 
 | Doc | For |
 |---|---|
+| [docs/analysis.md](docs/analysis.md) | **what the agent tells you**: how to ask, the steps, the report, rules and limits |
 | [docs/architecture.md](docs/architecture.md) | how it fits together (diagram) |
 | [docs/deploy.md](docs/deploy.md) | deploying it |
 | [docs/parameters.md](docs/parameters.md) | parameters, buffer hours, the capacity check |
