@@ -10,7 +10,7 @@ Both are DeployIfNotExists with the same parameters. The deployment does two thi
   2 a nested deployment at the storage account's resource group: one role assignment of the custom write-only role
     on the container for the machine's system identity, with an ABAC condition that allows writes only under
     '<subscriptionId>/<resourceGroup>/<machine>/' (lower case; CHOICE 3, CHOICE 4)
-The assignment identity needs: Guest Configuration Resource Contributor on the machines' scope; on the storage
+The assignment identity needs: Guest Configuration Resource Contributor and Reader on the machines' scope; on the storage
 account's resource group the right to deploy (custom "PerfMon Blackbox Deployer", infra) and Role Based Access
 Control Administrator limited by a delegation condition to the writer role (policy/README section in the playbook
 README; tests/lab/lab-policy.sh does it in the lab).
@@ -26,6 +26,7 @@ import os
 NAME = 'PerfmonBlackbox'
 GC_CONTRIBUTOR = '088ab73d-1256-47ae-bea9-9de8e7131f31'   # built-in: Guest Configuration Resource Contributor
 RBAC_ADMIN = 'f58310d9-a9f6-439a-9e8d-f62e7b41a168'       # built-in: Role Based Access Control Administrator
+READER = 'acdd72a7-3385-48ef-bd42-f606fba81ae7'           # built-in: Reader (to read the machine's identity)
 
 # policy parameter -> (default, description); all strings (Machine Configuration parameters must be strings)
 PARAMS = [
@@ -179,6 +180,7 @@ def definition(kind, content_uri, content_hash, version):
                         'type': 'Microsoft.GuestConfiguration/guestConfigurationAssignments',
                         'name': NAME,
                         'roleDefinitionIds': [f'/providers/Microsoft.Authorization/roleDefinitions/{GC_CONTRIBUTOR}',
+                                              f'/providers/Microsoft.Authorization/roleDefinitions/{READER}',
                                               f'/providers/Microsoft.Authorization/roleDefinitions/{RBAC_ADMIN}'],
                         'existenceCondition': {'allOf': [
                             {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/complianceStatus', 'equals': 'Compliant'},

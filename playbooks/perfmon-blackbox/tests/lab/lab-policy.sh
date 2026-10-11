@@ -61,6 +61,7 @@ for kind in vm arc; do
   pid=$(az policy assignment show -n "pbb-$kind" --scope "$scope" --query identity.principalId -o tsv)
   echo "assignment pbb-$kind"
   mi_roles "$pid" 'Guest Configuration Resource Contributor' "$scope"
+  mi_roles "$pid" Reader "$scope"
   mi_roles "$pid" 'PerfMon Blackbox Deployer' "$scope"
   cond="((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$writer_guid})) AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$writer_guid}))"
   mi_roles "$pid" 'Role Based Access Control Administrator' "$sa_id" "$cond"
@@ -68,6 +69,6 @@ done
 echo "waiting 60 s for the role assignments to propagate, then remediation"
 sleep 60
 for kind in vm arc; do
-  az policy remediation create -n "pbb-$kind-$(date -u +%H%M%S)" --policy-assignment "pbb-$kind" -g "$rg" --resource-discovery-mode ReEvaluateCompliance -o none
+  az policy remediation create -n "pbb-$kind-$(date -u +%H%M%S)" --policy-assignment "pbb-$kind" -g "$rg" --resource-discovery-mode "${REMEDIATION_MODE:-ReEvaluateCompliance}" -o none
   echo "remediation started for pbb-$kind"
 done
