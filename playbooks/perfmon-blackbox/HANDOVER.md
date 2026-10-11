@@ -1,16 +1,23 @@
-# perfmon-blackbox: IMPLEMENTING (session 2): local stage + package code green (L01-L07, Pester L05); next T01 build, infra, policies; lab18 UP.
+# perfmon-blackbox: IMPLEMENTING (session 2): policy-deployed on lab18 vm1, stages T01-T15 green on vm1 (T08 waits rc.2); T16 load running; arc1 building.
 
 
 ## Session 2 progress (2026-10-11, live; rewritten at close)
 
-- P20 (collector files were never committed: root `.gitignore` `files/` swallowed `package/files/`; now
-  `package/collector/`, root R16 narrowed the pattern), P21 (export rolls the collector), P22–P27 recorded.
-- **Storm answered (P27): no storm.** Formula: full set ≈ 4.5 KB + 0.53 KB × processes per sample. BbStorm stopped
-  (readback done); BbWrap1/2 + BbFull10 still running on vm1.
-- Done: skill v2.1 (`perfmon_fetch_latest.py`, Processor Information), synthetic generator, local tests L01–L04,
-  L06, L07 green; package: `PerfmonBlackboxDsc` R1–R6, `PerfmonBlackbox.Common.ps1`, Start/Export scripts (5.1,
-  ASCII), `build.ps1`; Pester L05 24/24 + PSScriptAnalyzer 5.1 compat clean on dc (`C:\BbDev`, P24).
-- Next: T01 (build + local compliance on a lab VM scratch), infra, policies, vm1 T04–T16, then arc1.
+- Decisions P20–P30 recorded (collector files, export roll, Process set, implementation choices, dev over SSH,
+  PowerShell 5.1 hard rule + runtime split, export only with built-in tools, storm/formula, T01 facts, rc.1
+  pre-release, lab SP agent admin for now). Root: R16 (.gitignore), R17 + addendum (built-in role IDs allow-listed).
+- **Green:** local L01–L09; L05 (26 Pester + PSScriptAnalyzer 5.1) on dc; T01 (build + local compliance, dc);
+  T02, T03, T13, T14; vm1: T04, T05, T06, T07, T09, T10, T11, T12, T15. First policy-deployed export uploaded with
+  the VM's own identity; exports continuous; T12 negative cases all 403.
+- **Lab18 now holds** (all registered in the template repo's lab register row): storage `stbb…` (PE, private),
+  custom roles Writer/Deployer, policies `pbb-vm`, `pbb-arc`, `pbb-gc-prereq` on the RG (dc and arc1 in notScopes),
+  dc's identity = lab verifier (Blob Data Reader), lab SP = SRE Agent Administrator on the agent (P30, remove at
+  teardown), skill perfmon-triage v2.1 on the agent, GitHub pre-release `perfmon-blackbox/v1.0.0-rc.1`.
+- **Running:** T16 planted load on vm1 (make-trouble, started 11:57Z, ends ~13:07Z; then `T16.sh vm1 finish`);
+  arc1 being built (`lab-arc1.sh`); BbWrap1/2 full at ~13:03Z (wrap readout), BbFull10 full ~08:59Z 10-12.
+- **Pending fixes for rc.2:** boot reason derived from the boot time (Move-BbBufferToPending), needed for T08.
+- Next: T16 finish (scored), T08 after rc.2, T06b–e/T10b/T10c (parameter cycles), arc1 T04–T16, CI job (root),
+  README cost section, fresh-eyes deploy.
 
 ## Brief from session 1 (kept until close)
 
