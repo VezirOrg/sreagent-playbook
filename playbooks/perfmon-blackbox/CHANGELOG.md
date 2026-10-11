@@ -29,3 +29,4 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
 - 2026-10-11: P31 standing permission for lab rc.N; rc.2 (boot reason from the boot time).
 - 2026-10-11: **arc1 (Arc, HIMDS) policy-deployed: T04, T05, T06, T07, T09, T10, T11, T12 green** (upload with the Arc machine's identity: P10 risk cleared); T07b green on vm1; CI green with the new jobs.
 - 2026-10-11: rc.3 (P33: R1's ACL no longer empties existing files' DACLs); lab size polls through a handle; wrap proven on lab18 (BbWrap1).
+- 2026-10-11: P34: OPEN-2 closed for v1.0.0 (no stall plant, rubric P5 dropped, disk rule tightened); wrap proven (BbWrap1/2); T16 run 1 evidence kept as run1.

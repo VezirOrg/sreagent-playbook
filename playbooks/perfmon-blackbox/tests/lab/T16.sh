@@ -15,7 +15,7 @@ fi
 guest "$m" make-trouble.ps1 -Status > "$ev/T16-$m-truth.raw" 2>&1
 python3 -c 'import json,sys; t=json.load(open(sys.argv[1])); sys.exit(0 if t.get("ended") else 1)' "$ev/T16-$m-truth.raw" 2>/dev/null || { echo "planted load not finished yet"; exit 1; }
 e=$(guest "$m" export-now.ps1); echo "$e" | tail -3
-zip=$(echo "$e" | grep '^last_blob:' | sed 's/^last_blob: //; s#.*/##')
+zip=$(echo "$e" | tr -d '\r' | grep '^last_blob:' | sed 's/^last_blob: //; s#.*/##')
 # the capture range the agent should quote is the latest zip's own window (a scheduled export may have cut the load)
 win=$(verify_blobs "$m" 1 -AllowIncomplete | grep 'manifest:' | head -1)
 python3 -c '

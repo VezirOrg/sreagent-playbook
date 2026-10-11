@@ -6,7 +6,6 @@ bb* copies of powershell.exe in C:\BbDev\trouble.
 Timeline (minutes after start; -Scale shrinks it for a dry run):
   leak   bbleak.exe grows its private bytes by LeakMBPerHour for the whole run (one PID)
   cpu    +10 for 12 min: bbcpu.exe spins one thread per logical CPU (machine CPU >= 95 %)
-  stall  +25 and +55 for 30 s: bbstall.exe spins every CPU (the OPEN-2 case: recurring short stalls)
   disk   +32 for 6 min: bbdisk.exe random 4 KiB write-through I/O on C: (latency episode)
   nic    +45 for 6 min: bbnic.exe sends UDP datagrams to dc (Bytes Total/sec burst)
   end    +70
@@ -34,7 +33,7 @@ function Now { (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') }
 function Save($t) { $t | ConvertTo-Json -Depth 6 | Set-Content -Path $truth -Encoding ASCII }
 
 if ($Stop) {
-    Get-Process -Name bbleak, bbcpu, bbstall, bbdisk, bbnic -ErrorAction SilentlyContinue | Stop-Process -Force
+    Get-Process -Name bbleak, bbcpu, bbdisk, bbnic -ErrorAction SilentlyContinue | Stop-Process -Force
     & schtasks.exe /delete /tn '\BbDev\MakeTrouble' /f 2>&1 | Out-Null
     'stopped'
     exit 0
@@ -70,7 +69,8 @@ $leakSec = [int](70 * $m)
 $leak = Start-Bb 'bbleak' ("`$l=New-Object System.Collections.ArrayList; `$end=(Get-Date).AddSeconds($leakSec); `$step=[int]($LeakMBPerHour*1MB/360); while((Get-Date) -lt `$end){ `$b=New-Object byte[] `$step; for(`$i=0;`$i -lt `$b.Length;`$i+=4096){`$b[`$i]=1}; [void]`$l.Add(`$b); Start-Sleep 10 }")
 $t.problems += [ordered]@{ id = 'leak'; process = 'bbleak'; counter = 'Private Bytes'; per_hour_bytes = $LeakMBPerHour * 1MB; from = (Now); pid = $leak.Id }
 Save $t
-$plan = @(@{ at = 10; id = 'cpu' }, @{ at = 25; id = 'stall' }, @{ at = 32; id = 'disk' }, @{ at = 45; id = 'nic' }, @{ at = 55; id = 'stall' }, @{ at = 70; id = 'end' })
+# no short-stall plant: OPEN-2 closed for v1.0.0 (decisions P34)
+$plan = @(@{ at = 10; id = 'cpu' }, @{ at = 32; id = 'disk' }, @{ at = 45; id = 'nic' }, @{ at = 70; id = 'end' })
 $t0 = Get-Date
 foreach ($p in $plan) {
     $wait = $t0.AddSeconds($p.at * $m) - (Get-Date)
@@ -80,13 +80,6 @@ foreach ($p in $plan) {
             $d = [int](12 * $m); $from = Now
             $pr = Start-Bb 'bbcpu' ($pool + ($spinTpl -f $d, $cpus)); $pr.WaitForExit()
             $t.problems += [ordered]@{ id = 'cpu'; driver = 'bbcpu'; counter = 'Processor Information\% Processor Time'; from = $from; to = (Now); minutes = 12 * $Scale }
-        }
-        'stall' {
-            $from = Now
-            $pr = Start-Bb 'bbstall' ($pool + ($spinTpl -f ([int](30 * [Math]::Max($Scale, 0.1))), $cpus)); $pr.WaitForExit()
-            $st = @($t.problems | Where-Object { $_.id -eq 'stall' })
-            if (-not $st.Count) { $t.problems += [ordered]@{ id = 'stall'; driver = 'bbstall'; episodes = @() }; $st = @($t.problems | Where-Object { $_.id -eq 'stall' }) }
-            $st[0].episodes += [ordered]@{ from = $from; to = (Now); seconds = 30 }
         }
         'disk' {
             $d = [int](6 * $m); $from = Now

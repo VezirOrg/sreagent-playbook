@@ -361,17 +361,15 @@ class L09Scorer(unittest.TestCase):
     TRUTH = {'host': 'synth01', 'started': '2026-10-01 08:00:00', 'ended': '2026-10-01 09:10:00', 'problems': [
         {'id': 'leak', 'process': 'bbleak', 'per_hour_bytes': 600 * 1048576, 'from': '2026-10-01 08:00:00'},
         {'id': 'cpu', 'driver': 'bbcpu', 'from': '2026-10-01 08:10:05', 'to': '2026-10-01 08:22:05'},
-        {'id': 'stall', 'driver': 'bbstall', 'episodes': [{'from': '2026-10-01 08:25:01', 'to': '2026-10-01 08:25:31', 'seconds': 30}]},
         {'id': 'disk', 'driver': 'C:', 'from': '2026-10-01 08:32:00', 'to': '2026-10-01 08:38:00'},
         {'id': 'nic', 'driver': 'bbnic', 'from': '2026-10-01 08:45:00', 'to': '2026-10-01 08:51:00'}]}
     GOOD = '\n'.join([
         'Capture: synth01_20261001-080000_20261001-091000.zip, host synth01, 08:00 .. 09:10 local time, complete.',
         'Verdict: CPU saturation at 08:10 for 12 min (critical), driven by bbcpu.',
         '1. CPU: Processor Information _Total > 95 % from 08:10:10 for 12 min; top process bbcpu.',
-        '2. Disk: LogicalDisk C: Avg. Disk sec/Write 0.09 s from 08:32:10 for 6 min.',
+        '2. Disk: LogicalDisk C: Avg. Disk sec/Write 0.09 s (90 ms) from 08:32:10 for 6 min.',
         '3. Network: Bytes Total/sec burst 08:45 to 08:51.',
         '4. Memory: bbleak Private Bytes grows ~590 MB/h (one PID) - warning.',
-        '5. Short recurring CPU stalls of ~30 s at 08:25 (blips under the 5-minute ceiling).',
         'LINK: consistent with Y driving X.'])
 
     def score(self, text):
@@ -392,6 +390,10 @@ class L09Scorer(unittest.TestCase):
     def test_invented_problem_costs_points(self):
         r = self.score(self.GOOD + '\n6. Memory: commit near limit at 08:40.')
         self.assertEqual(r['points']['N1'], 0)
+
+    def test_disk_without_latency_not_found(self):
+        r = self.score(self.GOOD.replace('Avg. Disk sec/Write 0.09 s (90 ms)', 'busy'))
+        self.assertFalse(r['found']['disk'])
 
     def test_wrong_leak_rate_not_found(self):
         r = self.score(self.GOOD.replace('590 MB/h', '90 MB/h'))

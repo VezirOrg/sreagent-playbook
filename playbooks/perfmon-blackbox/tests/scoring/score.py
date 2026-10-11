@@ -44,7 +44,7 @@ def score(report, truth, zipname=None):
     probs = {p['id']: p for p in truth['problems']}
     # capture
     stem = (zipname or '').split('/')[-1].replace('.zip', '')
-    pts['C1'] = 5 if stem and stem.lower() in low else 0
+    pts['C1'] = 10 if stem and stem.lower() in low else 0
     pts['C2'] = 5 if truth['host'].lower() in low else 0
     first = minute(truth.get('capture_first', truth['started']))
     last = minute(truth.get('capture_last', truth.get('ended', truth['started'])))
@@ -68,13 +68,14 @@ def score(report, truth, zipname=None):
             ok = ok and 'bbcpu' in low
         found[pid] = ok; pts[pts_key] = n if ok else 0
     episode('cpu', ('cpu', 'processor'), 'P2', 15)
-    episode('disk', ('disk', 'latency', 'logicaldisk', 'sec/write', 'sec/read'), 'P3', 15)
-    episode('nic', ('network', 'nic', 'bytes total', 'interface'), 'P4', 10)
-    st = probs.get('stall')
-    if st:
-        tg = [minute(e['from']) for e in st['episodes']]
-        ok = any(re.search(r'stall|spike|short|recurring|blip|30.?s', w, re.I) and any(near(w, t) for t in tg) for w in windows(lines))
-        found['stall'] = ok; pts['P5'] = 10 if ok else 0
+    # disk: the line must name the disk AND a latency (not just any disk activity): P34 tightened
+    d = probs.get('disk')
+    if d:
+        tgt = minute(d['from'])
+        ok = any(re.search(r'disk|logicaldisk|C:', w, re.I) and re.search(r'latency|sec/(read|write)|\d+(\.\d+)?\s*ms\b|\d\.\d+\s*s\b', w, re.I)
+                 and near(w, tgt) for w in windows(lines))
+        found['disk'] = ok; pts['P3'] = 15 if ok else 0
+    episode('nic', ('network', 'nic', 'bytes total', 'interface'), 'P4', 15)
     # verdict words
     bad = [l for l in lines if re.search(r'critical|severe', l, re.I) and re.search(r'stall|spike|bbleak|leak', l, re.I)
            and not re.search(r'cpu.*(1[0-9]|12) ?min|bbcpu', l, re.I)]
@@ -87,7 +88,7 @@ def score(report, truth, zipname=None):
     raw = [l for l in lines if len(re.findall(r'-?\d+(?:\.\d+)?', l)) > 30 and (l.count(',') > 30 or l.count('|') > 30)]
     pts['R2'] = 0 if raw else 5
     total = sum(pts.values())
-    planted = [p for p in ('leak', 'cpu', 'disk', 'nic', 'stall') if p in probs]
+    planted = [p for p in ('leak', 'cpu', 'disk', 'nic') if p in probs]
     ok = total >= 80 and all(found.get(p) for p in planted)
     return {'points': pts, 'total': total, 'found': found, 'pass': ok, 'notes': notes}
 

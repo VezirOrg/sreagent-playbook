@@ -413,3 +413,15 @@ next remediation moves it to the new package. This is the adopter upgrade path (
   (L05 26/26, T01 green on dc; 12 files scrub-checked clean before the upload; L07 now refuses lab names in shipped
   code). Recorded one commit after the publish: a failed local test broke the command chain that should have written
   this line first (the zip itself was checked before the upload).
+
+## P34: OPEN-2 closed for v1.0.0; the wrap is proven (2026-10-11)
+
+- **OPEN-2 (Emre, 2026-10-11): the short stalls come out of T16.** The skill stays as it is (no section for recurring
+  short events; rule 6 and the VERDICT CEILING unchanged). The two 30-s stall plants leave the plant set and the T16
+  success criteria; the rubric drops item P5. Not in v1.0.0; it can return in a later version. (Evidence: T16 run 1,
+  the agent found everything else and did not report the 30-s stalls.)
+- **Wrap proof (P14/P16 c), lab18 vm1, the 36 counters at 1 s, 512 MB circular:** BbWrap1 (recording since 10:05:05Z)
+  stopped 13:08:32Z: file exactly 536,870,912 B, oldest sample 10:20:00, newest 13:08:27, 10,105 samples (none
+  dropped). BbWrap2 (identical twin) stopped 13:39:53Z: exactly 536,870,912 B, oldest 10:51:43 (later than BbWrap1's:
+  the oldest moves forward), newest 13:39:43. **True time to 512 MB ≈ 2.81 h** (10,105 samples ≈ 53 KB each, ~117
+  processes). The file never exceeds the maximum, the oldest samples are overwritten, the newest are present.
