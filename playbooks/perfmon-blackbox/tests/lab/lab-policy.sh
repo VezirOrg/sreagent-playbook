@@ -49,7 +49,7 @@ p = {"StorageAccountResourceId": sys.argv[1], "WriterRoleDefinitionId": sys.argv
 for kv in sys.argv[3:]:
     k, v = kv.split("=", 1); p[k] = v
 print(json.dumps({k: {"value": v} for k, v in p.items()}))' "$sa_id" "$writer" "$@")
-for kind in vm arc; do
+for kind in ${KINDS:-vm arc}; do
   f="$tmp/perfmon-blackbox-$kind.json"
   python3 -c 'import json,sys; d=json.load(open(sys.argv[1]))["properties"]; [json.dump(d[k], open(sys.argv[2]+"."+k, "w")) for k in ("policyRule","parameters","metadata")]' "$f" "$f"
   az policy definition create -n "perfmon-blackbox-$kind" --display-name "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["properties"]["displayName"])' "$f")" \
@@ -68,7 +68,7 @@ for kind in vm arc; do
 done
 echo "waiting 60 s for the role assignments to propagate, then remediation"
 sleep 60
-for kind in vm arc; do
+for kind in ${KINDS:-vm arc}; do
   az policy remediation create -n "pbb-$kind-$(date -u +%H%M%S)" --policy-assignment "pbb-$kind" -g "$rg" --resource-discovery-mode "${REMEDIATION_MODE:-ReEvaluateCompliance}" -o none
   echo "remediation started for pbb-$kind"
 done
