@@ -208,3 +208,28 @@ counters are never configured.
 
 The buffer-hours measurement (P16) is re-run with the full set (36 + G1 + G2, plus G3 on a web box), because the
 hours per 512 MB shrink.
+
+## P19: PLAN-OK for design rev 3, with Emre's change (Emre, 2026-10-11)
+
+"Do not wait for the measurement; start the project." The design rev 3 (`docs/design.md`) and the test plan rev 3
+(`docs/test-plan.md`) are **approved**, with these values; the P16 measurement is evaluated later for fine-tuning.
+
+| Choice | Decided |
+|---|---|
+| CHOICE 1 sample interval | `SampleIntervalSeconds` default **10 s** (Emre's change) |
+| P13/P14 buffer | `MaxSizeMB` default **512** |
+| CHOICE 2 export cadence | a **parameter** `ExportEveryHours`; default **4 h** (below), guarded by the capacity check R6 |
+| CHOICE 3 prefix | `<subscriptionId>/<resourceGroup>/<machineName>` |
+| CHOICE 4 write role | granted by the **DINE policy** (write-only custom role + ABAC path condition) |
+| CHOICE 5 storage network | **private endpoint**, public access disabled |
+| CHOICE 6 retention | **30 days** lifecycle delete |
+| CHOICE 7 package hosting | **GitHub Release asset** |
+| CHOICE 8 skill | **adapt skill v2.1** to the counter set (at least `Processor Information`); no new counters for it |
+| CHOICE 9 capacity check | **R6** reports a buffer/export misfit as the NonCompliant reason |
+| CHOICE 10 / P18 | **all three groups** (G1, G2, G3) with **G3 auto-detect** |
+
+**ExportEveryHours default = 4 (this session's pick, as asked).** Measured on the lab VM (P16, 113 processes, full
+56-counter set): ≈ 66.6 KB per sample → 512 MB ≈ 8,060 samples ≈ **22 h at 10 s**. 4 h leaves a 5.6× margin there,
+and still ≥ 2× on a server with about 2.5× the processes (≈ 9 h buffer, if bytes scale with processes). R6 reports any
+machine where the measured buffer is < 1.5 × the export window. To revisit with the formula `a + b × processes`
+once measured (P16 is unfinished: the process-load step did not hold, see HANDOVER).

@@ -1,6 +1,7 @@
 # perfmon-blackbox: design (for Emre's approval, PLAN GATE)
 
-Status: **DRAFT rev 3 for approval**, 2026-10-11 (rev 3: P16–P18: interval parameter, capacity check, counter
+Status: **rev 3 APPROVED (PLAN-OK, decisions P19)**, 2026-10-11, with Emre's change: interval default 10 s.
+Defaults decided in P19 override the "Recommendation" column of §8. History (rev 3: P16–P18: interval parameter, capacity check, counter
 groups G1–G3 with web auto-detect). Nothing here is built. Emre's decisions are in `../decisions.md`
 (P1–P15); this file turns them into a design. Choices Emre has **not** made yet are marked **[CHOICE n]** and listed
 together in §8, each with a recommendation.
@@ -45,8 +46,8 @@ package as Machine Configuration configuration parameters:
 | Parameter | Default | Meaning |
 |---|---|---|
 | `MaxSizeMB` | **512** | maximum size of the circular `.blg` (P13, P14) |
-| `SampleIntervalSeconds` | **OPEN, CHOICE 1** (after the P16 measurement) | collector interval (P17) |
-| `ExportEveryHours` | **CHOICE 2**: `0` = auto (derived) recommended | how often the export runs; `0` derives it from the measured buffer (§2.6) |
+| `SampleIntervalSeconds` | **10** (P19) | collector interval (P17) |
+| `ExportEveryHours` | **4** (P19; a fixed parameter, guarded by R6) | how often the export runs |
 | `StorageAccountName` | — (required) | the private storage account |
 | `ContainerName` | `perfmon` | container for all machines |
 | `LocalKeepMB` | `1024` | cap for pending buffers + not-yet-uploaded zips on the disk (oldest go first, and that loss is reported) |
