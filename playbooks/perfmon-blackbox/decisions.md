@@ -409,3 +409,7 @@ next remediation moves it to the new package. This is the adopter upgrade path (
    handle (open with read/write sharing), not `Get-ChildItem`. The 11:44Z fill-rate figures used that same listing;
    they were probably fresh (R1's ACL change touched the files at 11:43), and the full-at time they predicted (13:03Z)
    agrees with the 512 MB found at the 13:08Z stop, but they are not proof on their own.
+- **rc.3** (P33 ACL fix): `PerfmonBlackbox.zip` SHA-256 `2F9E19F4FF096460B6B97C5CB3B7F4ADA32063C26C84CF85D93C67A8DC92DD6F`
+  (L05 26/26, T01 green on dc; 12 files scrub-checked clean before the upload; L07 now refuses lab names in shipped
+  code). Recorded one commit after the publish: a failed local test broke the command chain that should have written
+  this line first (the zip itself was checked before the upload).
