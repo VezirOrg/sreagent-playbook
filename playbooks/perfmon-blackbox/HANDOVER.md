@@ -21,7 +21,7 @@
   only the machine). Lab assignments now: pbb-vm (GitHub), pbb-arc-storage.
 - **Next:** T18b → rc.8 (T01, scrub, SHA in decisions first, publish P31) → P46 lab test (hosts block, retry at +5 min,
   0 gaps) → T18c/d/e/f → T16 run 5 (arc1; vm1 after its next export) → T17 → T08/T07b arc1 → T06f part 2 →
-  least-privilege agent role (P30) → fresh-eyes deploy; v1.0.0 = Emre's gate.
+  least-privilege agent role (P30) → docs pass (incl. the vezir's naming item: "Azure Machine Configuration" in prose, "Guest Configuration" only for real identifiers; one-line note in architecture.md "formerly guest configuration; replaces Automation State Configuration (retiring 2027-09-30) and the DSC extension" + Learn link whats-new/migrating-from-azure-automation, verify the date there) → fresh-eyes deploy; v1.0.0 = Emre's gate.
 - Lab extras (register row updated): arc1; vm1 data disk + patchMode; dc identity = lab verifier; lab SP agent admin
   (P30, remove at teardown). Lab auto-shutdown 19:00Z (dc and vm1): restart needs the owner's OK. Skill v2.1 backup in
   `files/` (path in the owner report).
