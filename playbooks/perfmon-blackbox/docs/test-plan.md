@@ -52,6 +52,8 @@ a test for every stage, end to end, the last one being the analysis). Design: `d
 | T18d | P45 | No reader role → no download | storage mode without the reader role on the package container: the assignment does not turn Compliant on that content; what it shows is recorded; the machine keeps its running configuration | vm1 |
 | T18e | P45 | A different zip under the same name → rejected | a different zip in the container under `PerfmonBlackbox.zip` while the hash pins the release: rejected by the hash check; the machine keeps its old configuration; with the right zip it turns Compliant | vm1 |
 
+| T18f | P45 | **Shared key disabled, no SAS** | on the storage account with `allowSharedKeyAccess=false` and public network access disabled (T14): storage-mode download (T18b/T18c), an export upload from each machine (T11) and the agent's fetch (T15) all work; no step in the lab or the docs uses a key or a SAS | vm1, arc1, agent |
+
 ### T16 scoring (ground truth from planted problems)
 
 `tests/lab/guest/make-trouble.ps1` (synthetic, no real names) plants, for 45 minutes, **only a memory leak and a CPU

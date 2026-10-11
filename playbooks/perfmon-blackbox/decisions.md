@@ -546,6 +546,13 @@ every upload; the package is not affected.
 - **Same zip both ways**: `contentHash` is pinned to the release's SHA-256 in both modes; the adopter copies the release
   zip unchanged into the container (deploy.md shows the copy and the hash check).
 - **Not a package change** (no rc): policy generator, infra, lab scripts, docs and tests only.
+- **SAS is off the table** (Emre, 2026-10-11: customer environments may not allow SAS): not even as a fallback. If the
+  identity download fails anywhere, it is fixed or stopped and reported; it never falls back to SAS. The whole chain is
+  proven under a customer-like storage policy: **shared key access disabled** and public network access disabled (the
+  lab account has both since it was built, `infra/main.bicep`; T14 checks them). **T18f**: on that account, storage-mode
+  download (T18b/T18c), an export upload from each machine and the agent's fetch (T15). No lab script or infra step
+  uses an account key or a SAS (all use Entra ID tokens: IMDS, HIMDS, `az … --auth-mode login`, the agent's identity).
 - **Tests:** T18a GitHub mode (proven by T02/T04/T07–T12 on vm1 and arc1), T18b storage mode on arc1, T18c storage mode
   on vm1 (temporary, then back to GitHub), T18d no reader role → no download, T18e a different zip under the same name
-  → rejected by the hash, the old configuration stays. The fresh-eyes deploy in the second lab uses storage mode.
+  → rejected by the hash, the old configuration stays; T18f the whole chain with shared key access disabled. The
+  fresh-eyes deploy in the second lab uses storage mode.

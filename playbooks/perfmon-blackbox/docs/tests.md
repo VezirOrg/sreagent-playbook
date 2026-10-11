@@ -67,6 +67,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T18c package from storage, Azure VM (P45) | then back to GitHub | pending | — |
 | T18d storage mode without the reader role (P45) | no download, old config keeps running | pending | — |
 | T18e a different zip under the same name (P45) | rejected by the hash, old config keeps running | pending | — |
+| T18f shared key disabled, no SAS (P45) | storage download + exports + agent fetch on an account with shared key off | pending | pending |
 | T13 lifecycle rule | | green | — |
 | T14 storage private | | green | — |
 

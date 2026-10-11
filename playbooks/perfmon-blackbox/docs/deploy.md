@@ -78,9 +78,17 @@ az storage blob upload --auth-mode login --account-name <account> -c packages -n
 
 A different file under that name is refused by the server's hash check (the server keeps its current configuration).
 
-**Agent versions for storage mode** (system-identity download, GA July 2025): Azure VMs need the Machine Configuration
-extension **1.29.98.0 or later** (the lab ran 1.29.119.0); Arc servers need a Connected Machine agent released after
-July 2025 (the lab ran 1.68). Older agents: use GitHub mode.
+**Works with shared key access disabled; no SAS anywhere** (also for the package): every download and upload uses an
+Entra ID token (the machine's system identity; your `az … --auth-mode login`). Policies such as "Storage accounts should
+prevent shared key access" can stay enforced.
+
+**Agent versions for storage mode** (system-identity download, GA July 2025): the Machine Configuration agent must be
+**1.29.98.0 or later** (the lab ran 1.29.119.0 on the Azure VM and the Connected Machine agent 1.68 on Arc). Check:
+- Azure VM: `az vm extension show -g <rg> --vm-name <vm> -n AzurePolicyforWindows --query typeHandlerVersion`, or on the
+  server the folder name under `C:\Packages\Plugins\Microsoft.GuestConfiguration.ConfigurationforWindows\`;
+- Arc: `az connectedmachine show -g <rg> -n <server> --query agentVersion` (keep the Connected Machine agent current;
+  its machine configuration service follows it), or `azcmagent version` on the server.
+Older agents: use GitHub mode.
 
 ## 3. Assign, grant, remediate
 

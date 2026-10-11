@@ -30,7 +30,7 @@ its own folder works (201).
 
 ## Storage
 
-No shared-key access (no SAS, no keys anywhere), public network access disabled (private endpoint only), no anonymous
+**Works with shared key access disabled; no SAS anywhere** (T14, T18f): no shared-key access (no keys anywhere), public network access disabled (private endpoint only), no anonymous
 access, TLS 1.2, container private, blob soft delete 7 days, lifecycle delete after 30 days (T13, T14).
 
 ## On the servers
