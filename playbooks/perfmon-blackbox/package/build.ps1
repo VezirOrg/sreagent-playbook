@@ -35,6 +35,14 @@ PerfmonBlackbox -OutputPath $mofDir | Out-Null
 $mof = Join-Path $mofDir 'PerfmonBlackbox.mof'
 Move-Item (Join-Path $mofDir 'localhost.mof') $mof -Force
 
+# the compiler writes the build host, user and source paths into the MOF: the package ships neutral values
+$sr = New-Object IO.StreamReader($mof, $true); $t = $sr.ReadToEnd(); $enc = $sr.CurrentEncoding; $sr.Close()
+$t = [regex]::Replace($t, 'SourceInfo = "[^"]*\\(PerfmonBlackbox\.config\.ps1::)', 'SourceInfo = "$1')
+$t = [regex]::Replace($t, '(@GeneratedBy=|Author=")[^\r\n";]*', '${1}perfmon-blackbox')
+$t = [regex]::Replace($t, '(@GenerationHost=|GenerationHost=")[^\r\n";]*', '${1}build')
+[IO.File]::WriteAllText($mof, $t, $enc)
+if ($t -match 'BbDev|\\Users\\|GeneratedBy=(?!perfmon-blackbox)') { throw 'the MOF still holds a build path or user' }
+
 $pkg = New-GuestConfigurationPackage -Name 'PerfmonBlackbox' -Configuration $mof -Type AuditAndSet -Path $OutputPath -Force
 $hash = (Get-FileHash $pkg.Path -Algorithm SHA256).Hash
 "package: $($pkg.Path)"

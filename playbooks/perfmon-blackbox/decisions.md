@@ -364,3 +364,6 @@ in the public repo: `PerfmonBlackbox.zip` is its only asset; notes "lab test bui
 before the upload the zip is extracted and `scripts/scrub-check.sh` runs over every file in it (denylist, secret
 patterns, no machine names, no lab paths); the zip's SHA-256 is recorded here and is the policies' `contentHash`.
 Pushing to origin/main mid-session (rebase + fast-forward) is allowed for this.
+- **rc.1 package:** `PerfmonBlackbox.zip`, SHA-256 `EFE14BE1E44F6EA4C7BB908C8CE764C2396F3816FEFABF5F71451F74B80B81AA`
+  (built by T01 on dc, T01 green; 12 files extracted and scrub-checked clean; `build.ps1` now neutralises the MOF's
+  build host, user and source paths, which the DSC compiler writes in).

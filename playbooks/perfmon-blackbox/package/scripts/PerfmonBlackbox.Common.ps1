@@ -187,7 +187,7 @@ function Invoke-BbTool {
 }
 
 function Get-BbBlgInfo {
-    # samples, first and last sample of a CLOSED .blg (relog -q); a running circular file cannot be read (lab18)
+    # samples, first and last sample of a CLOSED .blg (relog -q); a running circular file cannot be read (lab measurement, decisions P21)
     param([Parameter(Mandatory)][string]$Path)
     $r = Invoke-BbTool relog.exe @($Path, '-q')
     $info = [ordered]@{ Path = $Path; Bytes = (Get-Item -LiteralPath $Path).Length; Samples = 0; Begin = $null; End = $null; Readable = ($r.ExitCode -eq 0) }
@@ -378,7 +378,7 @@ function Find-BbGaps {
 # ---------- capacity (R6, design sec. 2.6) ----------
 
 function Get-BbEstimatedBytesPerSample {
-    # P16 formula from lab18 + the real captures (decisions P27): ~45-54 bytes per value; 10 values per process
+    # P16 formula from the lab measurement + real captures (decisions P27): ~45-54 bytes per value; 10 values per process
     # + about 100 machine-wide values for the full set
     param([Parameter(Mandatory)][int]$Processes)
     return [int](4500 + 530 * $Processes)
