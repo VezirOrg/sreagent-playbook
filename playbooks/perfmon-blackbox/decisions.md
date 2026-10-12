@@ -606,7 +606,7 @@ follows exactly that and shows no flapping (no first-party PUT back and forth); 
 prebuilt as today; storage mode is always generated with the adopter's own container ID (one command in deploy.md).
 Emre's "both options in the policy" stays met: both modes ship.
 
-## P49: the export's lock during the P46 retry waits (session 3, 2026-10-12): **OPEN for Emre, not decided**
+## P49: the export releases its lock during the P46 retry waits (Emre via the vezir, 2026-10-12: **LOCK-A**)
 
 Found while scripting T10d: the P46 export holds the machine-wide lock (`Lock-Bb`) through its retry waits (+5 and
 +15 min, longer if a request hangs up to its 300-s timeout). A DSC `Set` of `[BlackboxCollector]` (a parameter change)
@@ -620,7 +620,9 @@ Asked through the vezir (LOCK-A / LOCK-B):
   rc.8 with an L05 Pester case.
 - **LOCK-B:** keep the code; operations.md documents the hold and the one-cycle NonCompliant.
 
-The package is not changed and rc.8 is not built until Emre answers.
+**Decided: LOCK-A** (Emre, 2026-10-12). The export releases the lock before each wait and takes it again before the
+next attempt; the cleanup after the upload tolerates a part file already removed (a `LocalKeepMB` drop in the wait).
+In rc.8, with an L05 Pester case.
 
 ## P50: lab18 restarts (Emre via the vezir, 2026-10-12 08:13, "LAB-BAŞLAT")
 
