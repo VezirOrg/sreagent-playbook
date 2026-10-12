@@ -666,7 +666,7 @@ auto-shutdown; their only relation to power state is observing it (the `machine_
 manual one-off `az` commands, recorded in decisions/HANDOVER (P50–P52); no lab-tools helper for them (Emre: "GEREK-YOK").
 No such code exists today. If a future design needs one, stop and ask.
 
-## P54: a pending ring that can never be read (session 3, 2026-10-12): **OPEN for Emre, not decided**
+## P54: a pending ring that can never be read (session 3, 2026-10-12): **DECIDED RING-A** (Emre, 2026-10-12 11:45Z)
 
 Found on vm1: `20261011-191221-00-boot.blg` was cut by an abrupt restart (2026-10-11 19:12Z, right after the template's
 19:00Z auto-shutdown) without being closed, so `relog` cannot read it (lab fact 1). Its ~10 min were reported as a gap
@@ -680,6 +680,12 @@ a readable ring, so only abrupt stops cause this. Asked through the vezir (RING-
 
 Nothing is changed until Emre answers.
 
+**Decision (Emre, 11:45Z): RING-A.** After **3** failed reads of the same pending ring (3 export runs), the export
+records it as an `unreadable_ring` gap in the next manifest (file name and its time span as far as known), deletes
+it and writes a warning event. The failure count is kept in `state.json` per file name; a read that succeeds clears
+it. Package change: L05 Pester cases (count up, third failure → gap + delete + event, success resets), then a new rc
+as usual (SHA here before publishing, P31). The v1.0.0 tag stays reserved for Emre.
+
 ## P55: after a definition update, a compliance scan comes before the remediation (rc.8 rollout, 2026-10-12)
 
 Seen on arc1 (storage mode) when rolling out rc.8: the definitions were updated (1.0.7) and remediated at once; the
@@ -692,3 +698,14 @@ the likely difference (the re-sync appears to use the policy engine's last evalu
 Procedure, adopters and lab alike: update definitions → **trigger a compliance scan and wait for it** → remediate →
 check the guest assignment's version after the next service re-sync. operations.md and `lab-policy.sh` do this. A
 rollout takes about 45 min per machine (the first agent cycle after a new package only tests, the next applies).
+
+## P56: T18d/e and T07b on arc1 (session 3, 2026-10-12): **DECIDED** (Emre, 11:45Z, as recommended)
+
+- **T18D-ARC1:** T18d (no reader role on the package container) and T18e (a different zip under the same name) run
+  on **arc1**, not vm1 as the test plan said: arc1 is already in storage mode, so no mode switch (and no 45-min
+  rollout each way) is needed. Afterwards the reader role and the original rc.8 zip are restored and arc1 must be
+  Compliant on rc.8 again. test-plan.md records the machine change.
+- **T07B-HESAP:** T07b on arc1 is not run to a full 512 MB ring (that needs ~21 h of uptime, which the nightly stop
+  prevents, P51). Instead bytes per sample are measured over a short window on arc1 (file growth / samples), and the
+  hours held are computed with the P27 formula, the same way R6 does. That computed value is T07b's arc1 result,
+  marked as computed, not observed.
