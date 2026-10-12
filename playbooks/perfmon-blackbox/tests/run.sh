@@ -35,7 +35,7 @@ one() {
 
 if [ "$id" = all ] || [ "$id" = local ]; then
   ids="L01 L02 L03 L04 L06 L07 L08 L09"
-  [ "$id" = all ] && ids="$ids T13 T14 T01 T02 T03 T04 T05 T06 T07 T06b T06c T07b T08 T09 T10 T10b T10c T11 T12 T15 T16"
+  [ "$id" = all ] && ids="$ids T13 T14 T01 T02 T03 T04 T05 T06 T07 T06b T06c T07b T08 T09 T10 T10b T10c T10d T11 T12 T15 T16"
   fail=0
   for t in $ids; do one "$t" || { fail=1; [ $keep -eq 1 ] || exit 1; }; done
   exit $fail

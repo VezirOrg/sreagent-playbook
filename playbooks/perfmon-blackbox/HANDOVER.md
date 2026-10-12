@@ -1,4 +1,17 @@
-# perfmon-blackbox: CLOSED session 2 (2026-10-11 21:58Z). LAB DOWN (not ours, do NOT start). Next: T18b deciding pull, rc.8, P46 lab test.
+# perfmon-blackbox: session 3 OPEN (2026-10-12), lab-independent work only. LAB DOWN (not ours, do NOT start). Next: T18b deciding pull, rc.8, T10d.
+
+## Session 3 (2026-10-12, in progress)
+
+- Opened clean (no stray commits). Local L01–L09 green. Lab18 stays down until the vezir relays Emre's answer.
+- **T10d** (P46 lab test) scripted: `tests/lab/T10d.sh` (block by name, start the export, unblock after 3 min, pass =
+  "uploaded on attempt 2", task result 0, continuous zip). `guest/export-now.ps1` gained `-MaxWaitSeconds`/`-StartOnly`;
+  **T10c** now waits up to 30 min (since rc.8 a blocked run fails only after its +5/+15-min retries). Syntax-checked
+  only (no pwsh on the Mac; first run = next lab use).
+- Docs: operations.md named a log that does not exist (`export.log` → `log\perfmonblackbox.log`; the event log gets
+  only the final failure); tests.md status refreshed (T18b partial, T10d row, R1 note superseded by P46); test-plan T10d.
+- **Open (to the owner):** P46 holds the machine-wide lock (`Lock-Bb`) through the retry sleeps (up to ~15 min); a
+  DSC `Set` of `[BlackboxCollector]` (parameter change) in that time waits up to 10 min for the lock and then fails
+  (retried at the next 15-min check). No data loss; see the owner report for the options.
 
 
 ## Close of session 2 (2026-10-11)
@@ -26,10 +39,10 @@ identity of the subscription, with no role assignment visible here; the same cal
   4. **Roll rc.8 out:** vm1 via `lab-params.sh` (GitHub mode, as now). arc1 stays in storage mode: first
      `lab-package.sh` (copies the release zip unchanged into `packages`, hash checked), then
      `lab-params.sh machine=arc1 PackageContainerResourceId=<packages container ID>`.
-  5. **P46 lab test (vm1):** block the storage name in the hosts file (as in T10c), start an export
-     (`guest vm1 export-now.ps1` or the Export task), unblock after ~3 min; pass = `export.log` shows
-     `upload attempt 1 failed … retry in 300 s`, then `uploaded on attempt 2` at about +5 min, the zip in storage,
-     manifest with 0 gaps. Record in tests.md and tell the owner (and the v1.0.0 estimate impact).
+  5. **P46 lab test (vm1):** `direnv exec . sh playbooks/perfmon-blackbox/tests/run.sh T10d vm1` (session 3; it
+     blocks the storage name, starts an export, unblocks after ~3 min; pass = `log\perfmonblackbox.log` shows
+     `upload attempt 1 failed … retry in 300 s`, then `uploaded on attempt 2`, task result 0, zip continuous).
+     Record in tests.md and tell the owner (and the v1.0.0 estimate impact).
   6. Then T18c (vm1 storage and back, by the P48 switch procedure, watch for flapping), T18d/e/f, T16 run 5, T17.
 
 ## Session 2 summary

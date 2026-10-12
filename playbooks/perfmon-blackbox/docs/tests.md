@@ -5,7 +5,7 @@
 > Arc-enabled server (`arc1`). The last stage, T16, is the success criterion: the SRE Agent analyses the latest zip
 > and its report is scored against problems planted on purpose.
 >
-> Status as of 2026-10-11, lab18, package rc.1–rc.3. The plan with full pass conditions: [test-plan.md](test-plan.md).
+> Status as of 2026-10-12, lab18 (down since 2026-10-11 21:45Z), packages rc.1–rc.7; rc.8 (P46) not built yet. The plan with full pass conditions: [test-plan.md](test-plan.md).
 
 ## Summary
 
@@ -17,11 +17,11 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | Test | What | vm1 (Azure VM) | arc1 (Arc) |
 |---|---|---|---|
 | L01 converter | CSV → SQLite on synthetic data | green (Mac + CI) | — |
-| L02 perfq triage | checklist finds planted breaches, ceiling | green | — |
+| L02 perfq triage | checklist finds planted breaches, ceiling; range mode over two zips (P44) | green | — |
 | L04 fetch-latest selection | newest zip, other servers ignored, bad hash rejected | green | — |
 | L09 T16 scorer | the scoring rules | green | — |
 | T15 agent fetches and converts | the agent's own terminal, skill v2.1 | green | green |
-| T17 range mode (P44) | leak + CPU split over two zips; the agent asked for the range | pending (skill v2.2) | pending |
+| T17 range mode (P44) | leak + CPU split over two zips; the agent asked for the range | pending (skill v2.2; range mode green locally in L02) | pending |
 | **T16 agent report, scored** | planted problems vs the agent's report | see history below | pending |
 
 **T16 history** (pass = score ≥ 80, every planted problem found, nothing invented; since P43 only the memory leak and the CPU burst are planted):
@@ -60,11 +60,12 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T10 roll gap ≤ 10 s | | green | green |
 | T10b overrun detected | | pending | green |
 | T10c failed upload, no gap | | green (storage blocked by a hosts entry: the lab GPO turns the firewall off) | — |
-| R1 resilience: storage unreachable for real (lab DNS down when the lab's auto-shutdown stopped dc) | the 19:03Z export failed ("remote name could not be resolved"), state unchanged; the next export (19:12Z) covered 18:15:08–19:12:47 in one zip, both rings, complete, 0 gaps: nothing lost. No immediate retry by design: a failed export is retried at the next scheduled run (ExportEveryHours) | — | green |
+| T10d failed upload retries in the same run (P46) | block lifted after ~3 min: uploaded on attempt 2, no gap | pending (rc.8) | — |
+| R1 resilience: storage unreachable for real (lab DNS down when the lab's auto-shutdown stopped dc) | the 19:03Z export failed ("remote name could not be resolved"), state unchanged; the next export (19:12Z) covered 18:15:08–19:12:47 in one zip, both rings, complete, 0 gaps: nothing lost. Up to rc.7 a failed export waited for the next scheduled run (ExportEveryHours); since rc.8 it retries in the same run (P46, T10d) | — | green |
 | T11 blob path, hashes, identity | | green (IMDS) | green (HIMDS) |
 | T12 cannot write elsewhere | | green | green |
 | T18a package from GitHub (P45) | the release asset (default) | green (T02, T04, T07–T12) | green (same) |
-| T18b package from storage, Arc (P45) | system identity, reader on the package container, same hash | — | running |
+| T18b package from storage, Arc (P45, P48) | system identity, reader on the package container, same hash, stays so over two refresh cycles | — | partial: storage download proven three times (P48); the deciding pull after a service re-sync not yet seen (lab down) |
 | T18c package from storage, Azure VM (P45) | then back to GitHub | pending | — |
 | T18d storage mode without the reader role (P45) | no download, old config keeps running | pending | — |
 | T18e a different zip under the same name (P45) | rejected by the hash, old config keeps running | pending | — |

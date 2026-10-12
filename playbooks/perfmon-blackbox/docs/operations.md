@@ -50,8 +50,9 @@
 
 An export whose token or upload fails retries itself in the same run: again after **5 minutes**, then after another
 **10** (so +5 and +15 min), each time with a fresh token. The zip is the same window, so a retry neither duplicates nor
-leaves a gap. The log (`export.log`, event log) shows `upload attempt N failed (…); retry in … s` and then `uploaded on
-attempt N`. If all three attempts fail, the run ends with an error; the Export task's **restart on failure** (every 15
+leaves a gap. The server log (`C:\ProgramData\PerfmonBlackbox\log\perfmonblackbox.log`) shows `upload attempt N
+failed (…); retry in … s` and then `uploaded on attempt N`; the event log gets an error (ID 3002) only when every attempt
+has failed. If all three attempts fail, the run ends with an error; the Export task's **restart on failure** (every 15
 min, 3 times) is a backstop for a run that could not start. After that the next scheduled export picks it up.
 
 A failed upload never moves `last_ts`: the next successful export covers every missed window in one zip. Nothing is lost
