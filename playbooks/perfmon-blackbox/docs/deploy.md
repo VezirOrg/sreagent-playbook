@@ -84,7 +84,11 @@ python3 policy/build_policies.py --content-uri <release asset URL> --content-has
 
 **Never assign both modes over the same machine**: both write the guest assignment `PerfmonBlackbox` and would keep
 overwriting each other. To switch a scope: delete the old assignment (and its identity's role assignments), create the
-new one with its roles (step 3), remediate. The collector keeps running through the switch.
+new one with its roles (step 3), run a compliance scan, remediate. The collector keeps running through the switch.
+Switching **to** storage mode, expect a window of failed downloads (HTTP 403, in the agent log) until the remediation has
+granted each machine its reader role on the package container: the service points the guest assignment at the storage
+URI before that (in the lab: 08:53Z → reader granted 09:17Z → first good download 09:21Z). The machine keeps running
+its current configuration meanwhile; nothing to do but wait.
 
 A different file under that name is refused by the server's hash check (the server keeps its current configuration).
 

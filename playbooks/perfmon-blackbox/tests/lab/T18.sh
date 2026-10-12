@@ -30,7 +30,8 @@ grep -q 'ASSIGNMENT PASS' /tmp/t18.$$ && ok "assignment as expected for $mode" |
 if [ "$mode" != nodownload ]; then
   # the agent's own record of the last package download: source, identity, result
   log='C:\ProgramData\GuestConfig\gc_agent_logs\gc_agent.log'; [ "$m" = arc1 ] && log='C:\ProgramData\GuestConfig\arc_policy_logs\gc_agent.log'
-  dl=$(v "$m" "Get-Content '$log' -Tail 20000 | Select-String -Pattern 'Download assignment package for : PerfmonBlackbox|Downloading package to .*PerfmonBlackbox|Failed to download (file|assignment)' | Select-Object -Last 3 | % { \$_.Line -replace '^.*\] ', '' }" | tr -d '\r' | perl -pe 's/stbb\w+/<account>/g')
+  dl=$(v "$m" "Get-Content '$log' -Tail 20000 | Select-String -Pattern 'Download assignment package for : PerfmonBlackbox|Downloading package to .*PerfmonBlackbox|Failed to download (file|assignment)' | Select-Object -Last 8 | % { \$_.Line -replace '^.*\] ', '' }" | tr -d '\r' | perl -pe 's/stbb\w+/<account>/g' \
+    | awk '/^Download assignment package for/ { buf = "" } { buf = buf $0 "\n" } END { printf "%s", buf }')   # the last attempt only
   echo "$dl" | cut -c1-200
   if [ "$mode" = storage ]; then
     echo "$dl" | grep -q 'from private blob using managed identity' && echo "$dl" | grep -q '/packages/PerfmonBlackbox.zip' \
