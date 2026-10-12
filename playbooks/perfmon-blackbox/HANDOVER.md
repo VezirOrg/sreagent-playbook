@@ -1,4 +1,4 @@
-# perfmon-blackbox: session 3 OPEN (2026-10-12). Lab18 UP; T18b green; next rc.8 (with P46 + P49), T10d, T18c-f.
+# perfmon-blackbox: session 3 OPEN (2026-10-12). Lab18 UP; rc.8 on both; T18b, T10d, T18c green; next T18d/e/f, T16 run 5.
 
 ## Session 3 (2026-10-12, in progress)
 
@@ -11,6 +11,8 @@
   (operations.md, lab-policy.sh). **Both machines on rc.8.**
 - vm1 keeps an unreadable pending ring (`20261011-191221-00-boot.blg`, cut by an abrupt restart 10-11 19:12Z) forever and
   warns on every export; the ~10 min loss was labelled as a gap. Design question reported (give up after N runs?).
+- **T18c GREEN** (vm1 storage and back, no flapping). Test fixes: T18 judges only the last download attempt; its GitHub
+  check no longer needs `contentUri` (ARM hides it). deploy.md: the 403 window when switching to storage mode.
 - **P52 (Emre, KAPANIS-19):** lab18's 19:00Z template auto-shutdown (dc, vm1) is DISABLED until v1.0.0. The lab day
   ends at ~21:46Z. **CHECKLIST: re-enable both schedules at v1.0.0 or when the playbook work stops (command in P52).**
 - **P51 (Emre, KABUL):** the nightly stop (~21:46Z) and disk downgrade stay. No lab run crosses 21:45Z (the 19:00Z

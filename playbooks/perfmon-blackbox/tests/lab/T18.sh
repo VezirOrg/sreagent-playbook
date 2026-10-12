@@ -21,7 +21,8 @@ if mode == "storage":
     # are checked in the agent log below
     ok = d.get("complianceStatus") == "Compliant" and (g.get("contentHash") or "").upper() == os.environ["PKG_SHA256"].upper()
 elif mode == "github":
-    ok = d.get("complianceStatus") == "Compliant" and (g.get("contentUri") or "").startswith("https://github.com/") \
+    # contentUri is hidden here too: the source is checked in the agent log below
+    ok = d.get("complianceStatus") == "Compliant" and (g.get("contentHash") or "").upper() == os.environ["PKG_SHA256"].upper() \
          and not g.get("contentManagedIdentity")
 else:
     ok = d.get("complianceStatus") != "Compliant"
