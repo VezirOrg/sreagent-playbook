@@ -1,9 +1,25 @@
 # Second-lab fresh-eyes deploy: build plan (DRAFT for Emre's approval)
 
-> **Status: draft, 2026-10-12 (P57). Nothing is built and no Azure change is made for it until Emre approves.**
+> **Status: draft, 2026-10-12 (P57). Option A decided (P58). OPEN: the day (proposed 2026-10-14) and the 500-AAU cap.
+> Nothing is torn down or built, and no Azure change is made for it, until Emre's final go on the teardown list.**
 > Purpose: DoD item 2 (`../../../docs/definition-of-done.md`): someone with no access to the record deploys the
 > playbook into a clean lab **from the README alone** and gets the stage suite green; every gap found is fixed in the
 > README before v1.0.0. The same lab also gives the DoD-1 "all stages green on a freshly built lab" run.
+
+## 0. Before: finish lab18 (2026-10-13, P58)
+
+Lab day after the nightly stop (restart pre-approved, P51), every run ends before 21:45Z:
+
+| Order | Item | Machine change | Time |
+|---|---|---|---|
+| 1 | Restart dc, vm1, arc1; health: T04, T06 on both | none | ~0.5 h |
+| 2 | **T08 reboot on arc1** (the test restarts the VM itself, `az vm restart`: a lab test action, not the product, P53); also on vm1 to confirm rc.9 (vm1 was green on rc.7) | OS restart | ~0.5 h |
+| 3 | **T06f part 2 on arc1**: IIS + ASP.NET 4.x installed (lab step), G3 lines appear within 30 min, no sample lost. Done after T08 and after every arc1 analysis test, because IIS changes arc1's baseline | IIS on arc1 (stays until teardown) | ~0.75 h |
+| 4 | **P30 least privilege**: the lab SP gets SRE Agent Author + Standard User on the lab agent, Administrator removed for the trial; `deploy-skill.sh` dry run and `--apply`, then one T15 question. Pass → README documents Author + Standard User; fail → the error is recorded and the README keeps Administrator. Administrator is put back afterwards only if the trial fails (the test harness needs a working role until teardown) | role assignments on the lab agent | ~1 h |
+| 5 | **Docs pass** (no lab): README, deploy, operations, security, cost; the tenant-wide custom-role-name note (section 2); the agent's always-on cost in `cost.md`; T17 and today's results | none | ~3 h |
+| 6 | **Teardown list for Emre's final go**: enumerated live from lab18 (assignments, role assignments incl. ABAC-conditioned ones, definitions, custom roles, the SP agent role, resource group, Key Vault purge, Arc resource, register row) and sent to the vezir; nothing deleted before the go | none | ~0.5 h |
+
+A package change is not expected. If one is needed, it is a new rc (P31) and the affected tests re-run on lab18.
 
 ## 1. What gets built
 
@@ -32,7 +48,7 @@ While lab18 still has its product deployed, a README-only deploy in the same ten
 
 | Option | What | For | Against |
 |---|---|---|---|
-| **A (recommended)** | Finish and record lab18's remaining tests first; then tear lab18 down **including** its policy assignments, policy definitions and the two custom roles (they outlive the resource group and must be deleted explicitly); then build the second lab | The fresh-eyes session sees exactly an adopter's clean tenant; README stays as is; one lab's cost at a time | No fallback lab once lab18 is gone (the second lab becomes the lab until v1.0.0) |
+| **A (DECIDED, P58)** | Finish and record lab18's remaining tests first; then tear lab18 down **including** its policy assignments, policy definitions and the two custom roles (they outlive the resource group and must be deleted explicitly); then build the second lab | The fresh-eyes session sees exactly an adopter's clean tenant; README stays as is; one lab's cost at a time | No fallback lab once lab18 is gone (the second lab becomes the lab until v1.0.0) |
 | B | Keep lab18; the second lab uses other role and definition names | Both labs at once | The README has to teach a "second deployment in the same tenant" variant (role-name parameters, definition names), so the fresh-eyes run tests that variant, not the plain path; double cost |
 | C | A different tenant/subscription | Cleanest isolation | Needs one (Emre's call); none is known to me |
 
@@ -90,6 +106,7 @@ for the re-run (≈ 3 h), unless Emre says to keep it.
 
 ## 6. What Emre decides
 
-1. Approve the plan and the day.
-2. Option **A**, B or C for the name clash (section 2).
-3. The active-flow cap (500 AAU) for the second lab's agent.
+1. ~~Option A, B or C for the name clash~~: **A** (P58).
+2. The day (proposed 2026-10-14). OPEN.
+3. The active-flow cap (500 AAU) for the second lab's agent. OPEN.
+4. The final go on lab18's teardown list (sent after section 0, item 6).

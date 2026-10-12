@@ -730,3 +730,14 @@ rollout takes about 45 min per machine (the first agent cycle after a new packag
 - **Second-lab fresh-eyes build plan:** drafted tonight in `docs/second-lab-plan.md` for Emre's approval (what is
   built, where, cost per hour, how long it runs, teardown). Drafting only: nothing is built, and no Azure change is made
   for it, until he approves the plan.
+
+## P58: second lab = option A (Emre via the vezir, 2026-10-12 16:25Z, "LAB2-A")
+
+- **LAB2-A:** lab18's remaining tests are finished first (planned for 2026-10-13: T08 and T06f part 2 on arc1, P30
+  least-privilege path, docs pass; `second-lab-plan.md` section 0). Then lab18 is torn down **including** its policy
+  assignments, policy definitions and the two custom roles, then the second lab is built.
+- **Not yet:** nothing is torn down or built. Still OPEN with Emre: **CAP-500** (the agent's active-flow cap) and the
+  day (the vezir recommends 2026-10-14). **Before the teardown** the exact teardown list (enumerated live from lab18)
+  goes to the vezir for Emre's final go.
+- P52 (re-enable lab18's auto-shutdown) is superseded by the teardown: the schedules are deleted with the resource
+  group. If the teardown is not approved, P52 applies as written.
