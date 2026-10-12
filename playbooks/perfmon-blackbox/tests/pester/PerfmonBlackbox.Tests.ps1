@@ -401,6 +401,53 @@ Describe 'Invoke-BbExport end to end on synthetic buffers' {
         @($s['local_cap_drops']).Count | Should -Be 1
         @($s['local_cap_drops'])[0].file | Should -Be '20261001-090000-00-start.blg'
     }
+    It 'keeps an unreadable ring for two runs, deletes it on the third failed read and reports it in the next manifest (P54)' {
+        $bad = Join-Path $script:P.Pending '20261001-075500-00-boot.blg'
+        [IO.File]::WriteAllBytes($bad, [byte[]](1..200))
+        (Get-Item $bad).CreationTime = $script:T0.AddMinutes(-10); (Get-Item $bad).LastWriteTime = $script:T0.AddMinutes(-5)
+        foreach ($n in 1, 2) {
+            (Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $script:OkUploader -CollectorDir $script:Collector).Result | Should -Be 'nothing'
+            Test-Path $bad | Should -BeTrue
+            (Get-BbState)['unreadable_reads']['20261001-075500-00-boot.blg'] | Should -Be $n
+        }
+        Should -Invoke Write-BbEvent -Times 0 -Exactly -ParameterFilter { $EventId -eq 2003 }
+        (Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $script:OkUploader -CollectorDir $script:Collector).Result | Should -Be 'nothing'
+        Test-Path $bad | Should -BeFalse
+        Should -Invoke Write-BbEvent -Times 1 -Exactly -ParameterFilter { $EventId -eq 2003 -and $EntryType -eq 'Warning' }
+        $s = Get-BbState
+        $s['unreadable_reads'].Count | Should -Be 0
+        @($s['unreadable_drops']).Count | Should -Be 1
+        # a failed upload keeps the record; the next uploaded manifest carries it as a gap, then it is cleared
+        New-TestCsv (Join-Path $TestDrive 'u.csv') $script:T0 30
+        New-TestBlg (Join-Path $TestDrive 'u.csv') (Join-Path $script:P.Pending '20261001-080500-00-export.blg')
+        { Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $script:FailUploader -RetryDelaysSeconds @() -CollectorDir $script:Collector } | Should -Throw
+        @((Get-BbState)['unreadable_drops']).Count | Should -Be 1
+        $r = Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $script:OkUploader -CollectorDir $script:Collector
+        $r.Manifest.complete | Should -BeFalse
+        $g = @($r.Manifest.gaps | Where-Object { $_.cause -eq 'unreadable_ring' })
+        $g.Count | Should -Be 1
+        $g[0].file | Should -Be '20261001-075500-00-boot.blg'
+        $g[0].from | Should -Be '2026-10-01 07:50:00.000'
+        $g[0].to | Should -Be '2026-10-01 07:55:00.000'
+        $g[0].seconds | Should -Be 300
+        @((Get-BbState)['unreadable_drops']).Count | Should -Be 0
+    }
+    It 'an unreadable ring inside the leading hole names that hole; a ring that reads again loses its count (P54)' {
+        $s = Get-BbState; $s['last_ts'] = '2026-10-01 07:00:00.000'
+        $s['unreadable_drops'] = @(@{ file = '20261001-073000-00-boot.blg'; from = '2026-10-01 07:10:00.000'; to = '2026-10-01 07:30:00.000'; bytes = 1 })
+        $s['unreadable_reads'] = @{ '20261001-081000-00-export.blg' = 2 }
+        Write-BbJson $script:P.State $s
+        New-TestCsv (Join-Path $TestDrive 'h.csv') $script:T0 30
+        New-TestBlg (Join-Path $TestDrive 'h.csv') (Join-Path $script:P.Pending '20261001-081000-00-export.blg')
+        $r = Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $script:OkUploader -CollectorDir $script:Collector
+        @($r.Manifest.gaps).Count | Should -Be 1
+        $r.Manifest.gaps[0].cause | Should -Be 'unreadable_ring'
+        $r.Manifest.gaps[0].from | Should -Be '2026-10-01 07:00:00.000'
+        $r.Manifest.gaps[0].file | Should -Be '20261001-073000-00-boot.blg'
+        $s = Get-BbState
+        $s['unreadable_reads'].Count | Should -Be 0
+        @($s['unreadable_drops']).Count | Should -Be 0
+    }
     It 'reports a buffer_overrun gap (complete: false) when the ring wrapped past last_ts' {
         $s = Get-BbState; $s['last_ts'] = '2026-10-01 07:00:00.000'; Write-BbJson $script:P.State $s
         $cfg = Get-BbConfig; $cfg['MaxSizeMB'] = 16; Write-BbJson $script:P.Config $cfg

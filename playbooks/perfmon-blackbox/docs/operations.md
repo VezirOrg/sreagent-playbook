@@ -49,6 +49,7 @@
 | `export_roll` | the previous export's own collector restart (a few seconds; only visible at intervals under ~5 s) | none; it does not make `complete` false |
 | `collector_restart` | the collector was restarted (re-create, start) | none if short; repeated restarts: check the event log |
 | `local_cap` | closed rings were dropped by `LocalKeepMB` (exports failing for long) | fix the upload path (network, DNS, role), consider a larger `LocalKeepMB` |
+| `unreadable_ring` | a ring cut by an abrupt stop (power loss, forced restart) could not be read by `relog` in 3 exports and was deleted (P54; event 2003). The gap may lie before the manifest's window: it was found only then | none; the span is as far as the file told (created .. last written) |
 | `missing_samples` | holes inside one ring | the collector was starved or paused; check the system around that time |
 
 ## When the storage is unreachable (P46)

@@ -76,11 +76,13 @@ function Get-BbState {
     param([string]$Path = (Get-BbPaths).State)
     $s = Read-BbJson $Path
     if (-not $s) { $s = @{} }
-    foreach ($k in 'last_ts', 'seq', 'buffer_hours', 'bytes_per_sample', 'local_cap_drops', 'last_error', 'last_export_utc') {
+    foreach ($k in 'last_ts', 'seq', 'buffer_hours', 'bytes_per_sample', 'local_cap_drops', 'unreadable_reads', 'unreadable_drops', 'last_error', 'last_export_utc') {
         if (-not $s.ContainsKey($k)) { $s[$k] = $null }
     }
     if ($null -eq $s['seq']) { $s['seq'] = 0 }
     if ($null -eq $s['local_cap_drops']) { $s['local_cap_drops'] = @() }
+    if (-not ($s['unreadable_reads'] -is [hashtable])) { $s['unreadable_reads'] = @{} }
+    if ($null -eq $s['unreadable_drops']) { $s['unreadable_drops'] = @() }
     return $s
 }
 
@@ -696,6 +698,49 @@ function Limit-BbLocalKeep {
     Write-BbJson (Get-BbPaths).State $state
 }
 
+function Register-BbUnreadableRing {
+    # P54 RING-A: a pending ring relog cannot read (cut by an abrupt stop, never closed) is kept for the next runs;
+    # after $Limit failed reads it is deleted and recorded in state.unreadable_drops, so the next manifest reports it
+    # as an unreadable_ring gap (never silent). The span is as far as the file tells: created .. last written.
+    # Returns $true when the file was deleted.
+    param([Parameter(Mandatory)]$State, [Parameter(Mandatory)][IO.FileInfo]$File, [int]$Limit = 3)
+    $reads = $State['unreadable_reads']
+    if (-not ($reads -is [hashtable])) { $reads = @{} }
+    $n = 1 + [int]$reads[$File.Name]
+    if ($n -lt $Limit) {
+        $reads[$File.Name] = $n; $State['unreadable_reads'] = $reads
+        Write-BbLog "unreadable pending buffer $($File.Name): failed read $n of $Limit, kept for the next run" 'WARN'
+        return $false
+    }
+    $reads.Remove($File.Name); $State['unreadable_reads'] = $reads
+    $from = $File.CreationTime; $to = $File.LastWriteTime
+    if ($from -gt $to) { $from = $to }
+    $fmt = 'yyyy-MM-dd HH:mm:ss.fff'
+    $State['unreadable_drops'] = @(@($State['unreadable_drops']) | Where-Object { $_ }) +
+        @(@{ file = $File.Name; from = $from.ToString($fmt); to = $to.ToString($fmt); bytes = $File.Length })
+    Remove-Item -LiteralPath $File.FullName -Force
+    Write-BbLog "unreadable pending buffer $($File.Name) ($($from.ToString($fmt)) .. $($to.ToString($fmt))): failed read $n of $Limit, deleted; the next manifest reports an unreadable_ring gap" 'WARN'
+    Write-BbEvent "PerfmonBlackbox: pending buffer $($File.Name) ($($from.ToString($fmt)) .. $($to.ToString($fmt))) could not be read $Limit times (cut by an abrupt stop) and was deleted unexported" 'Warning' 2003
+    return $true
+}
+
+function Add-BbUnreadableGaps {
+    # the dropped rings as gaps: a hole that overlaps one takes the cause unreadable_ring (and its file), else the
+    # ring is added as its own gap (it may lie before window_from: it was found only now)
+    param([object[]]$Gaps = @(), [object[]]$Drops = @())
+    $out = @($Gaps)
+    foreach ($d in @($Drops | Where-Object { $_ })) {
+        $hit = $false
+        foreach ($g in $out) {
+            if ([datetime]$g.from -lt [datetime]$d.to -and [datetime]$g.to -gt [datetime]$d.from) { $g.cause = 'unreadable_ring'; $g.file = $d.file; $hit = $true }
+        }
+        if (-not $hit) {
+            $out += [ordered]@{ from = $d.from; to = $d.to; seconds = [math]::Round(([datetime]$d.to - [datetime]$d.from).TotalSeconds, 3); cause = 'unreadable_ring'; file = $d.file }
+        }
+    }
+    return , $out
+}
+
 # ---------- scheduled tasks (schtasks.exe + task XML; the ScheduledTasks module is not loadable by the agent) ----------
 
 $script:BbTaskFolder = '\PerfmonBlackbox'
@@ -911,10 +956,17 @@ function Invoke-BbExport {
         foreach ($f in $pending) {
             $csv = Join-Path $work ($f.BaseName + '.csv')
             $r = Invoke-BbTool relog.exe @($f.FullName, '-f', 'csv', '-o', $csv, '-y')
-            if ($r.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $csv)) { $unreadable += $f.Name; continue }
+            if ($r.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $csv)) {
+                if (-not (Register-BbUnreadableRing -State $state -File $f)) { $unreadable += $f.Name }
+                continue
+            }
             $part = Read-BbCsv -Path $csv -Format $fmt
             $fmt = $part.Format
-            if (-not $part.Rows.Count) { $unreadable += $f.Name; continue }
+            if (-not $part.Rows.Count) {
+                if (-not (Register-BbUnreadableRing -State $state -File $f)) { $unreadable += $f.Name }
+                continue
+            }
+            if ($state['unreadable_reads'].ContainsKey($f.Name)) { $state['unreadable_reads'].Remove($f.Name) }
             $parts += $part
             $partFiles += $f
             $ringMB = Get-BbPendingMaxMB $f.Name
@@ -924,6 +976,11 @@ function Invoke-BbExport {
                 Wrapped = ($f.Length -ge 0.95 * $ringMB * 1MB) }
         }
         if ($unreadable.Count) { Write-BbLog "unreadable pending buffers kept for the next run: $($unreadable -join ', ')" 'WARN' }
+        # counts of files no longer there are dropped; the counts and drops are kept even if this run fails later
+        foreach ($k in @($state['unreadable_reads'].Keys)) {
+            if (-not (Test-Path -LiteralPath (Join-Path $p.Pending $k))) { $state['unreadable_reads'].Remove($k) }
+        }
+        Write-BbJson $p.State $state
 
         # capacity: bytes per sample of the newest buffer with enough samples (R6 reads it from state.json)
         $meas = $partInfo | Where-Object { $_.Rows -ge 30 } | Select-Object -Last 1
@@ -951,6 +1008,7 @@ function Invoke-BbExport {
 
         # 3 holes
         $gaps = Find-BbGaps -Rows $rows -IntervalSeconds $iv -LastTs $lastTs -PartInfo $partInfo -Drops @($state['local_cap_drops'])
+        $gaps = Add-BbUnreadableGaps -Gaps $gaps -Drops @($state['unreadable_drops'])
         # a short roll of the previous export is expected and named, not a loss of data (P41)
         $complete = (@($gaps | Where-Object { $_.cause -ne 'export_roll' }).Count -eq 0)
 
@@ -1049,6 +1107,8 @@ function Invoke-BbExport {
             $mine = @($partFiles | ForEach-Object { $_.Name }) + @(@($state['local_cap_drops']) | Where-Object { $_ } | ForEach-Object { $_.file })
             $newDrops = @(@((Get-BbState)['local_cap_drops']) | Where-Object { $_ -and ($mine -notcontains $_.file) })
         } else { $newDrops = @() }
+        $carried = @(@($state['unreadable_drops']) | Where-Object { $_ } | ForEach-Object { $_.file })
+        $state['unreadable_drops'] = @(@((Get-BbState)['unreadable_drops']) | Where-Object { $_ -and ($carried -notcontains $_.file) })
         $state['last_ts'] = $last.ToString($StampFormat)
         $state['seq'] = $manifest.seq
         $state['last_export_utc'] = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')

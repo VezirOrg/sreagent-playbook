@@ -4,7 +4,8 @@ Export-PerfmonBlackbox.ps1: export the window since the last successful export, 
 
   1 roll the collector (stop -> move the ring to pending\ -> start): a running circular .blg cannot be read
   2 relog every pending buffer to CSV, merge them in time order, keep only samples after last_ts
-  3 find holes and their causes (buffer_overrun, collector_restart, machine_off, local_cap, missing_samples)
+  3 find holes and their causes (buffer_overrun, collector_restart, machine_off, local_cap, missing_samples,
+    unreadable_ring: a ring relog could not read in 3 runs is deleted and reported, P54)
   4 validate the CSV; 5 zip CSV + manifest.json (.NET ZipFile); 6 token from IMDS or HIMDS (machine identity)
   7 upload (Put Blob, or Put Block + Put Block List); 8 only then move last_ts forward and delete what was exported
 

@@ -124,7 +124,10 @@ is uploaded and verified.
      collector ran without a restart in between: the window outgrew the buffer and the ring overwrote it;
    - `collector_restart` / `machine_off`: the hole lines up with a pending-buffer boundary or a boot time
      (event log, boot time from `Win32_OperatingSystem`);
-   - `local_cap`: pending buffers or zips dropped by `LocalKeepMB`.
+   - `local_cap`: pending buffers or zips dropped by `LocalKeepMB`;
+   - `unreadable_ring`: a pending ring `relog` could not read in 3 export runs (cut by an abrupt stop, never
+     closed) was deleted (P54); its span (file created .. last written) is a gap of the next manifest, even if it lies
+     before that manifest's window, and a hole overlapping it takes this cause.
    All holes go into the **manifest** (`gaps[]`: from, to, seconds, cause) with `complete: true|false`, and an
    event-log warning (source `PerfmonBlackbox`). A loss is **never silent**.
 4. **Validate** the CSV: PDH header; ≥ 1 row; the 36 template counters present (wildcard counters as at least one

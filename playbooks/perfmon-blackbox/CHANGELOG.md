@@ -37,3 +37,5 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
 - 2026-10-11: skill **v2.2** (P44): range mode — every zip overlapping a requested time range, one database restricted to the range, coverage holes reported; default still the latest zip.
 - 2026-10-12: package (rc.8): the export releases its lock while it waits between upload attempts (P49, LOCK-A);
   the cleanup tolerates a part dropped by `LocalKeepMB` meanwhile. Tests: T10d (P46 retry, lab), L05 +2 Pester cases.
+- 2026-10-12: package (rc.9): a pending ring that relog cannot read 3 times (cut by an abrupt stop) is deleted,
+  reported as an `unreadable_ring` gap in the next manifest and as event 2003 (P54, RING-A); L05 39/39. Lab: T10e, T18de.
