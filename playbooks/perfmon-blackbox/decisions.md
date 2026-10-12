@@ -647,3 +647,11 @@ and arc1. (3) Disk SKUs are **not** restored after a nightly downgrade (today's 
 since T16 checks only memory and CPU (P43) and the collector load is light; a disk-latency finding in a result or an
 analysis output is marked as an HDD lab artefact, not a product signal. (4) Any other stop or change by that
 automation, outside the nightly window, is reported to the vezir.
+
+## P52: lab18's template auto-shutdown is disabled until v1.0.0 (Emre via the vezir, 2026-10-12, "KAPANIS-19")
+
+The template's auto-shutdown schedules of lab18 (`shutdown-computevm-<vm>` for dc and vm1, 19:00Z) are set to
+**Disabled**, not deleted, so the lab day ends at Emre's nightly automation stop (~21:46Z, P50/P51; no run crosses
+21:45Z). **Re-enable both at v1.0.0, or when the playbook work stops before then** (HANDOVER checklist and the v1.0.0
+steps): `az resource update -g <lab rg> -n shutdown-computevm-<vm> --resource-type Microsoft.DevTestLab/schedules
+--set properties.status=Enabled` for each. The lab register note is the template repo's and is changed by the vezir.

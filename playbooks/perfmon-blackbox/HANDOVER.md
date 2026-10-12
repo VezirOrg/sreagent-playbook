@@ -2,6 +2,8 @@
 
 ## Session 3 (2026-10-12, in progress)
 
+- **P52 (Emre, KAPANIS-19):** lab18's 19:00Z template auto-shutdown (dc, vm1) is DISABLED until v1.0.0. The lab day
+  ends at ~21:46Z. **CHECKLIST: re-enable both schedules at v1.0.0 or when the playbook work stops (command in P52).**
 - **P51 (Emre, KABUL):** the nightly stop (~21:46Z) and disk downgrade stay. No lab run crosses 21:45Z (the 19:00Z
   auto-shutdown of dc and vm1 comes first); restart after a nightly stop is pre-approved (dc, vm1, arc1); never restore
   disk SKUs again; mark disk-latency findings as an HDD lab artefact.
@@ -75,9 +77,9 @@
 - **Done while the lab was down:** naming pass ("Azure Machine Configuration" in prose, note in architecture.md;
   7f5c38a); L02 range-mode test (6b058d2); stray temp script removed.
 - **Next after the recipe:** T18c/d/e/f → T16 run 5 (arc1; vm1 after its next export) → T17 → T08/T07b arc1 → T06f
-  part 2 → least-privilege agent role (P30) → docs pass → fresh-eyes deploy; v1.0.0 = Emre's gate.
+  part 2 → least-privilege agent role (P30) → docs pass → fresh-eyes deploy → **re-enable lab18 auto-shutdown (P52)**; v1.0.0 = Emre's gate.
 - Lab extras (register row updated): arc1; vm1 data disk + patchMode; dc identity = lab verifier; lab SP agent admin
-  (P30, remove at teardown). Lab auto-shutdown 19:00Z (dc and vm1); restart after the nightly stop is pre-approved (P51). Skill v2.1 backup
+  (P30, remove at teardown). Lab auto-shutdown 19:00Z (dc and vm1) DISABLED until v1.0.0 (P52, re-enable checklist); restart after the nightly stop is pre-approved (P51). Skill v2.1 backup
   in `files/` (path in the owner report).
 
 ## Brief from session 1 (kept until close)
