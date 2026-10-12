@@ -636,3 +636,14 @@ lab data disks (`bbdisk-vm1`, `bbdisk-arc1`) on `Premium_LRS` as registered in t
 (3) resume the recipe: T18b deciding pull, then rc.8 (SHA in this file before publishing, P31), then T10d. rc.8 is
 not built while P49 is OPEN (decided LOCK-A the same morning). If the same caller deallocates a VM or changes a disk again: do not fight it; stop,
 record the activity-log evidence, report to the vezir. Spend: lab18 only.
+
+## P51: the nightly lab stop is accepted (Emre via the vezir, 2026-10-12 08:35, "KABUL")
+
+Emre's lab automation stays as it is (P50). Every night at about 21:46Z (00:46 +03) lab18 is deallocated, and about
+10 min later its disks go to Standard_LRS. Rules: (1) no lab test or load run crosses 21:45Z: a run that would is stopped
+and rescheduled, never left to be cut off. The lab's own auto-shutdown at 19:00Z (dc and vm1) comes first, so the
+practical end of a lab day is 19:00Z. (2) Restarting lab18 after the nightly stop is pre-approved: dc first, then vm1
+and arc1. (3) Disk SKUs are **not** restored after a nightly downgrade (today's P50 restore stands): HDD is acceptable,
+since T16 checks only memory and CPU (P43) and the collector load is light; a disk-latency finding in a result or an
+analysis output is marked as an HDD lab artefact, not a product signal. (4) Any other stop or change by that
+automation, outside the nightly window, is reported to the vezir.

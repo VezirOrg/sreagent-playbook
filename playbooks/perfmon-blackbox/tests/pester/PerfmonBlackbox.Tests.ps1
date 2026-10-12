@@ -353,6 +353,54 @@ Describe 'Invoke-BbExport end to end on synthetic buffers' {
         $script:Calls | Should -Be 3
         (Get-BbState)['last_ts'] | Should -Be $before
     }
+    It 'releases the lock while it waits between attempts and takes it again (P49)' {
+        New-TestCsv (Join-Path $TestDrive 'k1.csv') $script:T0 20
+        New-TestBlg (Join-Path $TestDrive 'k1.csv') (Join-Path $script:P.Pending '20261001-080400-00-export.blg')
+        # another process tries the machine-wide mutex during the 6-s wait, like a DSC Set would
+        $probe = Start-Job -ScriptBlock {
+            Start-Sleep -Seconds 3
+            $m = New-Object System.Threading.Mutex($false, 'Global\PerfmonBlackbox')
+            $got = $false
+            try { $got = $m.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $got = $true }
+            if ($got) { $m.ReleaseMutex() }
+            $m.Dispose(); $got
+        }
+        $script:Calls = 0
+        $flaky = { param($blob, $zip, $meta) $script:Calls++; if ($script:Calls -lt 2) { throw 'name could not be resolved (test)' }; 201 }
+        $r = Invoke-BbExport -NoRoll -Machine $script:Machine -Uploader $flaky -RetryDelaysSeconds @(6) -CollectorDir $script:Collector
+        $free = Receive-Job $probe -Wait -AutoRemoveJob
+        $r.Result | Should -Be 'uploaded'
+        $free | Should -BeTrue
+        # and the export gave it back at the end: it can be taken at once
+        $m = Lock-Bb -TimeoutSeconds 1; Unlock-Bb $m
+    }
+    It 'tolerates a part dropped by LocalKeepMB during the wait and keeps drops of other files (P49)' {
+        New-TestCsv (Join-Path $TestDrive 'd1.csv') $script:T0 20
+        $script:Part = Join-Path $script:P.Pending '20261001-080400-00-export.blg'
+        New-TestBlg (Join-Path $TestDrive 'd1.csv') $script:Part
+        $script:Calls = 0
+        $dropper = {
+            param($blob, $zip, $meta)
+            $script:Calls++
+            if ($script:Calls -lt 2) {
+                # what Limit-BbLocalKeep does while the lock is free: delete the oldest pending and record it
+                Remove-Item -LiteralPath $script:Part -Force
+                $s = Get-BbState
+                $s['local_cap_drops'] = @(@{ file = (Split-Path $script:Part -Leaf); from = '2026-10-01 08:00:00'; to = '2026-10-01 08:03:10'; bytes = 1 },
+                                          @{ file = '20261001-090000-00-start.blg'; from = '2026-10-01 08:30:00'; to = '2026-10-01 08:40:00'; bytes = 1 })
+                Write-BbJson $script:P.State $s
+                throw 'storage unreachable (test)'
+            }
+            201
+        }
+        $r = Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $dropper -RetryDelaysSeconds @(0) -CollectorDir $script:Collector
+        $r.Result | Should -Be 'uploaded'
+        $r.Rows | Should -Be 20
+        $s = Get-BbState
+        $s['last_error'] | Should -BeNullOrEmpty
+        @($s['local_cap_drops']).Count | Should -Be 1
+        @($s['local_cap_drops'])[0].file | Should -Be '20261001-090000-00-start.blg'
+    }
     It 'reports a buffer_overrun gap (complete: false) when the ring wrapped past last_ts' {
         $s = Get-BbState; $s['last_ts'] = '2026-10-01 07:00:00.000'; Write-BbJson $script:P.State $s
         $cfg = Get-BbConfig; $cfg['MaxSizeMB'] = 16; Write-BbJson $script:P.Config $cfg

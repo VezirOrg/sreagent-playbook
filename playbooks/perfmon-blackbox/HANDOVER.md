@@ -2,6 +2,9 @@
 
 ## Session 3 (2026-10-12, in progress)
 
+- **P51 (Emre, KABUL):** the nightly stop (~21:46Z) and disk downgrade stay. No lab run crosses 21:45Z (the 19:00Z
+  auto-shutdown of dc and vm1 comes first); restart after a nightly stop is pre-approved (dc, vm1, arc1); never restore
+  disk SKUs again; mark disk-latency findings as an HDD lab artefact.
 - Opened clean (no stray commits). Local L01–L09 green. **P50:** Emre allowed the restart (08:13); in progress: disk SKUs
   restored while deallocated, then dc → vm1 → arc1 started and checked. The caller is Emre's nightly lab automation
   (~21:46Z): no lab run across 21:45Z without telling the vezir; if it stops the lab again, do not restart, report.
@@ -74,7 +77,7 @@
 - **Next after the recipe:** T18c/d/e/f → T16 run 5 (arc1; vm1 after its next export) → T17 → T08/T07b arc1 → T06f
   part 2 → least-privilege agent role (P30) → docs pass → fresh-eyes deploy; v1.0.0 = Emre's gate.
 - Lab extras (register row updated): arc1; vm1 data disk + patchMode; dc identity = lab verifier; lab SP agent admin
-  (P30, remove at teardown). Lab auto-shutdown 19:00Z (dc and vm1); any restart needs the owner's OK. Skill v2.1 backup
+  (P30, remove at teardown). Lab auto-shutdown 19:00Z (dc and vm1); restart after the nightly stop is pre-approved (P51). Skill v2.1 backup
   in `files/` (path in the owner report).
 
 ## Brief from session 1 (kept until close)

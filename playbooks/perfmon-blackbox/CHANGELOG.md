@@ -35,3 +35,5 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
 - 2026-10-11: rc.6 (P40: a hole before a wrapped ring is reported as buffer_overrun).
 - 2026-10-11: rc.7 (P41: the export's own short roll is an expected export_roll gap).
 - 2026-10-11: skill **v2.2** (P44): range mode — every zip overlapping a requested time range, one database restricted to the range, coverage holes reported; default still the latest zip.
+- 2026-10-12: package (rc.8): the export releases its lock while it waits between upload attempts (P49, LOCK-A);
+  the cleanup tolerates a part dropped by `LocalKeepMB` meanwhile. Tests: T10d (P46 retry, lab), L05 +2 Pester cases.

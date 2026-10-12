@@ -1017,7 +1017,8 @@ function Invoke-BbExport {
         # 6 token, 7 upload (a test passes -Uploader instead)
         $meta = @{ sha256 = (Get-BbSha256 $zipPath); seq = $manifest.seq; complete = "$complete".ToLowerInvariant() }
         # P46: a failed token or upload is retried in the same run (default +5 and +15 min), each time with a fresh
-        # token; the zip is the same window from last_ts, so a retry neither duplicates nor leaves a gap
+        # token; the zip is the same window from last_ts, so a retry neither duplicates nor leaves a gap. The lock is
+        # released for each wait and taken again before the next attempt (P49), so a DSC Set is not held meanwhile
         $attempt = 0
         while ($true) {
             try {
@@ -1034,21 +1035,29 @@ function Invoke-BbExport {
                 $tok = $null
                 if ($attempt -ge $RetryDelaysSeconds.Count) { throw }
                 Write-BbLog "export: upload attempt $($attempt + 1) failed ($($_.Exception.Message)); retry in $($RetryDelaysSeconds[$attempt]) s" 'WARN'
+                if ($lock) { Unlock-Bb $lock; $lock = $null }
                 Start-Sleep -Seconds $RetryDelaysSeconds[$attempt]
+                if (-not $NoLock) { $lock = Lock-Bb }
                 $attempt++
             }
         }
         if ($attempt) { Write-BbLog "export: uploaded on attempt $($attempt + 1)" }
 
-        # 8 commit: only after a verified upload
+        # 8 commit: only after a verified upload. After a retry wait (lock free, P49) a LocalKeepMB drop may have been
+        # recorded meanwhile: keep the drops of files this zip did not carry and that this manifest did not report
+        if ($attempt) {
+            $mine = @($partFiles | ForEach-Object { $_.Name }) + @(@($state['local_cap_drops']) | Where-Object { $_ } | ForEach-Object { $_.file })
+            $newDrops = @(@((Get-BbState)['local_cap_drops']) | Where-Object { $_ -and ($mine -notcontains $_.file) })
+        } else { $newDrops = @() }
         $state['last_ts'] = $last.ToString($StampFormat)
         $state['seq'] = $manifest.seq
         $state['last_export_utc'] = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
         $state['last_blob'] = $blob
         $state['last_error'] = $null
-        $state['local_cap_drops'] = @()
+        $state['local_cap_drops'] = $newDrops
         Write-BbJson $p.State $state
-        foreach ($f in $partFiles) { Remove-Item -LiteralPath $f.FullName -Force }
+        # a part may already be gone (a LocalKeepMB drop during a retry wait, P49): its samples are in the uploaded zip
+        foreach ($f in $partFiles) { Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue }
         Remove-Item -LiteralPath $zipPath -Force
         Write-BbLog "export: uploaded ($status) with $($machine.Kind) identity, seq $($manifest.seq), complete $complete"
         if ($complete) {
