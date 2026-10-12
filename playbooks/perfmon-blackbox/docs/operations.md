@@ -72,4 +72,9 @@ a longer outage shows up as a `buffer_overrun` gap in the next manifest.
    the per-server Writer role assignments on the container (description "perfmon-blackbox: write only under …").
 3. On each server: `logman stop PerfmonBlackbox; logman delete PerfmonBlackbox`, `schtasks /delete /tn
    \PerfmonBlackbox\Boot /f`, the same for `\PerfmonBlackbox\Export`, then delete `C:\ProgramData\PerfmonBlackbox`.
-4. Delete the storage deployment (account, private endpoint, custom roles) last, after you no longer need the captures.
+4. Delete the storage deployment (account, private endpoint) last, after you no longer need the captures.
+5. Delete the two custom roles ("PerfMon Blackbox Writer", "PerfMon Blackbox Deployer", or the names you gave them):
+   `az role definition delete --name "<name>" --custom-role-only true`. A role definition is a subscription-level
+   object, not a resource of the group, so deleting the resource group does not remove it, and Azure refuses to delete a
+   role that still has assignments (remove those first, steps 1–2). Check with `az role definition list
+   --custom-role-only true --query "[?starts_with(roleName,'PerfMon Blackbox')].roleName"`.

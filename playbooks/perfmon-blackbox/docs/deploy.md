@@ -24,6 +24,24 @@
 
 All commands run from `playbooks/perfmon-blackbox` with the Azure CLI signed in to the right subscription.
 
+## Names: a second deployment in the same tenant or subscription
+
+Two kinds of names are not local to your resource group:
+
+- **Custom role display names are unique in the whole Microsoft Entra tenant** (Learn, *Azure custom roles*:
+  `roleName`). `infra/main.bicep` creates "PerfMon Blackbox Writer" and "PerfMon Blackbox Deployer". A second
+  deployment anywhere in the same tenant (another resource group or subscription) must pass other names, for example
+  `-p writerRoleName='PerfMon Blackbox Writer (team-b)' deployerRoleName='PerfMon Blackbox Deployer (team-b)'`, and
+  use those names in step 3.
+- **Policy definition names are unique at their definition scope** (here the subscription, the default of
+  `az policy definition create`). Step 2 uses fixed names (`perfmon-blackbox-vm`, `-arc`, `-vm-storage`,
+  `-arc-storage`): a second deployment in the same subscription with the same names **overwrites** the first one's
+  definitions, and the first one's assignments follow the new rules at their next evaluation. Give the second
+  deployment its own names (`-n perfmon-blackbox-vm-team-b`, and the same in `--policy` of step 3), or share one set of
+  definitions and only add assignments.
+
+Both outlive the resource group: on removal they are deleted explicitly ([operations.md](operations.md#remove)).
+
 ## 1. Private storage
 
 ```sh

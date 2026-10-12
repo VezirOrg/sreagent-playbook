@@ -5,7 +5,9 @@
 > Arc-enabled server (`arc1`). The last stage, T16, is the success criterion: the SRE Agent analyses the latest zip
 > and its report is scored against problems planted on purpose.
 >
-> Status as of 2026-10-12, lab18 (down since 2026-10-11 21:45Z), packages rc.1–rc.7; rc.8 (P46) not built yet. The plan with full pass conditions: [test-plan.md](test-plan.md).
+> Status as of 2026-10-12 17:30Z, lab18, package **rc.9** on both machines (rc.8: P46 retry, P49 LOCK-A; rc.9: P54
+> RING-A). Green today: T16 and T17 on both, T18b–f, T10d, T10e, T07b (arc1, computed). Open for v1.0.0: T08 and
+> T06f part 2 on arc1, the P30 least-privilege trial (2026-10-13), the second-lab fresh-eyes deploy (2026-10-14). The plan with full pass conditions: [test-plan.md](test-plan.md).
 
 ## Summary
 
@@ -22,7 +24,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | L09 T16 scorer | the scoring rules | green | — |
 | T15 agent fetches and converts | the agent's own terminal, skill v2.1 | green | green |
 | T17 range mode (P44) | leak + CPU split over two zips; the agent asked for the range | **green** (rc.9, skill v2.2, 2026-10-12): load 16:20Z, boundary export 16:36:40Z; **100/100**, leak + CPU found, both zips of the range named | **green** (same run, boundary 16:36:26Z): **95/100**, leak + CPU found, both zips named; R1 −5: unmarked causal claims ("CPU saturated because bbcpu…", "MsSense … driving Committed Bytes") without a `LINK:` |
-| **T16 agent report, scored** | planted problems vs the agent's report | see history below | pending |
+| **T16 agent report, scored** | planted problems vs the agent's report | **green** (run 5b, rc.8: 100) | **green** (run 5, rc.8: 100) |
 
 **T16 history** (pass = score ≥ 80, every planted problem found, nothing invented; since P43 only the memory leak and the CPU burst are planted):
 

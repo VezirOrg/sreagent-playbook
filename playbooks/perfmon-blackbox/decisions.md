@@ -744,3 +744,11 @@ rollout takes about 45 min per machine (the first agent cycle after a new packag
 - **GÜN-14 (Emre via the vezir, 2026-10-12 16:40Z):** the second-lab day is **2026-10-14**; lab18's remaining work
   runs on 2026-10-13 as in `second-lab-plan.md` section 0. CAP-500 still OPEN; the teardown still needs Emre's final go
   on the live list.
+
+## P59: docs pass tonight, then close (Emre via the vezir, 2026-10-12 17:40Z, "DOKUMAN-GECE")
+
+No lab work. README: the name-uniqueness note for a second deployment (custom role display names are unique in the
+whole Entra tenant, Learn *Azure custom roles*; policy definition names are unique at their definition scope, here
+the subscription: the request said "tenant-wide" for both, written precisely here). `cost.md`: the SRE Agent's
+always-on cost. Today's results (T16 both, T17, T18c–f, T10e, T07b, rc.9) in the docs. Then a full close: HANDOVER
+rewritten so the next session starts at `second-lab-plan.md` §0; CAP-500 OPEN.

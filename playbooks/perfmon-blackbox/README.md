@@ -65,10 +65,14 @@ export window). Above that, raise `MaxSizeMB`, lengthen the interval or export m
 - Azure VMs: the built-in initiative *Deploy prerequisites to enable Guest Configuration policies on virtual machines*
   (system-assigned identity + the Machine Configuration extension). Arc servers: Connected Machine agent ≥ 1.10.
 - Network: every server must reach the storage account's **private endpoint** (DNS `privatelink.blob.core.windows.net`
-  resolving to it), and the package URL (GitHub, HTTPS) for the Machine Configuration agent.
+  resolving to it), and the package: either the GitHub release asset (HTTPS) or, in storage mode, a container in the same
+  private storage, downloaded with the server's own identity (no internet needed; [docs/deploy.md](docs/deploy.md)).
 - **The SRE Agent needs VNet integration** that can resolve and reach the same private endpoint (its sandbox egress
   in your VNet with private DNS resolution). Without it the skill cannot read the captures.
 - Permissions to deploy the storage, create custom roles and policy definitions, and assign roles.
+- **One deployment per tenant by default**: the custom role names are unique in the whole Entra tenant, and the policy
+  definition names in the subscription. A second deployment passes its own names:
+  [docs/deploy.md](docs/deploy.md#names-a-second-deployment-in-the-same-tenant-or-subscription).
 
 ## Deploy
 
@@ -85,7 +89,9 @@ loss, 3000s errors). Captures live at `perfmon/<subscriptionId>/<resourceGroup>/
 ## Cost
 
 Azure VM ≈ 0.01–0.03 USD a month (storage); Arc server + 6.00 USD a month (Machine Configuration on Arc); ≈ 7.30 USD a
-month per deployment (private endpoint). Details and price source: [docs/cost.md](docs/cost.md).
+month per deployment (private endpoint). The SRE Agent is billed separately: its always-on flow is 4 AAU per hour
+(≈ 0.44 USD an hour, ≈ 320 USD a month, while the agent exists), plus active flow for each analysis. Details and price
+source: [docs/cost.md](docs/cost.md).
 
 ## Documentation
 
