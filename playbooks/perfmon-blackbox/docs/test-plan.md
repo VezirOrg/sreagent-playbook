@@ -83,7 +83,7 @@ claims backed by `LINK:`, no raw data. **Pass = score ≥ 80, both plants found,
 build lab → `infra/` deploy → T13, T14 → T01 → publish package (release asset of a pre-release tag) → T02, T03 →
 wait for compliance → T04, T05, T06, T07 → T06b, T06c (small `MaxSizeMB`) → back to 512 → T07b →
 `make-trouble.ps1` (leak + CPU) during a captured window → T08 → T09 (two exports), T10, T10b, T10c, T11, T12 → T15 → T16. All green on **both** `vm1` and
-`arc1` = DoD centre met. Then README-only fresh-eyes deploy into a second clean lab, which must reach the same green
+`arc1` = DoD centre met. Then README-only fresh-eyes deploy into a second clean lab (build plan: [second-lab-plan.md](second-lab-plan.md), draft for approval), which must reach the same green
 (DoD 2).
 
 ## What is not tested in v1
