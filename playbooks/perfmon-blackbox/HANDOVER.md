@@ -1,8 +1,10 @@
-# perfmon-blackbox: session 3 OPEN (2026-10-12), lab-independent work only. LAB DOWN (not ours, do NOT start). Next: T18b deciding pull, rc.8, T10d.
+# perfmon-blackbox: session 3 OPEN (2026-10-12). LAB18 RESTARTING (P50, Emre 08:13): disks back to their SKUs, then T18b, rc.8 (after P49), T10d.
 
 ## Session 3 (2026-10-12, in progress)
 
-- Opened clean (no stray commits). Local L01–L09 green. Lab18 stays down until the vezir relays Emre's answer.
+- Opened clean (no stray commits). Local L01–L09 green. **P50:** Emre allowed the restart (08:13); in progress: disk SKUs
+  restored while deallocated, then dc → vm1 → arc1 started and checked. If the unknown caller stops or changes the lab
+  again: stop, record the activity-log evidence, report.
 - **T10d** (P46 lab test) scripted: `tests/lab/T10d.sh` (block by name, start the export, unblock after 3 min, pass =
   "uploaded on attempt 2", task result 0, continuous zip). `guest/export-now.ps1` gained `-MaxWaitSeconds`/`-StartOnly`;
   **T10c** now waits up to 30 min (since rc.8 a blocked run fails only after its +5/+15-min retries). Syntax-checked

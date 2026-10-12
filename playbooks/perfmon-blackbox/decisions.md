@@ -621,3 +621,14 @@ Asked through the vezir (LOCK-A / LOCK-B):
 - **LOCK-B:** keep the code; operations.md documents the hold and the one-cycle NonCompliant.
 
 The package is not changed and rc.8 is not built until Emre answers.
+
+## P50: lab18 restarts (Emre via the vezir, 2026-10-12 08:13, "LAB-BAŞLAT")
+
+The lab was stopped on 2026-10-11 at 21:45Z, and at 21:56Z all five lab18 disks were set to Standard_LRS, both by the
+same unknown caller (not the lab SP; activity log). Emre's answer: restart lab18 and continue the lab tests. Order:
+(1) while the VMs are deallocated, put the disks back: the three OS disks on the template's `StandardSSD_LRS`, the two
+lab data disks (`bbdisk-vm1`, `bbdisk-arc1`) on `Premium_LRS` as registered in the lab register (uncached, P39);
+(2) start dc first (DNS), then vm1 and arc1; check that the collectors, Arc and Machine Configuration are healthy;
+(3) resume the recipe: T18b deciding pull, then rc.8 (SHA in this file before publishing, P31), then T10d. rc.8 is
+not built while P49 is OPEN. If the same caller deallocates a VM or changes a disk again: do not fight it; stop,
+record the activity-log evidence, report to the vezir. Spend: lab18 only.
