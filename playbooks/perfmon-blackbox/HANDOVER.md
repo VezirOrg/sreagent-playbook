@@ -3,8 +3,8 @@
 ## Session 3 (2026-10-12, in progress)
 
 - Opened clean (no stray commits). Local L01–L09 green. **P50:** Emre allowed the restart (08:13); in progress: disk SKUs
-  restored while deallocated, then dc → vm1 → arc1 started and checked. If the unknown caller stops or changes the lab
-  again: stop, record the activity-log evidence, report.
+  restored while deallocated, then dc → vm1 → arc1 started and checked. The caller is Emre's nightly lab automation
+  (~21:46Z): no lab run across 21:45Z without telling the vezir; if it stops the lab again, do not restart, report.
 - **T10d** (P46 lab test) scripted: `tests/lab/T10d.sh` (block by name, start the export, unblock after 3 min, pass =
   "uploaded on attempt 2", task result 0, continuous zip). `guest/export-now.ps1` gained `-MaxWaitSeconds`/`-StartOnly`;
   **T10c** now waits up to 30 min (since rc.8 a blocked run fails only after its +5/+15-min retries). Syntax-checked
@@ -18,9 +18,8 @@
 
 ## Close of session 2 (2026-10-11)
 
-**lab18 VMs stopped 21:45Z by an unknown app identity; do NOT start them until the vezir main relays Emre's answer.**
-(dc, vm1, arc1 deallocated at 21:45:26Z in one second by an app identity that is not the lab SP and not a managed
-identity of the subscription, with no role assignment visible here; the same caller wrote other resources that day.)
+**lab18 VMs stopped 21:45Z by Emre's own lab-management automation (identified 2026-10-12, P50; it runs nightly at ~21:46Z and downgrades disks). Restarted 2026-10-12 05:15Z under P50.**
+(dc, vm1, arc1 deallocated at 21:45:26Z in one second by Emre's lab-management automation, P50.)
 
 - **Resume recipe (once the owner allows the lab up)**, all from the repo root, every az call via `direnv exec .`:
   1. Start dc, vm1, arc1 (`az vm start -g <lab rg> -n <name>`; dc first, DNS). Wait until `v arc1 hostname` answers.

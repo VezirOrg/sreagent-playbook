@@ -627,10 +627,12 @@ In rc.8, with an L05 Pester case.
 ## P50: lab18 restarts (Emre via the vezir, 2026-10-12 08:13, "LAB-BAŞLAT")
 
 The lab was stopped on 2026-10-11 at 21:45Z, and at 21:56Z all five lab18 disks were set to Standard_LRS, both by the
-same unknown caller (not the lab SP; activity log). Emre's answer: restart lab18 and continue the lab tests. Order:
+same caller (not the lab SP; activity log). **Caller identified (Emre, 08:20):** Emre's own global lab-management automation, which deallocates lab VMs and
+downgrades their disk SKUs nightly at about 21:46Z (00:46 +03); not a security incident. Plan around it: no lab run
+across 21:45Z without telling the vezir; if it stops the lab again, do not restart, report. Emre's answer: restart lab18 and continue the lab tests. Order:
 (1) while the VMs are deallocated, put the disks back: the three OS disks on the template's `StandardSSD_LRS`, the two
 lab data disks (`bbdisk-vm1`, `bbdisk-arc1`) on `Premium_LRS` as registered in the lab register (uncached, P39);
 (2) start dc first (DNS), then vm1 and arc1; check that the collectors, Arc and Machine Configuration are healthy;
 (3) resume the recipe: T18b deciding pull, then rc.8 (SHA in this file before publishing, P31), then T10d. rc.8 is
-not built while P49 is OPEN. If the same caller deallocates a VM or changes a disk again: do not fight it; stop,
+not built while P49 is OPEN (decided LOCK-A the same morning). If the same caller deallocates a VM or changes a disk again: do not fight it; stop,
 record the activity-log evidence, report to the vezir. Spend: lab18 only.
