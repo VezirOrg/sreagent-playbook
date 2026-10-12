@@ -685,6 +685,9 @@ records it as an `unreadable_ring` gap in the next manifest (file name and its t
 it and writes a warning event. The failure count is kept in `state.json` per file name; a read that succeeds clears
 it. Package change: L05 Pester cases (count up, third failure → gap + delete + event, success resets), then a new rc
 as usual (SHA here before publishing, P31). The v1.0.0 tag stays reserved for Emre.
+- **rc.9** (P54 RING-A, on top of rc.8; package version 1.0.8): `PerfmonBlackbox.zip` SHA-256
+  `133B7A79890DBD0A5295387E2E76935F0DD45AED22ABF6424B589BD8980BB440` (L05 39/39, T01 green on dc 12:48Z; 12 files
+  scrub-checked clean before the upload).
 
 ## P55: after a definition update, a compliance scan comes before the remediation (rc.8 rollout, 2026-10-12)
 
