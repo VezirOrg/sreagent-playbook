@@ -1,7 +1,9 @@
-# perfmon-blackbox: session 3 OPEN (2026-10-12). LAB18 RESTARTING (P50, Emre 08:13): disks back to their SKUs, then T18b, rc.8 (after P49), T10d.
+# perfmon-blackbox: session 3 OPEN (2026-10-12). Lab18 UP; T18b green; next rc.8 (with P46 + P49), T10d, T18c-f.
 
 ## Session 3 (2026-10-12, in progress)
 
+- Lab18 restarted 05:15Z (P50), healthy: T06, T04 green on vm1 and arc1. **T18b GREEN** 07:19Z: first-party PUT 07:01Z
+  → Compliant 07:05Z, still storage + system identity (P48 confirmed). LOCK-A (P49) in the code, L05 37/0. Next: rc.8.
 - **P52 (Emre, KAPANIS-19):** lab18's 19:00Z template auto-shutdown (dc, vm1) is DISABLED until v1.0.0. The lab day
   ends at ~21:46Z. **CHECKLIST: re-enable both schedules at v1.0.0 or when the playbook work stops (command in P52).**
 - **P51 (Emre, KABUL):** the nightly stop (~21:46Z) and disk downgrade stay. No lab run crosses 21:45Z (the 19:00Z

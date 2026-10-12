@@ -65,7 +65,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T11 blob path, hashes, identity | | green (IMDS) | green (HIMDS) |
 | T12 cannot write elsewhere | | green | green |
 | T18a package from GitHub (P45) | the release asset (default) | green (T02, T04, T07–T12) | green (same) |
-| T18b package from storage, Arc (P45, P48) | system identity, reader on the package container, same hash, stays so over two refresh cycles | — | partial: storage download proven three times (P48); the deciding pull after a service re-sync not yet seen (lab down) |
+| T18b package from storage, Arc (P45, P48) | system identity, reader on the package container, same hash, stays so over two refresh cycles | — | **green** (2026-10-12): storage download with the system identity; three first-party re-sync PUTs (10-11 21:22Z, 21:38Z; 10-12 07:01Z) each followed by a Compliant pull, never a flip to GitHub (P48 holds); T18 PASS after the last |
 | T18c package from storage, Azure VM (P45) | then back to GitHub | pending | — |
 | T18d storage mode without the reader role (P45) | no download, old config keeps running | pending | — |
 | T18e a different zip under the same name (P45) | rejected by the hash, old config keeps running | pending | — |
