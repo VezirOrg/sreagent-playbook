@@ -1,4 +1,4 @@
-# perfmon-blackbox: session 3 OPEN (2026-10-12). Lab18 UP; rc.8 on both; T18b, T10d, T18c green; next T18d/e/f, T16 run 5.
+# perfmon-blackbox: session 3 OPEN (2026-10-12). Lab18 UP; rc.8 on both; T18b, T10d, T18c, T18f green; T16 run 5 arc1 = 100; next T18d/e (owner), T16 vm1.
 
 ## Session 3 (2026-10-12, in progress)
 
@@ -87,7 +87,7 @@
   assignments). All three VMs deallocated.
 - **Done while the lab was down:** naming pass ("Azure Machine Configuration" in prose, note in architecture.md;
   7f5c38a); L02 range-mode test (6b058d2); stray temp script removed.
-- **Next after the recipe:** T18c/d/e/f → T16 run 5 (arc1; vm1 after its next export) → T17 → T08/T07b arc1 → T06f
+- **Next after the recipe:** (done: T18c, T18f, T16 run 5 arc1 = 100 at 11:34Z) T18d/e (owner to choose arc1 or vm1) → T16 run 5 vm1 → T17 → T08/T07b arc1 → T06f
   part 2 → least-privilege agent role (P30) → docs pass → fresh-eyes deploy → **re-enable lab18 auto-shutdown (P52)**; v1.0.0 = Emre's gate.
 - Lab extras (register row updated): arc1; vm1 data disk + patchMode; dc identity = lab verifier; lab SP agent admin
   (P30, remove at teardown). Lab auto-shutdown 19:00Z (dc and vm1) DISABLED until v1.0.0 (P52, re-enable checklist); restart after the nightly stop is pre-approved (P51). Skill v2.1 backup

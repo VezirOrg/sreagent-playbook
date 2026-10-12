@@ -32,6 +32,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | 2 | rc.3 | 85 → FAIL | leak, CPU, NIC (+ the memory episode) | disk | the disk plant never ran (P39); the agent rightly reported the disk as fine |
 | 3 | rc.5 | not valid | leak (622 MB/h), and a real full T: drive | CPU, disk, NIC | the server's own 4-hourly export ran at 16:07 between the plants and the finish, so the latest zip held only 16:07–16:24; the agent analysed that zip correctly. T16 now refuses a window cut by a scheduled export, and takes the longest agent message as the report |
 | 4 | rc.5 | **100 → PASS under P43** (was 70 under the old scope) | leak (bbleak), CPU burst (bbcpu); plants verified in the capture: CPU > 85 % for 11.8 min, bbleak growing for 69 min to 797 MB | — | P43: only memory and CPU are planted and required. The run's disk plant had misfired (T: full); the memory picture in that run was partly bbdisk's error loop |
+| 5 | rc.8 (arc1) | **100 → PASS** | leak (bbleak), CPU burst (bbcpu); window 10:37–11:26Z, no scheduled export inside it; zip seq 24 uploaded with the himds identity | — | the agent also listed one C: read-latency sample (133 ms, 0.2 min) as **info**, correctly not a finding; disks were on the template SKUs that day, so not an HDD artefact (P51). vm1 run pending |
 
 ### Collection
 
