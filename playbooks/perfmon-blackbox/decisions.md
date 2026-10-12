@@ -658,3 +658,10 @@ The template's auto-shutdown schedules of lab18 (`shutdown-computevm-<vm>` for d
 21:45Z). **Re-enable both at v1.0.0, or when the playbook work stops before then** (HANDOVER checklist and the v1.0.0
 steps): `az resource update -g <lab rg> -n shutdown-computevm-<vm> --resource-type Microsoft.DevTestLab/schedules
 --set properties.status=Enabled` for each. The lab register note is the template repo's and is changed by the vezir.
+
+## P53: the product never changes a machine's power state (Emre via the vezir, 2026-10-12 10:35)
+
+The package, the policies, the infra and the skill never start, stop or schedule machines and never touch their
+auto-shutdown; their only relation to power state is observing it (the `machine_off` gap label). Lab power actions stay
+manual one-off `az` commands, recorded in decisions/HANDOVER (P50–P52); no lab-tools helper for them (Emre: "GEREK-YOK").
+No such code exists today. If a future design needs one, stop and ask.
