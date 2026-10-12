@@ -69,7 +69,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T18c package from storage, Azure VM (P45) | then back to GitHub | **green** (2026-10-12, rc.8): switched by the P48 procedure; first storage download 09:21Z (403s 08:53–09:21Z until the remediation granted the reader role, old config kept); stayed in storage mode across a service PUT (09:27Z); back to GitHub 09:46Z, Compliant 10:28Z; no flapping in 7 service PUTs; T18 vm1 storage and github PASS | — |
 | T18d storage mode without the reader role (P45) | no download, old config keeps running | seen in T18c (08:53–09:21Z: every download 403, no Compliant on the new content, config kept); deliberate run pending | — |
 | T18e a different zip under the same name (P45) | rejected by the hash, old config keeps running | pending | — |
-| T18f shared key disabled, no SAS (P45) | storage download + exports + agent fetch on an account with shared key off | pending | pending |
+| T18f shared key disabled, no SAS (P45) | storage download + exports + agent fetch on an account with shared key off | **green** (2026-10-12, rc.8: shared key off, public access off, no key/SAS in code; storage download T18c, T11, T15) | **green** (same run: T18 storage, T11) |
 | T13 lifecycle rule | | green | — |
 | T14 storage private | | green | — |
 
