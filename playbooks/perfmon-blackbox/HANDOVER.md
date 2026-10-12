@@ -1,7 +1,12 @@
-# perfmon-blackbox: session 3 OPEN (2026-10-12). Lab18 UP; rc.8 on both; T18b, T10d, T18c, T18f green; T16 run 5 arc1 = 100; T07b arc1 green (computed); RING-A in code (rc.9 build pending); T18d/e running on arc1.
+# perfmon-blackbox: session 3 OPEN (2026-10-12). Lab18 UP; rc.9 (RING-A) published and on both; T16 run 5 = 100 on both; T07b arc1 green (computed); T18b–f and T10d/e green.
 
 ## Session 3 (2026-10-12, in progress)
 
+- **15:50Z milestone: all three 11:45Z gates done.** rc.9 published (pre-release, SHA in P54). T18d/e **green** on arc1
+  (P56: run as arc1's rc.9 rollout), restore done: both on rc.9, `T18.sh vm1 github` and `T18.sh arc1 storage` PASS.
+  T16 run 5 vm1 = 100 (green on both). **T10e green** on vm1 (ring deleted on the 3rd read, event 2003, gap in
+  seq 46); T10e.sh fixed for timing. Next toward v1.0.0: T17 range, T08 + T06f part 2 on arc1, P30, docs pass, the
+  second-lab fresh-eyes deploy (plan needs approval), P52 re-enable at v1.0.0.
 - **11:45Z Emre (via the vezir): T18D-ARC1, RING-A, T07B-HESAP** (P54 decided, P56). T07b arc1 **green, computed**
   (26.4 h). RING-A code + L05 39/0 committed (23c88ac); rc.9 not yet built: T01 on dc blocked by dc's own GC agent
   running a baseline ("Failed to initialize DSC library" while its gc_worker runs); T10e (vm1's real unreadable ring)
