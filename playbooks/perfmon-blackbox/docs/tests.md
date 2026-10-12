@@ -21,7 +21,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | L04 fetch-latest selection | newest zip, other servers ignored, bad hash rejected | green | — |
 | L09 T16 scorer | the scoring rules | green | — |
 | T15 agent fetches and converts | the agent's own terminal, skill v2.1 | green | green |
-| T17 range mode (P44) | leak + CPU split over two zips; the agent asked for the range | pending (skill v2.2; range mode green locally in L02) | pending |
+| T17 range mode (P44) | leak + CPU split over two zips; the agent asked for the range | **green** (rc.9, skill v2.2, 2026-10-12): load 16:20Z, boundary export 16:36:40Z; **100/100**, leak + CPU found, both zips of the range named | **green** (same run, boundary 16:36:26Z): **95/100**, leak + CPU found, both zips named; R1 −5: unmarked causal claims ("CPU saturated because bbcpu…", "MsSense … driving Committed Bytes") without a `LINK:` |
 | **T16 agent report, scored** | planted problems vs the agent's report | see history below | pending |
 
 **T16 history** (pass = score ≥ 80, every planted problem found, nothing invented; since P43 only the memory leak and the CPU burst are planted):

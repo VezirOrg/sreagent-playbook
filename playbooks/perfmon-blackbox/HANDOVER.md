@@ -1,7 +1,12 @@
-# perfmon-blackbox: session 3 OPEN (2026-10-12). Lab18 UP; rc.9 (RING-A) published and on both; T16 run 5 = 100 on both; T07b arc1 green (computed); T18b–f and T10d/e green.
+# perfmon-blackbox: session 3 OPEN (2026-10-12). Lab18 UP; rc.9 on both; T16 = 100 and T17 green on both (vm1 100, arc1 95); T18b–f, T10d/e green. Second lab: option A, day 2026-10-14 (P58); lab18 finishes 10-13 (plan §0).
 
 ## Session 3 (2026-10-12, in progress)
 
+- **17:21Z T17 green on both** (vm1 100/100, arc1 95/100, both zips named). **16:25–16:40Z Emre: LAB2-A, GÜN-14
+  (P58)**: lab18's remaining work on 10-13 = `docs/second-lab-plan.md` §0 (restart, T08 arc1 + vm1, T06f-2 arc1 last,
+  P30 trial, docs pass, live teardown list to the vezir for Emre's final go: **nothing torn down before it**); second
+  lab built 10-14. CAP-500 (agent active-flow cap) OPEN. Plan drafted 16:03Z (P57; cost from lab18 actuals: 0.110 USD
+  per AAU, ≈ 1.20 USD/h fixed).
 - **15:50Z milestone: all three 11:45Z gates done.** rc.9 published (pre-release, SHA in P54). T18d/e **green** on arc1
   (P56: run as arc1's rc.9 rollout), restore done: both on rc.9, `T18.sh vm1 github` and `T18.sh arc1 storage` PASS.
   T16 run 5 vm1 = 100 (green on both). **T10e green** on vm1 (ring deleted on the 3rd read, event 2003, gap in
