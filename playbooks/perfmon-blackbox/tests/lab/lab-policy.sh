@@ -90,8 +90,9 @@ for kind in ${KINDS:-vm arc}; do
   # container (P45)
   mi_roles "$pid" 'Role Based Access Control Administrator' "$sa_id" "$cond"
 done
-echo "waiting 60 s for the role assignments to propagate, then remediation"
+echo "waiting 60 s for the role assignments to propagate, then a compliance scan (P55), then remediation"
 sleep 60
+az policy state trigger-scan -g "$rg" -o none   # blocks until done: the engine sees the new definitions before the remediation
 for kind in ${KINDS:-vm arc}; do
   az policy remediation create -n "pbb-$kind$sfx-$(date -u +%H%M%S)" --policy-assignment "pbb-$kind$sfx" -g "$rg" --resource-discovery-mode "${REMEDIATION_MODE:-ReEvaluateCompliance}" -o none
   echo "remediation started for pbb-$kind$sfx"

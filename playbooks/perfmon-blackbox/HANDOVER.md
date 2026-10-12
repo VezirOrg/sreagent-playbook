@@ -6,9 +6,9 @@
   → Compliant 07:05Z, still storage + system identity (P48 confirmed). LOCK-A (P49) in the code, L05 37/0. Next: rc.8.
 - **rc.8 published** (SHA in P46; release perfmon-blackbox/v1.0.0-rc.8, pkg version 1.0.7). vm1 on rc.8 08:14Z (the first
   cycle after a new package only tests, the next applies: ~45 min end to end). **T10d GREEN** on vm1 (first run).
-- **OPEN, arc1 storage-mode update rolled back:** the remediation deployment wrote rc.8 (1.0.7, storage URI, system) to
-  arc1's guest assignment at 08:01:37Z; the first-party service PUT at 08:12:53Z set it back to rc.7 (1.0.6) and arc1
-  never downloaded rc.8. vm1 (GitHub mode) kept rc.8 across its service PUT (08:15:23Z). Under investigation; reported.
+- arc1 storage-mode update: the first try was rolled back by a service re-sync; after a compliance scan + remediation
+  arc1 downloaded rc.8 (08:36:58Z) and kept it across the next service PUT (08:43:59Z). **P55**: scan before remediating
+  (operations.md, lab-policy.sh). **Both machines on rc.8.**
 - vm1 keeps an unreadable pending ring (`20261011-191221-00-boot.blg`, cut by an abrupt restart 10-11 19:12Z) forever and
   warns on every export; the ~10 min loss was labelled as a gap. Design question reported (give up after N runs?).
 - **P52 (Emre, KAPANIS-19):** lab18's 19:00Z template auto-shutdown (dc, vm1) is DISABLED until v1.0.0. The lab day

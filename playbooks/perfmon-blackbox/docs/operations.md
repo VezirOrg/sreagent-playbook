@@ -1,7 +1,7 @@
 # Operations
 
-> **Summary.** Upgrades: update the two definitions to the new release's URL and hash, then remediate; machines on
-> the old package become non-compliant for the policy and move. Troubleshooting starts with the guest assignment's
+> **Summary.** Upgrades: update the two definitions to the new release's URL and hash, run a compliance scan, then
+> remediate; machines on the old package become non-compliant for the policy and move. Troubleshooting starts with the guest assignment's
 > per-resource reasons and the manifest's `complete` and `gaps[]`. Removal: assignments first, then the server side,
 > storage last.
 >
@@ -11,10 +11,15 @@
 
 1. Generate the definitions with the new release's asset URL, SHA-256 and version (`policy/build_policies.py`, as in
    [deploy.md](deploy.md)) and update both definitions (`az policy definition create` on the same names updates them).
-2. Start a remediation per assignment. The definitions' existence condition pins the package hash (decisions P32):
+2. Run a compliance scan and wait for it to finish (`az policy state trigger-scan -g <rg>`, several minutes), so the
+   policy engine evaluates the machines against the new definitions. Without it a service re-sync of the guest
+   assignment can set it back to the old version (seen on Arc in storage mode, decisions P55).
+3. Start a remediation per assignment. The definitions' existence condition pins the package hash (decisions P32):
    every machine still on the old package is non-compliant for the policy and the remediation moves it.
-3. The agent applies the new package at its next cycle (≤ 15 minutes). The collector is only re-created if the counter
-   set or a collector setting changed; recorded data is kept either way.
+4. The agent downloads the new package at its next pull; its first cycle after that only tests, the next one applies,
+   so allow about an hour per machine. Check the guest assignment's `version` after the next service re-sync (it should
+   stay on the new one). The collector is only re-created if the counter set or a collector setting changed; recorded
+   data is kept either way.
 
 ## Where to look
 

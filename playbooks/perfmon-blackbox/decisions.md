@@ -679,3 +679,16 @@ a readable ring, so only abrupt stops cause this. Asked through the vezir (RING-
 - **RING-B:** keep it; operations.md documents it and how to remove it by hand.
 
 Nothing is changed until Emre answers.
+
+## P55: after a definition update, a compliance scan comes before the remediation (rc.8 rollout, 2026-10-12)
+
+Seen on arc1 (storage mode) when rolling out rc.8: the definitions were updated (1.0.7) and remediated at once; the
+remediation deployment wrote rc.8 to the guest assignment (08:01:37Z), but the next first-party re-sync PUT
+(08:12:53Z) set it back to rc.7 (1.0.6) and the machine never downloaded rc.8. After a compliance scan
+(`az policy state trigger-scan`, which re-evaluated the assignment against the new definition: NonCompliant) and a
+second remediation, arc1 downloaded rc.8 (08:36:58Z, private blob, managed identity) and kept it across the next
+service PUT (08:43:59Z → Compliant 08:47Z). vm1 (GitHub mode) kept rc.8 without a scan. One case each way: the scan is
+the likely difference (the re-sync appears to use the policy engine's last evaluation of the definition), not proven.
+Procedure, adopters and lab alike: update definitions → **trigger a compliance scan and wait for it** → remediate →
+check the guest assignment's version after the next service re-sync. operations.md and `lab-policy.sh` do this. A
+rollout takes about 45 min per machine (the first agent cycle after a new package only tests, the next applies).
