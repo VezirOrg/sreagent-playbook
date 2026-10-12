@@ -1,6 +1,6 @@
 # Second-lab fresh-eyes deploy: build plan (DRAFT for Emre's approval)
 
-> **Status: draft, 2026-10-12 (P57). Option A decided (P58). OPEN: the day (proposed 2026-10-14) and the 500-AAU cap.
+> **Status: draft, 2026-10-12 (P57). Option A decided (P58). Day: **2026-10-14** (P58, GÜN-14). OPEN: the 500-AAU cap.
 > Nothing is torn down or built, and no Azure change is made for it, until Emre's final go on the teardown list.**
 > Purpose: DoD item 2 (`../../../docs/definition-of-done.md`): someone with no access to the record deploys the
 > playbook into a clean lab **from the README alone** and gets the stage suite green; every gap found is fixed in the
@@ -107,6 +107,6 @@ for the re-run (≈ 3 h), unless Emre says to keep it.
 ## 6. What Emre decides
 
 1. ~~Option A, B or C for the name clash~~: **A** (P58).
-2. The day (proposed 2026-10-14). OPEN.
+2. ~~The day~~: **2026-10-14** (P58, GÜN-14).
 3. The active-flow cap (500 AAU) for the second lab's agent. OPEN.
 4. The final go on lab18's teardown list (sent after section 0, item 6).

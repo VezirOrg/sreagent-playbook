@@ -741,3 +741,6 @@ rollout takes about 45 min per machine (the first agent cycle after a new packag
   goes to the vezir for Emre's final go.
 - P52 (re-enable lab18's auto-shutdown) is superseded by the teardown: the schedules are deleted with the resource
   group. If the teardown is not approved, P52 applies as written.
+- **GÜN-14 (Emre via the vezir, 2026-10-12 16:40Z):** the second-lab day is **2026-10-14**; lab18's remaining work
+  runs on 2026-10-13 as in `second-lab-plan.md` section 0. CAP-500 still OPEN; the teardown still needs Emre's final go
+  on the live list.
