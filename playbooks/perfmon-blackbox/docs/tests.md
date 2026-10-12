@@ -60,7 +60,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T10 roll gap ≤ 10 s | | green | green |
 | T10b overrun detected | | pending | green |
 | T10c failed upload, no gap | | green (storage blocked by a hosts entry: the lab GPO turns the firewall off) | — |
-| T10d failed upload retries in the same run (P46) | block lifted after ~3 min: uploaded on attempt 2, no gap | pending (rc.8) | — |
+| T10d failed upload retries in the same run (P46) | block lifted after ~3 min: uploaded on attempt 2, no gap | **green** (rc.8, 2026-10-12: attempt 1 failed 08:18:22Z, uploaded on attempt 2 08:23:22Z, task result 0, seq 30 complete and continuous) | — |
 | R1 resilience: storage unreachable for real (lab DNS down when the lab's auto-shutdown stopped dc) | the 19:03Z export failed ("remote name could not be resolved"), state unchanged; the next export (19:12Z) covered 18:15:08–19:12:47 in one zip, both rings, complete, 0 gaps: nothing lost. Up to rc.7 a failed export waited for the next scheduled run (ExportEveryHours); since rc.8 it retries in the same run (P46, T10d) | — | green |
 | T11 blob path, hashes, identity | | green (IMDS) | green (HIMDS) |
 | T12 cannot write elsewhere | | green | green |
