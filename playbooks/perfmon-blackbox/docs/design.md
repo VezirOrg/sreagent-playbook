@@ -139,7 +139,8 @@ is uploaded and verified.
 7. **Upload** with REST, `Invoke-WebRequest` (5.1): `PUT Blob` (`BlockBlob`, `Content-MD5`, metadata `sha256`, `seq`,
    `complete`) up to 32 MiB; above that `Put Block` in 8 MiB blocks (each with its `Content-MD5`) then `Put Block
    List` (with `x-ms-blob-content-md5` and the metadata). **Only what ships with Windows Server** (P26): `relog.exe`,
-   `logman.exe`, .NET, `Invoke-WebRequest`; no azcopy, no az CLI, no Az modules. Path `perfmon/<machine-prefix>/<yyyy>/<mm>/<dd>/<machineName>_<from yyyymmdd-hhmmss>_<to hhmmss>.zip`.
+   `logman.exe`, .NET, `Invoke-WebRequest`; no azcopy, no az CLI, no Az modules. Path `perfmon/<machine-prefix>/<yyyy>/<mm>/<dd>/<machinename>_<from yyyymmdd-hhmmss>_<to yyyymmdd-hhmmss>.zip`
+   (machine name in lower case, a full date in both parts, the date folders from `to`; as the code writes it).
 8. **Commit**: on HTTP 201 with the echoed MD5 → write `state.json` (`last_ts` = last exported sample), delete
    pending buffers fully exported and the local zip. On failure → keep everything; the next run exports a longer
    window from the same `last_ts` (no gap), as long as the ring still holds it (otherwise step 3 reports it).
