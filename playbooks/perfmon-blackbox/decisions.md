@@ -722,3 +722,11 @@ rollout takes about 45 min per machine (the first agent cycle after a new packag
   rc.8 under the same name while the hash pins rc.9 → expect the hash check to reject it, rc.8 keeps running;
   (restore) rc.9 uploaded → Compliant on rc.9 (`T18.sh arc1 storage`). arc1 ends on rc.9 (the planned rollout)
   instead of back on rc.8.
+
+## P57: T17 now; the second-lab build plan drafted tonight (Emre via the vezir, 2026-10-12 15:55Z, "T17-BAŞLA")
+
+- **T17 range mode** starts now, on vm1 and arc1 (both on rc.9; skill v2.2 live and identical to the folder, checked
+  with the `deploy-skill.sh` dry run at 16:05Z). Every lab run ends before 21:45Z (P51).
+- **Second-lab fresh-eyes build plan:** drafted tonight in `docs/second-lab-plan.md` for Emre's approval (what is
+  built, where, cost per hour, how long it runs, teardown). Drafting only: nothing is built, and no Azure change is made
+  for it, until he approves the plan.
