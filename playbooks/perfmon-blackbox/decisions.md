@@ -665,3 +665,17 @@ The package, the policies, the infra and the skill never start, stop or schedule
 auto-shutdown; their only relation to power state is observing it (the `machine_off` gap label). Lab power actions stay
 manual one-off `az` commands, recorded in decisions/HANDOVER (P50–P52); no lab-tools helper for them (Emre: "GEREK-YOK").
 No such code exists today. If a future design needs one, stop and ask.
+
+## P54: a pending ring that can never be read (session 3, 2026-10-12): **OPEN for Emre, not decided**
+
+Found on vm1: `20261011-191221-00-boot.blg` was cut by an abrupt restart (2026-10-11 19:12Z, right after the template's
+19:00Z auto-shutdown) without being closed, so `relog` cannot read it (lab fact 1). Its ~10 min were reported as a gap
+in the next manifest (nothing silent), but the export keeps the file for ever ("unreadable pending buffers kept for the
+next run"), warns on every run, and the file counts toward `LocalKeepMB`. A normal deallocate (2026-10-11 21:45Z) left
+a readable ring, so only abrupt stops cause this. Asked through the vezir (RING-A / RING-B):
+
+- **RING-A (recommended):** after N failed reads (e.g. 3 exports) record it as an `unreadable_ring` gap in the next
+  manifest, delete it and write a warning event. Package change with an L05 case.
+- **RING-B:** keep it; operations.md documents it and how to remove it by hand.
+
+Nothing is changed until Emre answers.
