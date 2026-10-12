@@ -571,6 +571,9 @@ backstop the Export task also gets **RestartOnFailure (15 min, 3 times)**, and `
 stays, so a retry never overlaps a scheduled run. (Task Scheduler's restart acts on a failed start rather than on a
 non-zero exit code, which is why the retry lives in the script.) Test: storage blocked by name on one machine, an
 export started, the block lifted after ~3 min: the same run uploads at its +5-min attempt, 0 gaps, continuous.
+- **rc.8** (P46 retries + P49 LOCK-A): `PerfmonBlackbox.zip` SHA-256
+  `8ADA96B885FF8BCCD843C353B18C03D99693640AD6C8274BDBA9952AC4442320` (L05 37/37, T01 green on dc; 12 files
+  scrub-checked clean before the upload).
 
 ## P47: the guest assignment is created with API 2024-04-05 (defect found in T18b, 2026-10-11)
 
