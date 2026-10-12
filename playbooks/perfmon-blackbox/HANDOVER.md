@@ -1,7 +1,12 @@
-# perfmon-blackbox: session 3 OPEN (2026-10-12). Lab18 UP; rc.8 on both; T18b, T10d, T18c, T18f green; T16 run 5 arc1 = 100; next T18d/e (owner), T16 vm1.
+# perfmon-blackbox: session 3 OPEN (2026-10-12). Lab18 UP; rc.8 on both; T18b, T10d, T18c, T18f green; T16 run 5 arc1 = 100; T07b arc1 green (computed); RING-A in code (rc.9 build pending); T18d/e running on arc1.
 
 ## Session 3 (2026-10-12, in progress)
 
+- **11:45Z Emre (via the vezir): T18D-ARC1, RING-A, T07B-HESAP** (P54 decided, P56). T07b arc1 **green, computed**
+  (26.4 h). RING-A code + L05 39/0 committed (23c88ac); rc.9 not yet built: T01 on dc blocked by dc's own GC agent
+  running a baseline ("Failed to initialize DSC library" while its gc_worker runs); T10e (vm1's real unreadable ring)
+  after rc.9 is on vm1. T18d on arc1 in progress (`T18de.sh`: reader role removed 12:29Z, unchanged re-PUT 12:30:49Z);
+  **after T18d/e: `T18de.sh restore`, then `T18.sh arc1 storage` must pass.** T16 vm1 run 5 in progress (load 12:24Z).
 - Lab18 restarted 05:15Z (P50), healthy: T06, T04 green on vm1 and arc1. **T18b GREEN** 07:19Z: first-party PUT 07:01Z
   → Compliant 07:05Z, still storage + system identity (P48 confirmed). LOCK-A (P49) in the code, L05 37/0. Next: rc.8.
 - **rc.8 published** (SHA in P46; release perfmon-blackbox/v1.0.0-rc.8, pkg version 1.0.7). vm1 on rc.8 08:14Z (the first
