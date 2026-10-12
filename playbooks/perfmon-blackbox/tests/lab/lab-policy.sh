@@ -9,6 +9,7 @@
 #       assignment of the same kind is removed first, with its identity's role assignments (P48: never both modes over
 #       one machine; switch = unassign, assign, remediate).
 # ARC_VM=<Azure VM name of arc1> keeps the arc1 Azure VM out of the VM policy and the VM prerequisites (notScopes).
+# DEFS_ONLY=1: update the definitions only (no assignment change, no role, no remediation; T18d/e, P56).
 # Idempotent. Prints names and states only (IDs masked).
 . "$(dirname "$0")/common.sh"
 set -eu
@@ -36,6 +37,7 @@ mi_roles() { # mi_roles <principalId> <role> <scope> [condition]
   echo "  role '$2' on $(echo "$3" | sed 's#.*/##')"
 }
 
+if [ -z "${DEFS_ONLY:-}" ]; then
 # VM prerequisites: system identity + the Machine Configuration extension (built-in initiative, looked up by name)
 prereq=$(az policy set-definition list --query "[?displayName=='Deploy prerequisites to enable Guest Configuration policies on virtual machines'].name | [0]" -o tsv)
 az policy assignment create -n pbb-gc-prereq --display-name 'perfmon-blackbox lab: Machine Configuration prerequisites (VMs)' \
@@ -47,6 +49,7 @@ for ref in $(az policy set-definition show -n "$prereq" --query "policyDefinitio
   az policy remediation create -n "pbb-prereq-$(echo "$ref" | tr -cd 'a-zA-Z0-9' | cut -c1-40)" --policy-assignment pbb-gc-prereq \
     --definition-reference-id "$ref" -g "$rg" --resource-discovery-mode ReEvaluateCompliance -o none 2>/dev/null || true
 done
+fi
 [ "${1:-}" = prereq ] && exit 0
 
 uri="${1:?contentUri}"; hash="${2:?sha256}"; ver="${3:-1.0.0}"; shift 2; [ $# -gt 0 ] && shift
@@ -67,7 +70,7 @@ for kv in sys.argv[3:]:
 print(json.dumps({k: {"value": v} for k, v in p.items()}))' "$sa_id" "$writer" "$@")
 for kind in ${KINDS:-vm arc}; do
   # P48: unassign the other mode first (its identity's role assignments too, so none are left orphaned)
-  if old=$(az policy assignment show -n "pbb-$kind$other" --scope "$scope" --query identity.principalId -o tsv 2>/dev/null) && [ -n "$old" ]; then
+  if [ -z "${DEFS_ONLY:-}" ] && old=$(az policy assignment show -n "pbb-$kind$other" --scope "$scope" --query identity.principalId -o tsv 2>/dev/null) && [ -n "$old" ]; then
     for ra in $(az role assignment list --assignee-object-id "$old" --all --query "[].id" -o tsv); do az role assignment delete --ids "$ra" -o none; done
     az policy assignment delete -n "pbb-$kind$other" --scope "$scope" -o none
     echo "removed assignment pbb-$kind$other (other mode) and its role assignments"
@@ -77,6 +80,7 @@ for kind in ${KINDS:-vm arc}; do
   az policy definition create -n "perfmon-blackbox-$kind$sfx" --display-name "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["properties"]["displayName"])' "$f")" \
     --mode Indexed --rules "$f.policyRule" --params "$f.parameters" --metadata "@$f.metadata" -o none 2>/dev/null || \
   az policy definition create -n "perfmon-blackbox-$kind$sfx" --mode Indexed --rules "$f.policyRule" --params "$f.parameters" -o none
+  [ -n "${DEFS_ONLY:-}" ] && { echo "definition perfmon-blackbox-$kind$sfx updated (DEFS_ONLY)"; continue; }
   ns=""; [ "$kind" = vm ] && ns="$vmnot"
   az policy assignment create -n "pbb-$kind$sfx" --display-name "perfmon-blackbox lab ($kind$sfx)" --policy "perfmon-blackbox-$kind$sfx" \
     --scope "$scope" --mi-system-assigned --location "$loc" --params "$params" ${ns:+--not-scopes $ns} -o none
@@ -90,6 +94,7 @@ for kind in ${KINDS:-vm arc}; do
   # container (P45)
   mi_roles "$pid" 'Role Based Access Control Administrator' "$sa_id" "$cond"
 done
+[ -n "${DEFS_ONLY:-}" ] && exit 0
 echo "waiting 60 s for the role assignments to propagate, then a compliance scan (P55), then remediation"
 sleep 60
 az policy state trigger-scan -g "$rg" -o none   # blocks until done: the engine sees the new definitions before the remediation

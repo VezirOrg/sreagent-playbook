@@ -712,3 +712,13 @@ rollout takes about 45 min per machine (the first agent cycle after a new packag
   prevents, P51). Instead bytes per sample are measured over a short window on arc1 (file growth / samples), and the
   hours held are computed with the P27 formula, the same way R6 does. That computed value is T07b's arc1 result,
   marked as computed, not observed.
+- **T18d/e method (12:50Z, found while running T18d):** an unchanged re-PUT of the guest assignment does not make
+  the agent download again: arc1, reader role removed 12:29Z, same assignment re-PUT 12:30:49Z → Pending, then
+  Compliant 12:46:56Z with no download attempt (it keeps the package it holds, same hash). **Finding:** the reader role
+  matters only when the content changes; a machine already on the package stays Compliant without it. So T18d/e need
+  new content, and are run as arc1's **rc.9 rollout**: (d) the arc storage definition is updated to rc.9 without a
+  remediation (a remediation would grant the reader role again) and the assignment re-PUT from it, no reader role,
+  rc.8 still in the container → expect 403, rc.8 keeps running; (e) the reader role back, the container still holds
+  rc.8 under the same name while the hash pins rc.9 → expect the hash check to reject it, rc.8 keeps running;
+  (restore) rc.9 uploaded → Compliant on rc.9 (`T18.sh arc1 storage`). arc1 ends on rc.9 (the planned rollout)
+  instead of back on rc.8.
