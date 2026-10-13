@@ -270,12 +270,13 @@ at 10:48Z. arc1 (storage mode) did **not** apply it in the first 70 minutes (see
 
 | Test | vm1 | arc1 |
 |---|---|---|
-| T04 (7 resources) | green (re-run at 11:59Z; the first run at 11:51Z failed only on report age, 63 min > 30) | pending |
-| T06 | green | pending |
-| T07 (Boot, Roll, Export) | green: 12 pieces merged in **1 relog call**, 990 rows, 0 gaps | pending |
-| T08 (rate across the boot, P63 a) | green: the restart at 11:53Z split the export into **2 relog calls** (the boot segments); only gap `machine_off` 64 s; `rate-after=empty` (no rate computed across the boot) | pending |
-| T09, T10, T11 | green | pending |
-| T19 (15-min roll merged) | green: one zip from 3 roll pieces + the export piece, 233 rows, 0 gaps, `pending\` empty | pending |
+| T04 (7 resources) | green (re-run at 11:59Z; the first run at 11:51Z failed only on report age, 63 min > 30) | green; R6: ring ≈ 25.2 h, LocalKeepMB ≈ 50 h |
+| T06 | green | green |
+| T07 (Boot, Roll, Export) | green: 12 pieces merged in **1 relog call**, 990 rows, 0 gaps | green: 5 pieces in 1 relog call |
+| T08 (rate across the boot, P63 a) | green: the restart at 11:53Z split the export into **2 relog calls** (the boot segments); only gap `machine_off` 64 s; `rate-after=empty` (no rate computed across the boot) | green: restart 13:07Z, only gap `machine_off` 52 s, `rate-after=empty` |
+| T09, T10, T11 | green | green (roll gap 2.7 s; HIMDS) |
+| T19 (15-min roll merged) | green: one zip from 3 roll pieces + the export piece, 233 rows, 0 gaps, `pending\` empty | green: 3 roll pieces in one zip, no gap |
+| T07b buffer hours | — | green: 58,637 bytes/sample (99 processes), 25.4 h at 10 s |
 
 **arc1 rollout (open).** The rc.11 remediation (10:39Z) wrote the guest assignment, but the deployment failed on the
 package-reader role assignment (`RoleAssignmentExists`: the reader assignment exists under another name, most likely
@@ -283,4 +284,6 @@ the one restored by hand after T18d, P56; the rc.10 remediation at 08:00Z failed
 container's zip (already rc.11) at 10:56Z while the assignment still carried the rc.10 hash (validation failed,
 11:01–11:17Z); at 11:22Z the assignment carried 1.0.10 but with `assignmentType` **Audit** (agent: `custom_inguest`),
 so the agent only tests (`Common.ps1 differs from the package`) and never applies. The definition says
-ApplyAndAutoCorrect. A second scan + remediation (P55) is running.
+ApplyAndAutoCorrect. A second scan + remediation (P55, 12:39Z) wrote ApplyAndAutoCorrect again (the deployment is still
+marked Failed on the reader role) and arc1 was Compliant on 1.0.10 at **13:04Z**. Follow-up after v1.0.0: the reader
+role step must tolerate an existing assignment under another name, or the adopter docs must say so.
