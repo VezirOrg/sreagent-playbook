@@ -197,3 +197,23 @@ it can be up to `ExportEveryHours` (4 h). It is never silent: the hole is in the
 4. `docs/design.md` §gaps: `machine_off` when "the hole lines up with … a boot time". The 04:54:32–05:01:17 hole
    contains the 05:00:39 boot but is labelled `collector_restart`; the code labels `machine_off` only when the
    earlier **readable** part was closed by a boot (`PerfmonBlackbox.Common.ps1`), and the unreadable ring is not a part.
+
+**Salvage attempts (Emre via the vezir, 2026-10-13, research only).** Every variant ran on its own fresh copy of the
+ring on arc1; the original's SHA-256 was the same before and after (`research-salvage-arc1.txt`). Only documented
+tools: `relog` [L: *relog*, Windows commands] and `Import-Counter` (Windows PowerShell 5.1, PDH). Machine time zone UTC.
+
+| Variant | Result [O] |
+|---|---|
+| `relog -q` | 0xC0000BF7, "Unable to read counter information and data from input binary log files" |
+| `-b 04:54:43 -e` +1, +2, +3, +5 min, and up to 05:00:20 (csv) | 0xC0000BF7, 0 rows, each |
+| `-b 04:40 -e 04:56` (begin before the ring) | 0xC0000BF7, 0 rows |
+| `-t 2`, `-t 30` | 0xC0000BF7, 0 rows |
+| `-c "\Memory\Available MBytes"` (one counter) | 0xC0000BF7, 0 rows |
+| `-f bin`, `-f tsv` | 0xC0000BF7, no output |
+| `Import-Counter -Summary`; `-Counter`; `-StartTime/-EndTime` (3 min) | same PDH message, no samples |
+
+**No variant recovers a single sample.** Even `-q`, which only lists the counters and the time range, fails: the PDH
+reader rejects the file before any time or counter filter applies [O]. The time bounds (`-b`/`-e`) select records
+in a file PDH can open [L: *relog*: "the beginning time to copy the first record"]; they do not get past a file it
+cannot open [G]. So a time-bounded relog is **not** a usable export fallback for this kind of ring: it would add
+retries and no data. Reading the raw records ourselves would need the undocumented `.blg` layout (out of scope).
