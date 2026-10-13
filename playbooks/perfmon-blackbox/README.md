@@ -83,7 +83,7 @@ of the policy identity, remediation, the skill).
 
 `C:\ProgramData\PerfmonBlackbox\` (SYSTEM and Administrators only): `bin\` (scripts, counter lists, template),
 `blg\` (the live ring), `pending\` (closed rings not yet exported), `outbox\`, `log\`, `config.json`, `state.json`.
-Tasks `\PerfmonBlackbox\Boot` and `\PerfmonBlackbox\Export`. Event log source `PerfmonBlackbox` (1000s info, 2000s data
+Tasks `\PerfmonBlackbox\Boot`, `\PerfmonBlackbox\Roll` (every 15 min) and `\PerfmonBlackbox\Export`. Event log source `PerfmonBlackbox` (1000s info, 2000s data
 loss, 3000s errors). Captures live at `perfmon/<subscriptionId>/<resourceGroup>/<server>/<yyyy>/<mm>/<dd>/` in storage.
 
 ## Cost
@@ -101,7 +101,7 @@ source: [docs/cost.md](docs/cost.md).
 | [docs/architecture.md](docs/architecture.md) | how it fits together (diagram) |
 | [docs/deploy.md](docs/deploy.md) | deploying it |
 | [docs/parameters.md](docs/parameters.md) | parameters, buffer hours, the capacity check |
-| [docs/operations.md](docs/operations.md) | upgrades, troubleshooting, removal, [how the export merges the pieces](docs/operations.md#how-the-export-merges-the-pieces) |
+| [docs/operations.md](docs/operations.md) | upgrades, troubleshooting, removal, [how it works on the server](docs/operations.md#how-it-works-on-the-server) |
 | [docs/security.md](docs/security.md) | identities, roles, the prefix condition, what runs on servers |
 | [docs/cost.md](docs/cost.md) | cost per server and per deployment |
 | [docs/tests.md](docs/tests.md) | every test and its status |

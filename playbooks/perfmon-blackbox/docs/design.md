@@ -56,7 +56,7 @@ package as Machine Configuration configuration parameters:
 
 | Code | Runs in | Rule |
 |---|---|---|
-| DSC resources R1–R6 (`PerfmonBlackboxDsc`) | the Machine Configuration agent's **own PowerShell 7** (7.1.2 on Windows per Learn), one session per configuration, `PSModulePath` = the package folder | 5.1-compatible syntax; only `logman.exe`, `schtasks.exe` (task XML), `icacls.exe`, .NET; no Windows modules (`ScheduledTasks`, …), which the agent cannot load |
+| DSC resources R1–R7 (`PerfmonBlackboxDsc`) | the Machine Configuration agent's **own PowerShell 7** (7.1.2 on Windows per Learn), one session per configuration, `PSModulePath` = the package folder | 5.1-compatible syntax; only `logman.exe`, `schtasks.exe` (task XML), `icacls.exe`, .NET; no Windows modules (`ScheduledTasks`, …), which the agent cannot load |
 | `Start-PerfmonBlackbox.ps1`, `Export-PerfmonBlackbox.ps1` (boot, export, upload, capacity measurement) | **Windows PowerShell 5.1** (`powershell.exe`), started by the scheduled tasks as SYSTEM (R3 also starts it) | 5.1 only; lint `PSUseCompatibleSyntax` / `PSUseCompatibleCommands` |
 | package build (`build.ps1`, GuestConfiguration module) | authoring side only (CI Windows runner, lab scratch folder) | never on a customer server |
 
@@ -69,8 +69,9 @@ assignment shows drift per item):
 | R2 | `BlackboxCollector` | set `PerfmonBlackbox` exists; counters **equal** the 36 of the counter list; format binary circular; interval = `SampleIntervalSeconds`; max size = `MaxSizeMB`; no duration limit | if absent: fill the template from the parameters, `logman import`. If interval or size differ: keep the current buffer as pending (§2.2 step 0), delete, re-import, start |
 | R3 | `BlackboxRunning` | status Running | `Start-PerfmonBlackbox.ps1` (keeps the old buffer as pending, then `logman start`) |
 | R4 | `BlackboxBootTask` | task `\PerfmonBlackbox\Boot`: AtStartup, SYSTEM, highest, action `Start-PerfmonBlackbox.ps1` | register |
-| R6 | `BlackboxCapacity` | the **measured** buffer hours on this machine (§2.6) ≥ 1.5 × the export window | none (audit only). NonCompliant **reason**, e.g. `buffer holds ~7 h at 1 s with MaxSizeMB=512 (148 processes), export window 24 h: data will be lost; raise MaxSizeMB, lengthen the interval or export more often` |
+| R6 | `BlackboxCapacity` | since rc.10 (P62): `LocalKeepMB` holds ≥ 1.5 × the export window **and** the ring holds ≥ 1.5 × the 15-min roll, from the **measured** bytes per sample (§2.6) | none (audit only). NonCompliant **reason**, e.g. `buffer holds ~7 h at 1 s with MaxSizeMB=512 (148 processes), export window 24 h: data will be lost; raise MaxSizeMB, lengthen the interval or export more often` |
 | R5 | `BlackboxExportTask` | task `\PerfmonBlackbox\Export`: Daily trigger repeating every `ExportEveryHours` (24 = once a day), SYSTEM, `StartWhenAvailable` | register |
+| R7 | `BlackboxRollTask` | task `\PerfmonBlackbox\Roll` (P62): Daily trigger repeating every 15 min, SYSTEM, `StartWhenAvailable`, action `Export-PerfmonBlackbox.ps1 -RollOnly` | register |
 
 A changed `MaxSizeMB` or interval on the assignment reaches the machine at the next evaluation (≤ 15 min): R1 and
 R2 become non-compliant, Set re-creates the collector with the new values, and nothing recorded so far is lost
@@ -124,11 +125,12 @@ is uploaded and verified.
    step from `last_ts` to the first exported sample. Each hole gets a cause:
    - `buffer_overrun`: the oldest sample in the circular file is newer than `last_ts + interval` while the
      collector ran without a restart in between: the window outgrew the buffer and the ring overwrote it;
-   - `collector_restart` / `machine_off`: the hole lines up with a pending-buffer boundary or a boot time
-     (event log, boot time from `Win32_OperatingSystem`);
+   - `machine_off`: the hole contains a boot time recorded by the Boot task in `state.json` (P62);
+   - `collector_restart`: the hole lines up with a pending-buffer boundary (no boot in it);
    - `local_cap`: pending buffers or zips dropped by `LocalKeepMB`;
-   - `unreadable_ring`: a pending ring `relog` could not read in 3 export runs (cut by an abrupt stop, never
-     closed) was deleted (P54); its span (file created .. last written) is a gap of the next manifest, even if it lies
+   - `unreadable_ring`: a pending ring `relog` could not read in 3 export runs (never closed: an abrupt stop, or a
+     clean shutdown in which PLA did not stop the collector, T08 arc1 2026-10-13) was deleted (P54, P62); its span
+     (the ring's recorded start .. last written) is a gap of the next manifest, even if it lies
      before that manifest's window, and a hole overlapping it takes this cause.
    All holes go into the **manifest** (`gaps[]`: from, to, seconds, cause) with `complete: true|false`, and an
    event-log warning (source `PerfmonBlackbox`). A loss is **never silent**.
@@ -182,8 +184,9 @@ bytes per sample on both lab machines and the README then states measured hours.
 measured **buffer hours** into each manifest (oldest-to-newest span of the ring at snapshot time), so an adopter sees
 the margin per machine.
 
-**If the window outgrows the buffer** (the export was late, failed for longer than the ring holds, or the machine
-is busier than estimated): the oldest part of the window is gone; the export uploads what is left, the manifest has
+**If the window outgrows the buffer** (before rc.10: the export was late, failed for longer than the ring holds, or the
+machine is busier than estimated; since rc.10 the ring only has to hold one 15-min roll, and only a Roll task that
+does not run lets it wrap): the oldest part of the window is gone; the export uploads what is left, the manifest has
 a `buffer_overrun` gap with its from/to and `complete: false`, and an event-log warning is written. T10b forces this
 case and checks the manifest.
 

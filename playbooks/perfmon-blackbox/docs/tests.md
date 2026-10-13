@@ -118,10 +118,11 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 - **T06e** a buffer too small for the export window turns the assignment NonCompliant with the numbers in the reason.
 - **T06f** G3 counters on a server without IIS cause no event storm (one error per missing counter at start, nothing
   per sample); G3 appears by itself after IIS is installed.
-- **T07** exactly the Boot and Export tasks exist as designed; both run on demand with result 0.
+- **T07** exactly the Boot, Export and (since rc.10) Roll tasks exist as designed; each runs on demand with result 0.
 - **T07b** the measured buffer hours hold at least 1.5 × the export window.
 - **T08** after a reboot the collector runs again, the ring from before the reboot is kept, and the next export holds
-  it with only a `machine_off` gap.
+  it with only a `machine_off` gap. A shutdown that leaves the open piece unclosed loses at most that piece (≤ 15 min
+  since rc.10, P62), reported as a gap: it is not a test failure of the product but the accepted loss.
 - **T09** two exports in a row: each zip has one CSV and a manifest with matching hash, PDH header, the 36 counters,
   the expected number of rows; the second starts right after the first (no gap, no overlap).
 - **T10** the export's collector restart lasts ≤ 10 s and leaves no hole.

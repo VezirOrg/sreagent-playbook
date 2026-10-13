@@ -34,7 +34,7 @@ flowchart LR
     PA[perfmon-blackbox-arc<br/>DeployIfNotExists]
   end
   subgraph Server["Windows server (Azure VM or Arc)"]
-    MC[Machine Configuration agent<br/>own PowerShell 7] --> R[DSC resources R1-R6]
+    MC[Machine Configuration agent<br/>own PowerShell 7] --> R[DSC resources R1-R7]
     R --> DCS[Data Collector Set<br/>binary circular, MaxSizeMB]
     R --> T1[Task Boot<br/>Windows PowerShell 5.1]
     R --> T2[Task Export<br/>every ExportEveryHours]
@@ -52,9 +52,10 @@ ASCII, for viewers without mermaid:
 ```
  Policy (VM) / Policy (Arc) --DINE--> guest assignment PerfmonBlackbox + Writer role (ABAC: own prefix only)
                                            |
- Server:  Machine Configuration agent ---> R1 files+config  R2 collector  R3 running  R4 boot task  R5 export task  R6 capacity
+ Server:  Machine Configuration agent ---> R1 files+config  R2 collector  R3 running  R4 boot task  R5 export task  R6 capacity  R7 roll task
           Data Collector Set (binary circular, MaxSizeMB) <- Boot task (start, keep old ring as pending)
-          Export task: stop -> move ring to pending\ -> start -> relog -> CSV window since last export -> zip + manifest
+          Roll task (every 15 min): stop -> move ring to pending\ -> start   (closed pieces of <= 15 min)
+          Export task: roll -> relog each piece -> one CSV window since last export -> zip + manifest
                          -> token (IMDS on Azure VMs, HIMDS on Arc) -> PUT Blob -> state.json moves forward
                                            |
  Storage (private endpoint, no keys):  perfmon/<sub>/<rg>/<server>/<yyyy>/<mm>/<dd>/<server>_<from>_<to>.zip
@@ -67,7 +68,7 @@ ASCII, for viewers without mermaid:
 | Part | Where | What |
 |---|---|---|
 | Two policy definitions | `policy/build_policies.py` | DINE: the guest assignment, and one Writer role assignment per server with an ABAC path condition |
-| Package `PerfmonBlackbox` | `package/` | DSC resources R1–R6 (`PerfmonBlackboxDsc`), the collector files, two 5.1 scripts |
+| Package `PerfmonBlackbox` | `package/` | DSC resources R1–R7 (`PerfmonBlackboxDsc`), the collector files, two 5.1 scripts |
 | Storage | `infra/main.bicep` | private, no shared key, lifecycle 30 days, the Writer and Deployer custom roles |
 | Skill | `skill/perfmon-triage/` | fetch latest zip, convert, triage; quotes gaps and `complete`. Deployed by `scripts/deploy-skill.sh` through the agent's data-plane API, not Bicep: the ARM `Microsoft.App/agents/skills` resource answered "internal tenants only" (P61) |
 
@@ -75,7 +76,7 @@ ASCII, for viewers without mermaid:
 
 | Code | Runs in |
 |---|---|
-| DSC resources (R1–R6) | the Machine Configuration agent's own PowerShell 7 (ships with the agent) |
+| DSC resources (R1–R7) | the Machine Configuration agent's own PowerShell 7 (ships with the agent) |
 | `Start-PerfmonBlackbox.ps1`, `Export-PerfmonBlackbox.ps1` | Windows PowerShell 5.1, as SYSTEM, from scheduled tasks |
 
 Both use only what ships with Windows: `logman`, `relog`, `schtasks`, `icacls`, .NET, `Invoke-WebRequest`.
@@ -85,9 +86,10 @@ Both use only what ships with Windows: `logman`, `relog`, `schtasks`, `icacls`, 
 1. **Roll**: stop the collector, move the ring to `pending\`, start it again (a running circular `.blg` cannot be read;
    the restart costs a few seconds and is measured in every manifest as `roll_seconds`).
 2. **Window**: relog every pending ring to CSV, merge them in time order, keep only samples after the last exported one
-   (details: [operations.md, How the export merges the pieces](operations.md#how-the-export-merges-the-pieces)).
+   (the whole server-side flow with the reason for each step: [operations.md, How it works on the server](operations.md#how-it-works-on-the-server)).
 3. **Holes**: every step longer than two intervals becomes a gap with a cause (`buffer_overrun`, `collector_restart`,
-   `machine_off`, `local_cap`, `missing_samples`, `unreadable_ring`); `complete` is false if there is any.
+   `machine_off`, `local_cap`, `missing_samples`, `unreadable_ring`); `complete` is false if there is any (a roll's own
+   few seconds, `export_roll`, do not count).
 4. **Zip** the CSV with `manifest.json`; **upload** with the server's identity; only then move `last_ts` forward.
 
 ## Why the package source is fixed when the definitions are generated

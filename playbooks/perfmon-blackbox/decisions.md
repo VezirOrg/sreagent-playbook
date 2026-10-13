@@ -672,7 +672,7 @@ Found on vm1: `20261011-191221-00-boot.blg` was cut by an abrupt restart (2026-1
 19:00Z auto-shutdown) without being closed, so `relog` cannot read it (lab fact 1). Its ~10 min were reported as a gap
 in the next manifest (nothing silent), but the export keeps the file for ever ("unreadable pending buffers kept for the
 next run"), warns on every run, and the file counts toward `LocalKeepMB`. A normal deallocate (2026-10-11 21:45Z) left
-a readable ring, so only abrupt stops cause this. Asked through the vezir (RING-A / RING-B):
+a readable ring, so only abrupt stops cause this. *(Corrected by P62: a clean restart can leave one too, T08 arc1 2026-10-13.)* Asked through the vezir (RING-A / RING-B):
 
 - **RING-A (recommended):** after N failed reads (e.g. 3 exports) record it as an `unreadable_ring` gap in the next
   manifest, delete it and write a warning event. Package change with an L05 case.

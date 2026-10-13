@@ -2,7 +2,7 @@
 
 > **Summary.** Upgrades: update the two definitions to the new release's URL and hash, run a compliance scan, then
 > remediate; machines on the old package become non-compliant for the policy and move. Troubleshooting starts with the guest assignment's
-> per-resource reasons and the manifest's `complete` and `gaps[]`. Removal: assignments first, then the server side,
+> per-resource reasons (R1–R7) and the manifest's `complete` and `gaps[]`. Removal: assignments first, then the server side,
 > storage last.
 >
 > Draft until v1.0.0.
@@ -25,7 +25,7 @@
 
 | Question | Where |
 |---|---|
-| Is the black box installed and healthy on a server? | the guest assignment `PerfmonBlackbox` of the server: Compliant, and per resource R1–R6 with reasons |
+| Is the black box installed and healthy on a server? | the guest assignment `PerfmonBlackbox` of the server: Compliant, and per resource R1–R7 with reasons |
 | Did the last export work? | blobs under `perfmon/<sub>/<rg>/<server>/`, the newest zip's `manifest.json`; on the server `C:\ProgramData\PerfmonBlackbox\state.json` (`last_ts`, `last_error`) and `log\perfmonblackbox.log` |
 | Did we lose data? | the manifest's `complete` and `gaps[]`; event log Application, source `PerfmonBlackbox`, IDs 2001–2002 |
 
@@ -37,61 +37,52 @@
 | `[BlackboxFiles]Files` | `BadParameter: ExportEveryHours 5 must divide 24` | fix the assignment's parameter |
 | `[BlackboxCollector]Collector` | `counter list differs`, `interval …`, `max size …` | nothing; the collector is re-created, old data kept |
 | `[BlackboxRunning]Running` | `collector status is Stopped` | nothing; it is started again (check the event log if it repeats) |
-| `[BlackboxBootTask]` / `[BlackboxExportTask]` | `task … is not registered` / field differs | nothing; re-registered |
-| `[BlackboxCapacity]Capacity` | `buffer holds ~N h …` | raise `MaxSizeMB`, lengthen the interval or export more often: [parameters.md](parameters.md) |
+| `[BlackboxBootTask]` / `[BlackboxExportTask]` / `[BlackboxRollTask]` | `task … is not registered` / field differs | nothing; re-registered |
+| `[BlackboxCapacity]Capacity` | `ring holds ~N h …; LocalKeepMB holds ~M h …` | raise `LocalKeepMB` or `MaxSizeMB`, lengthen the interval or export more often: [parameters.md](parameters.md) |
 
-## How the export merges the pieces
+## How it works on the server
 
-Each export uploads **one zip with one CSV**, even when the data on the server sits in several files. Folder:
-`C:\ProgramData\PerfmonBlackbox\`.
+What the package does on each server, step by step, with the purpose of each step and why it is built this way.
+Folder: `C:\ProgramData\PerfmonBlackbox\`. Everything runs as SYSTEM under Windows PowerShell 5.1 and uses only tools
+that ship with Windows (`logman`, `relog`, `schtasks`).
 
-**The pieces.** The collector writes one circular file, `blg\PerfmonBlackbox.blg`. Windows cannot read that file
-while the collector runs. So whenever the collector is stopped and started again, the file is first moved to
-`pending\` under a new name, and the collector starts a fresh one. A restart therefore never overwrites data that was
-not exported. A pending file is named `<yyyyMMdd-HHmmss>-<nn>-<reason>.blg`, with `-m<MaxSizeMB>` before `.blg` when
-the ring's size limit is known. The reason says why it was closed:
+| # | Step | Purpose | Why this way |
+|---|---|---|---|
+| 1 | **Collector.** Machine Configuration creates the data collector set `PerfmonBlackbox` and keeps it running: one **circular** binary file, `blg\PerfmonBlackbox.blg`, one sample every `SampleIntervalSeconds` | always have the recent past on the disk, like a flight recorder | a circular file never grows past `MaxSizeMB`: the newest data overwrites the oldest, so the disk can never fill up |
+| 2 | **Boot.** At every start of Windows the Boot task moves the file from before the restart to `pending\`, records the boot time, and starts the collector again | recording resumes on its own after a restart; the boot time names the hole in the data | a circular log started again would overwrite the old file; moving it first keeps it |
+| 3 | **Roll, every 15 minutes.** The Roll task stops the collector, moves the file to `pending\` and starts it again (a few seconds). No upload | the data is split into closed pieces of at most 15 minutes | Windows **cannot read a circular file while the collector writes it**, and a shutdown can leave the open file **unclosed and unreadable** for good (seen in the lab: a restart while Windows Update was finishing, T08 on arc1, 2026-10-13). Only a closed file is safe. With a roll every 15 minutes, a bad shutdown loses at most the last 15 minutes, and the loss is reported |
+| 4 | **Wait in `pending\`.** The closed pieces stay on the disk until the next export | the server keeps the data while the export is not due, or while the storage is unreachable | `LocalKeepMB` caps what waits here; if it is reached, the oldest pieces go first and the next manifest says so (`local_cap`) |
+| 5 | **Export, every `ExportEveryHours`.** It rolls once more (so the last minutes are included), then converts each piece with `relog <piece> -f csv`, one piece at a time, oldest first | turn the binary pieces into text | **one piece per call on purpose**: if one piece is unreadable, a single `relog` call with all pieces fails as a whole and returns nothing (tested in the lab); per piece, only that piece fails. The export also needs to know which piece each sample came from (see step 7) |
+| 6 | **Join.** The CSVs are joined in time order into **one** CSV with one header (all columns of all pieces). Only samples after `last_ts` are kept (`last_ts` = the last sample of the last upload that succeeded, in `state.json`) | one file per export window, with **no overlap** and **no gap** | everything up to `last_ts` was already uploaded, everything after it still on the disk is included. Pieces can have different counter lists (for example after IIS was installed), hence the joined header |
+| 7 | **Gaps.** Every step between two samples longer than 2 × the interval goes into the manifest as a gap with a cause (see [Manifest gaps](#manifest-gaps)) | a loss of data is never silent | the cause depends on where the hole is: around a recorded boot it is `machine_off`; between two pieces, `collector_restart` (or `buffer_overrun` if the later piece had wrapped); inside one piece, `missing_samples`. A roll's own hole of a few seconds is `export_roll` and does not count |
+| 8 | **Zip and upload.** The CSV and `manifest.json` (window, rows, the pieces used, gaps, `complete`) go into one zip, uploaded with the server's own identity into its own folder of the container | one file per server and window in the storage | the server's identity can write only under its own prefix (no keys on the server) |
+| 9 | **Clean up.** Only after the storage service accepted the upload (HTTP 201; the zip is sent with its MD5, which the service checks), `last_ts` moves forward and the pieces that went into the zip are deleted | free the disk, and never delete data that is not in the storage | a failed upload deletes nothing: it is retried in the same run (+5 and +15 min) and by the next export, which covers the whole window since `last_ts` |
 
-| Reason | When |
-|---|---|
-| `export` | the export's own **roll**: stop the collector, move the file, start it again (a few seconds, `roll_seconds` in the manifest) |
-| `boot` | after a restart of the server: the file was last written before the boot (moved by the Boot task or by Machine Configuration, whichever starts the collector first) |
-| `recreate` | Machine Configuration re-created the collector (counter list, interval or size changed) |
-| `start` | the collector was found stopped and started again |
+**Pieces that cannot be read.** A piece `relog` cannot read (a shutdown left it unclosed) stays in `pending\` and is
+tried again by the next exports. After **3** failed reads it is deleted and the next manifest reports its time span as
+an `unreadable_ring` gap. With the 15-minute roll such a piece holds at most 15 minutes. Its span starts when the
+collector started writing it (recorded by the package) and ends at its last write.
 
-**The merge.** The export (every `ExportEveryHours`) first rolls, then takes every file in `pending\`, oldest name first:
+**Names in `pending\`.** `<yyyyMMdd-HHmmss>-<nn>-<reason>.blg` (with `-m<MaxSizeMB>` before `.blg` when the ring's
+size limit is known). The time is when the piece was closed; the reason says why: `roll` (every 15 min), `export`
+(the export's own roll), `boot` (closed by a restart of Windows), `recreate` (Machine Configuration re-created the
+collector after a change of counters, interval or size), `start` (the collector was found stopped and started).
 
-1. `relog <file> -f csv` converts each file on its own to a CSV.
-2. The CSVs are joined in time order into **one** CSV with one header (all columns of all pieces). Only samples
-   **after `last_ts`** are kept. `last_ts` is the last sample of the last upload that succeeded, kept in `state.json`.
-   A sample that is not newer than the one before it is dropped. So nothing already uploaded is sent again (**no
-   overlap**), and every sample still on the disk after `last_ts` is included (**no gap** of our own making).
-3. Every step between two samples longer than 2 × the interval becomes a **gap** in the manifest, with a cause. A
-   hole **between two pieces** is `machine_off` if the earlier piece was closed by a boot, `buffer_overrun` if the
-   later piece had wrapped (filled and overwritten its oldest samples), otherwise `collector_restart`. A hole
-   **inside one piece** is `missing_samples`. A hole **before the first sample** (from `last_ts`) is `export_roll`
-   (the previous roll, seconds), `buffer_overrun`, `local_cap` or `collector_restart`. See [Manifest gaps](#manifest-gaps).
-4. The CSV and `manifest.json` (window, rows, `sources[]` = the pieces used, `gaps[]`, `complete`) are zipped and uploaded.
-
-**When pieces are deleted.**
-- **After the upload succeeded**: the zip is sent with its MD5, which the storage service checks, and the service answered 201. Then `last_ts`
-  moves forward and the pieces that went into the zip are deleted. If the upload fails (after its retries), nothing
-  is deleted and `last_ts` stays: the next export reads the same pieces again.
-- A piece with no sample after `last_ts` is deleted at once (everything in it was already uploaded).
-- A piece `relog` cannot read stays for the next exports. After **3** failed reads it is deleted, and the next
-  manifest reports its span as an `unreadable_ring` gap.
-- If pending pieces and unsent zips together exceed `LocalKeepMB` (exports failing for a long time), the oldest
-  pieces are deleted first, and the next manifest reports a `local_cap` gap.
+**Why not one `relog` call for all pieces?** `relog` accepts several input files and joins them. The export does not
+use that because one unreadable piece makes the whole call fail with no output (`0xC0000BF7`), and because the gap
+causes need per-piece facts a joined output loses: which piece a sample came from, each piece's own interval, and
+whether a piece had wrapped (decisions P62).
 
 ## Manifest gaps
 
 | Cause | Meaning | Action |
 |---|---|---|
-| `buffer_overrun` | the ring overwrote samples before they were exported | the export was late or failed too long, or the buffer is too small: see R6 |
-| `machine_off` | the server was down between two rings | none; the time it was off |
-| `export_roll` | the previous export's own collector restart (a few seconds; only visible at intervals under ~5 s) | none; it does not make `complete` false |
+| `buffer_overrun` | the ring overwrote samples before they were rolled into `pending\` | the Roll task did not run for longer than the ring holds, or the ring is too small: see R6 |
+| `machine_off` | the hole contains a restart of Windows (a recorded boot time) | none if expected; samples of the last minutes before the restart are in it if the shutdown left the open piece unreadable (then an `unreadable_ring` gap follows after 3 exports) |
+| `export_roll` | a roll's own collector restart (the export's or the 15-minute roll; a few seconds, only visible at intervals under ~5 s) | none; it does not make `complete` false |
 | `collector_restart` | the collector was restarted (re-create, start) | none if short; repeated restarts: check the event log |
 | `local_cap` | closed rings were dropped by `LocalKeepMB` (exports failing for long) | fix the upload path (network, DNS, role), consider a larger `LocalKeepMB` |
-| `unreadable_ring` | a ring cut by an abrupt stop (power loss, forced restart) could not be read by `relog` in 3 exports and was deleted (P54; event 2003). The gap may lie before the manifest's window: it was found only then | none; the span is as far as the file told (created .. last written) |
+| `unreadable_ring` | a piece left unclosed by a shutdown could not be read by `relog` in 3 exports and was deleted (P54, P62; event 2003). Not only power loss or a forced restart: a clean restart can cause it too (lab: a restart while Windows Update was finishing). With the 15-minute roll it is at most 15 minutes. The gap may lie before the manifest's window: it was found only then | none; the span runs from when the collector started writing the piece to its last write |
 | `missing_samples` | holes inside one ring | the collector was starved or paused; check the system around that time |
 
 ## When the storage is unreachable (P46)
@@ -104,8 +95,8 @@ has failed. If all three attempts fail, the run ends with an error; the Export t
 min, 3 times) is a backstop for a run that could not start. After that the next scheduled export picks it up.
 
 A failed upload never moves `last_ts`: the next successful export covers every missed window in one zip. Nothing is lost
-as long as the outage is shorter than what the ring holds (`[BlackboxCapacity]` reports it, e.g. "buffer holds ~N h");
-a longer outage shows up as a `buffer_overrun` gap in the next manifest.
+as long as the outage is shorter than what `LocalKeepMB` holds (the 15-minute pieces wait in `pending\`;
+`[BlackboxCapacity]` reports the hours); a longer outage shows up as a `local_cap` gap in the next manifest.
 
 ## Remove
 
@@ -113,7 +104,7 @@ a longer outage shows up as a `buffer_overrun` gap in the next manifest.
 2. Delete the guest assignments `PerfmonBlackbox` from the servers (or let them be removed with the assignment), and
    the per-server Writer role assignments on the container (description "perfmon-blackbox: write only under …").
 3. On each server: `logman stop PerfmonBlackbox; logman delete PerfmonBlackbox`, `schtasks /delete /tn
-   \PerfmonBlackbox\Boot /f`, the same for `\PerfmonBlackbox\Export`, then delete `C:\ProgramData\PerfmonBlackbox`.
+   \PerfmonBlackbox\Boot /f`, the same for `\PerfmonBlackbox\Export` and `\PerfmonBlackbox\Roll`, then delete `C:\ProgramData\PerfmonBlackbox`.
 4. Delete the storage deployment (account, private endpoint) last, after you no longer need the captures.
 5. Delete the two custom roles ("PerfMon Blackbox Writer", "PerfMon Blackbox Deployer", or the names you gave them):
    `az role definition delete --name "<name>" --custom-role-only true`. A role definition is a subscription-level
