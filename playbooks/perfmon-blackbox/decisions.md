@@ -759,3 +759,11 @@ The second lab's SRE Agent gets a monthly active-flow allocation of **1000 AAU**
 lab18 was billed), **not** the proposed 500 (the Learn minimum). It is set when the agent is built (2026-10-14) and is
 the guard against a runaway loop: past it the agent stops answering instead of spending more. The always-on flow
 (4 AAU per agent-hour) is billed separately and is not limited by it. CAP-500 is closed by this decision.
+
+## P61: the skill is deployed by the script, not by Bicep (Emre via the vezir, 2026-10-13, "KALSIN")
+
+Asked: can the skill be deployed with Bicep alongside the rest? Not today: the ARM resource `Microsoft.App/agents/skills`
+answers "internal tenants only" in our tenant, so `scripts/deploy-skill.sh` (the agent's data-plane API,
+`/api/v2/extendedAgent/skills/<name>`) stays the way to deploy the skill. A Bicep `deploymentScript` wrapper around the
+script is **rejected** for v1.0.0. `deploy.md` (section 4) and `architecture.md` say why. No follow-up item: the ARM
+path is not re-tried on the second-lab day (Emre's correction, same day).

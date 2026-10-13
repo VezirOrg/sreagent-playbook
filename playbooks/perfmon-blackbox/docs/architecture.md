@@ -69,7 +69,7 @@ ASCII, for viewers without mermaid:
 | Two policy definitions | `policy/build_policies.py` | DINE: the guest assignment, and one Writer role assignment per server with an ABAC path condition |
 | Package `PerfmonBlackbox` | `package/` | DSC resources R1–R6 (`PerfmonBlackboxDsc`), the collector files, two 5.1 scripts |
 | Storage | `infra/main.bicep` | private, no shared key, lifecycle 30 days, the Writer and Deployer custom roles |
-| Skill | `skill/perfmon-triage/` | fetch latest zip, convert, triage; quotes gaps and `complete` |
+| Skill | `skill/perfmon-triage/` | fetch latest zip, convert, triage; quotes gaps and `complete`. Deployed by `scripts/deploy-skill.sh` through the agent's data-plane API, not Bicep: the ARM `Microsoft.App/agents/skills` resource answered "internal tenants only" (P61) |
 
 ## Two runtimes on the server
 
