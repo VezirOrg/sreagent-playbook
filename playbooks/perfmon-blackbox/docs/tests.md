@@ -262,3 +262,25 @@ When arc1's rc.9 ring (`20261013-050116-00-boot.blg`) was deleted at its third f
 `unreadable_ring` gap was reported as 2026-10-11 12:34 → 2026-10-13 05:00. That span is too long: it is the
 CreationTime problem fixed in rc.10 (P62 item 4), and the piece had been moved by rc.9. T09, T10, T11, T19 and T15 run
 on rc.11, which changes the merge (P63).
+
+## rc.11 on lab18 (2026-10-13)
+
+rc.11 (1.0.10, the relog merge per segment and DST-A, P63). Rollout per P55: vm1 (GitHub mode) Compliant on 1.0.10
+at 10:48Z. arc1 (storage mode) did **not** apply it in the first 70 minutes (see below).
+
+| Test | vm1 | arc1 |
+|---|---|---|
+| T04 (7 resources) | green (re-run at 11:59Z; the first run at 11:51Z failed only on report age, 63 min > 30) | pending |
+| T06 | green | pending |
+| T07 (Boot, Roll, Export) | green: 12 pieces merged in **1 relog call**, 990 rows, 0 gaps | pending |
+| T08 (rate across the boot, P63 a) | green: the restart at 11:53Z split the export into **2 relog calls** (the boot segments); only gap `machine_off` 64 s; `rate-after=empty` (no rate computed across the boot) | pending |
+| T09, T10, T11 | green | pending |
+| T19 (15-min roll merged) | green: one zip from 3 roll pieces + the export piece, 233 rows, 0 gaps, `pending\` empty | pending |
+
+**arc1 rollout (open).** The rc.11 remediation (10:39Z) wrote the guest assignment, but the deployment failed on the
+package-reader role assignment (`RoleAssignmentExists`: the reader assignment exists under another name, most likely
+the one restored by hand after T18d, P56; the rc.10 remediation at 08:00Z failed the same way). The agent downloaded the
+container's zip (already rc.11) at 10:56Z while the assignment still carried the rc.10 hash (validation failed,
+11:01–11:17Z); at 11:22Z the assignment carried 1.0.10 but with `assignmentType` **Audit** (agent: `custom_inguest`),
+so the agent only tests (`Common.ps1 differs from the package`) and never applies. The definition says
+ApplyAndAutoCorrect. A second scan + remediation (P55) is running.
