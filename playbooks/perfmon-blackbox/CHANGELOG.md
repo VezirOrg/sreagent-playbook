@@ -46,3 +46,9 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
   `LocalKeepMB` against the export window and the ring against the roll; a hole that contains a recorded boot is
   `machine_off`; an unreadable ring's span starts at its recorded start (not the file's CreationTime); a piece with
   fewer than 2 samples is deleted, not counted as unreadable. Adopter docs: "How it works on the server".
+- 2026-10-13: **rc.11** (package 1.0.10, P63): the export probes every piece with `relog -q` (unreadable and too-small
+  pieces never enter a merge) and merges the good ones with one multi-input `relog` per segment (a boot, an overlap or a
+  UTC offset change starts a new segment; a merge that does not add up falls back to one call per piece). Every sample
+  gets a UTC time (DST-A): a daylight-saving fall-back keeps its repeated hour, the join, `last_ts_utc` and the gap
+  search run on UTC; `clock_back` / `clock_forward` name the change (not a loss), `clock_reset` a clock set back by hand
+  (a loss). Manifest: `first_sample_utc`, `last_sample_utc`.

@@ -880,3 +880,7 @@ Evidence: `files/test-runs/261013-lab18/p30-*.txt`. So adopters need **Author + 
 the skill and ask it; Administrator is not needed. The README, `deploy.md`, `security.md` and the script header say
 so. Administrator is **not** put back on lab18 (P30: only if the trial failed); Author and Standard User stay until the
 teardown, where they are removed with the agent.
+- **rc.11** (P63, package version 1.0.10): `PerfmonBlackbox.zip` SHA-256
+  `806BCADB69F556401DE19754AEB649B7611EB1AE18AA106A5BF0A537A99363DD` (L05 56/56 and lint clean on dc, with the relog
+  merge of real pieces in one call, the fallback, and the DST-A cases in W. Europe time around the 2026 transitions;
+  T01 green on dc with 7 resources, 2026-10-13; 12 files extracted and scrub-checked clean before the upload).

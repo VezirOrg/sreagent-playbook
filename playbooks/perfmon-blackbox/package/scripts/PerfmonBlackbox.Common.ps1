@@ -76,7 +76,7 @@ function Get-BbState {
     param([string]$Path = (Get-BbPaths).State)
     $s = Read-BbJson $Path
     if (-not $s) { $s = @{} }
-    foreach ($k in 'last_ts', 'seq', 'buffer_hours', 'bytes_per_sample', 'local_cap_drops', 'unreadable_reads', 'unreadable_drops', 'last_error', 'last_export_utc', 'boots', 'ring_started') {
+    foreach ($k in 'last_ts', 'last_ts_utc', 'seq', 'buffer_hours', 'bytes_per_sample', 'local_cap_drops', 'unreadable_reads', 'unreadable_drops', 'last_error', 'last_export_utc', 'boots', 'ring_started') {
         if (-not $s.ContainsKey($k)) { $s[$k] = $null }
     }
     if ($null -eq $s['seq']) { $s['seq'] = 0 }
@@ -343,13 +343,17 @@ function Get-BbSegments {
     # between them (relog would compute rates across the restart) and the later one starts after the earlier one
     # ended (no overlap: relog gives wrong rates on overlapping data). The start is the ring start stamped as
     # CreationTime (P62); an unstamped piece looks overlapping and so gets a segment of its own (safe).
-    param([object[]]$Pieces = @(), [object[]]$Boots = @())
+    # P63 DST-B: a change of the UTC offset (daylight saving) between or inside pieces also splits: relog sorts by
+    # local time and would mis-order a repeated hour.
+    param([object[]]$Pieces = @(), [object[]]$Boots = @(), [TimeZoneInfo]$TimeZone = [TimeZoneInfo]::Local)
     $segs = New-Object System.Collections.Generic.List[object]
     $cur = @(); $prev = $null
     foreach ($g in $Pieces) {
         $split = $false
         if ($prev) {
             if ($g.File.CreationTimeUtc -lt $prev.File.LastWriteTimeUtc) { $split = $true }
+            if ($TimeZone.GetUtcOffset($prev.File.LastWriteTimeUtc) -ne $TimeZone.GetUtcOffset($g.File.LastWriteTimeUtc)) { $split = $true }
+            if ($TimeZone.GetUtcOffset($g.File.CreationTimeUtc) -ne $TimeZone.GetUtcOffset($g.File.LastWriteTimeUtc)) { $split = $true }
             foreach ($b in $Boots) { if ($b -and [datetime]$b -gt $prev.File.LastWriteTime -and [datetime]$b -lt $g.File.LastWriteTime) { $split = $true } }
         }
         if ($split -and $cur.Count) { $segs.Add($cur); $cur = @() }
@@ -390,11 +394,61 @@ function Read-BbCsv {
     [pscustomobject]@{ Header = $header; Rows = $rows; Format = $Format; Path = $Path }
 }
 
+function Get-BbRowKey {
+    # the time a row is ordered and compared by: its UTC time when the export added one (P63 DST-A), else its local time
+    param([Parameter(Mandatory)]$Row)
+    if ($Row.PSObject.Properties['Utc'] -and $null -ne $Row.Utc) { return $Row.Utc }
+    return $Row.Time
+}
+
+function Add-BbUtc {
+    # P63 DST-A: give every row of one piece its UTC time. PerfMon writes local time without the offset. A local time
+    # that occurs twice (a daylight saving fall-back) is resolved by the piece's own UTC file times (start = the ring
+    # start stamped as CreationTime, P62; end = last write): the candidate that lies inside them wins. If both or
+    # neither do, the order inside the piece decides: daylight time before the local time stepped back, standard after.
+    param([Parameter(Mandatory)]$Part, $StartUtc, $EndUtc, [TimeZoneInfo]$TimeZone = [TimeZoneInfo]::Local)
+    $back = $false; $prev = $null
+    foreach ($r in $Part.Rows) {
+        $t = [datetime]::SpecifyKind($r.Time, [DateTimeKind]::Unspecified)
+        if ($null -ne $prev -and $t -lt $prev) { $back = $true }
+        $prev = $t
+        $u = $null
+        if ($TimeZone.IsAmbiguousTime($t)) {
+            $offs = @($TimeZone.GetAmbiguousTimeOffsets($t) | Sort-Object -Descending)
+            $cands = @($offs | ForEach-Object { [datetime]::SpecifyKind($t - $_, [DateTimeKind]::Utc) })
+            if ($null -ne $StartUtc -and $null -ne $EndUtc) {
+                $fit = @($cands | Where-Object { $_ -ge ([datetime]$StartUtc).AddSeconds(-120) -and $_ -le ([datetime]$EndUtc).AddSeconds(120) })
+                if ($fit.Count -eq 1) { $u = $fit[0] }
+            }
+            if ($null -eq $u) { if ($back) { $u = $cands[-1] } else { $u = $cands[0] } }
+        } elseif ($TimeZone.IsInvalidTime($t)) {
+            $u = [datetime]::SpecifyKind($t - $TimeZone.BaseUtcOffset, [DateTimeKind]::Utc)
+        } else {
+            $u = [TimeZoneInfo]::ConvertTimeToUtc($t, $TimeZone)
+        }
+        $r | Add-Member -NotePropertyName Utc -NotePropertyValue $u -Force
+    }
+}
+
+function ConvertTo-BbUtc {
+    # one local time -> UTC with the time-zone rules (an ambiguous time takes standard time), or $null
+    param($Local, [TimeZoneInfo]$TimeZone = [TimeZoneInfo]::Local)
+    if ($null -eq $Local) { return $null }
+    $t = [datetime]::SpecifyKind([datetime]$Local, [DateTimeKind]::Unspecified)
+    if ($TimeZone.IsInvalidTime($t)) { return [datetime]::SpecifyKind($t - $TimeZone.BaseUtcOffset, [DateTimeKind]::Utc) }
+    return [TimeZoneInfo]::ConvertTimeToUtc($t, $TimeZone)
+}
+
 function Merge-BbCsv {
     # pending CSVs in time order -> one header (union of columns, first file's order first) and rows strictly
     # after -After (no overlap with the last export) and strictly increasing (parts never repeat a sample).
     # Each row remembers the part it came from (for gap causes).
-    param([Parameter(Mandatory)][object[]]$Parts, $After)
+    # Rows are ordered by their UTC time when the export added one (P63 DST-A; -After is then UTC too), so a daylight
+    # saving fall-back keeps its repeated local hour. A row that is still not newer than the row before it, or a row at
+    # or before -After in a part closed after the last export (-NewParts), means the clock was set back by hand: it
+    # cannot be ordered, so it is dropped and returned in .ClockBack (from, to, rows; reported as clock_reset), never
+    # silently.
+    param([Parameter(Mandatory)][object[]]$Parts, $After, [bool[]]$NewParts = @())
     $cols = New-Object System.Collections.Generic.List[string]
     $index = @{}
     foreach ($p in $Parts) {
@@ -404,24 +458,35 @@ function Merge-BbCsv {
         }
     }
     $rows = New-Object System.Collections.Generic.List[object]
+    $back = @()
     $last = $After
     $k = 0
     foreach ($p in $Parts) {
+        $isNew = ($NewParts.Count -gt $k -and $NewParts[$k])
         $map = @()
         for ($i = 1; $i -lt $p.Header.Count; $i++) { $map += $index[$p.Header[$i]] }
         foreach ($r in $p.Rows) {
-            if ($null -ne $last -and $r.Time -le $last) { continue }
+            $key = Get-BbRowKey $r
+            if ($null -ne $last -and $key -le $last) {
+                if ($rows.Count -or $isNew) { $back += $r.Time }
+                continue
+            }
             $vals = New-Object string[] $cols.Count
             for ($i = 0; $i -lt $map.Count; $i++) {
                 if ($i + 1 -lt $r.Fields.Count) { $vals[$map[$i]] = $r.Fields[$i + 1] } else { $vals[$map[$i]] = ' ' }
             }
             for ($j = 0; $j -lt $vals.Count; $j++) { if ($null -eq $vals[$j]) { $vals[$j] = ' ' } }
-            $rows.Add([pscustomobject]@{ Time = $r.Time; Stamp = $r.Fields[0]; Values = $vals; Part = $k })
-            $last = $r.Time
+            $rows.Add([pscustomobject]@{ Time = $r.Time; Utc = $key; Stamp = $r.Fields[0]; Values = $vals; Part = $k })
+            $last = $key
         }
         $k++
     }
-    [pscustomobject]@{ PdhHeader = $Parts[0].Header[0]; Columns = $cols; Rows = $rows }
+    $cb = $null
+    if ($back.Count) {
+        $sorted = @($back | Sort-Object)
+        $cb = [pscustomobject]@{ From = $sorted[0]; To = $sorted[-1]; Rows = $back.Count }
+    }
+    [pscustomobject]@{ PdhHeader = $Parts[0].Header[0]; Columns = $cols; Rows = $rows; ClockBack = $cb }
 }
 
 function Write-BbCsv {
@@ -445,7 +510,7 @@ function Test-BbCsv {
         $pat = '^' + [regex]::Escape($c).Replace('\(\*\)', '\([^\\]*\)') + '$'
         if (-not ($paths | Where-Object { $_ -match $pat } | Select-Object -First 1)) { $r += "counter missing: $c" }
     }
-    if ($null -ne $WindowFrom -and $Merged.Rows[0].Time -le $WindowFrom) { $r += 'first sample not after the last export' }
+    if ($null -ne $WindowFrom -and (Get-BbRowKey $Merged.Rows[0]) -le $WindowFrom) { $r += 'first sample not after the last export' }
     if ($null -ne $WindowTo -and $Merged.Rows[$Merged.Rows.Count - 1].Time -gt $WindowTo) { $r += 'last sample after the window end' }
     return , $r
 }
@@ -462,7 +527,12 @@ function Find-BbGaps {
     #     hole is a roll's few seconds (P62), else collector_restart
     #   hole inside one part: missing_samples
     param([Parameter(Mandatory)]$Rows, [Parameter(Mandatory)][int]$IntervalSeconds, $LastTs, [object[]]$PartInfo = @(),
-          [object[]]$Drops = @(), [object[]]$Boots = @())
+          [object[]]$Drops = @(), [object[]]$Boots = @(), [TimeZoneInfo]$TimeZone = [TimeZoneInfo]::Local, $LastTsLocal)
+    # P63 DST-A: steps are measured on each row's UTC time when it has one (Get-BbRowKey); -LastTs and -Boots are then
+    # UTC too, -LastTsLocal is the local last_ts for the gap's text. A local step back or forward that is short in UTC
+    # is a daylight saving change: clock_back / clock_forward, named, nothing lost.
+    if ($null -eq $LastTsLocal) { $LastTsLocal = $LastTs }
+    $isForward = { param($from, $to, $lim) try { (([TimeZoneInfo]::ConvertTimeToUtc($to, $TimeZone) - [TimeZoneInfo]::ConvertTimeToUtc($from, $TimeZone)).TotalSeconds -le $lim) } catch { $false } }
     $hasBoot = { param($from, $to) foreach ($bt in $Boots) { if ($bt -and [datetime]$bt -gt $from -and [datetime]$bt -lt $to) { return $true } }; return $false }
     $gaps = @()
     if (-not $Rows.Count) { return , $gaps }
@@ -479,32 +549,42 @@ function Find-BbGaps {
     $limit = 2 * [math]::Max([double]$IntervalSeconds, (& $partIv $Rows[0].Part))
     if ($null -ne $LastTs) {
         $first = $Rows[0].Time
-        $sec = ($first - $LastTs).TotalSeconds
+        $sec = ((Get-BbRowKey $Rows[0]) - $LastTs).TotalSeconds
         if ($sec -gt $limit) {
             $cause = 'collector_restart'
             $p0 = $null
             if ($PartInfo.Count -gt $Rows[0].Part) { $p0 = $PartInfo[$Rows[0].Part] }
             if ($p0 -and $p0.Wrapped) { $cause = 'buffer_overrun' }
-            elseif (& $hasBoot $LastTs $first) { $cause = 'machine_off' }
+            elseif (& $hasBoot $LastTs (Get-BbRowKey $Rows[0])) { $cause = 'machine_off' }
             elseif ($sec -le 10 + $limit) { $cause = 'export_roll' }   # the previous export's own roll (P41)
             else {
                 foreach ($d in $Drops) {
-                    if ([datetime]$d.from -lt $first -and [datetime]$d.to -gt $LastTs) { $cause = 'local_cap' }
+                    if ([datetime]$d.from -lt $first -and [datetime]$d.to -gt $LastTsLocal) { $cause = 'local_cap' }
                 }
             }
-            $gaps += [ordered]@{ from = $LastTs.ToString('yyyy-MM-dd HH:mm:ss.fff'); to = $first.ToString('yyyy-MM-dd HH:mm:ss.fff'); seconds = [math]::Round($sec, 3); cause = $cause }
+            $gaps += [ordered]@{ from = ([datetime]$LastTsLocal).ToString('yyyy-MM-dd HH:mm:ss.fff'); to = $first.ToString('yyyy-MM-dd HH:mm:ss.fff'); seconds = [math]::Round($sec, 3); cause = $cause }
         }
     }
     for ($i = 1; $i -lt $Rows.Count; $i++) {
         $a = $Rows[$i - 1]; $b = $Rows[$i]
-        $sec = ($b.Time - $a.Time).TotalSeconds
+        $ka = Get-BbRowKey $a; $kb = Get-BbRowKey $b
+        $sec = ($kb - $ka).TotalSeconds
         $limit = 2 * [math]::Max((& $partIv $a.Part), (& $partIv $b.Part))
-        if ($sec -le $limit) { continue }
+        if ($sec -le $limit) {
+            $loc = ($b.Time - $a.Time).TotalSeconds
+            if ($loc -lt 0) { $gaps += [ordered]@{ from = $a.Time.ToString('yyyy-MM-dd HH:mm:ss.fff'); to = $b.Time.ToString('yyyy-MM-dd HH:mm:ss.fff'); seconds = [math]::Round($sec, 3); cause = 'clock_back' } }
+            elseif ($loc -gt $limit) { $gaps += [ordered]@{ from = $a.Time.ToString('yyyy-MM-dd HH:mm:ss.fff'); to = $b.Time.ToString('yyyy-MM-dd HH:mm:ss.fff'); seconds = [math]::Round($sec, 3); cause = 'clock_forward' } }
+            continue
+        }
+        if (-not ($a.PSObject.Properties['Utc'] -and $null -ne $a.Utc) -and (& $isForward $a.Time $b.Time $limit)) {
+            $gaps += [ordered]@{ from = $a.Time.ToString('yyyy-MM-dd HH:mm:ss.fff'); to = $b.Time.ToString('yyyy-MM-dd HH:mm:ss.fff'); seconds = [math]::Round($sec, 3); cause = 'clock_forward' }
+            continue
+        }
         if ($a.Part -ne $b.Part) {
             # between two rings: if the LATER ring had wrapped, its own oldest samples were overwritten (P40)
             $cause = 'collector_restart'
             if ($PartInfo.Count -gt $b.Part -and $PartInfo[$b.Part].Wrapped) { $cause = 'buffer_overrun' }
-            elseif (& $hasBoot $a.Time $b.Time) { $cause = 'machine_off' }
+            elseif (& $hasBoot $ka $kb) { $cause = 'machine_off' }
             elseif ($PartInfo.Count -gt $a.Part -and $PartInfo[$a.Part].Reason -eq 'boot') { $cause = 'machine_off' }
             elseif ($PartInfo.Count -gt $a.Part -and @('roll', 'export') -contains $PartInfo[$a.Part].Reason -and $sec -le 10 + $limit) { $cause = 'export_roll' }
         } else { $cause = 'missing_samples' }
@@ -1075,6 +1155,11 @@ function Invoke-BbExport {
         $iv = $cfg['SampleIntervalSeconds']
         $lastTs = $null
         if ($state['last_ts']) { $lastTs = [datetime]::ParseExact($state['last_ts'], $StampFormat, [Globalization.CultureInfo]::InvariantCulture) }
+        # P63 DST-A: the export compares in UTC; last_ts_utc since rc.11, else the local last_ts converted
+        $lastKey = $null
+        if ($state['last_ts_utc']) {
+            $lastKey = [datetime]::ParseExact($state['last_ts_utc'], 'yyyy-MM-ddTHH:mm:ss.fffZ', [Globalization.CultureInfo]::InvariantCulture, ([Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal))
+        } elseif ($lastTs) { $lastKey = ConvertTo-BbUtc $lastTs }
         if (-not $Machine) { $Machine = Get-BbMachineInfo }
         $machine = $Machine
         $account = ($cfg['StorageAccountResourceId'].TrimEnd('/') -split '/')[-1]
@@ -1176,7 +1261,12 @@ function Invoke-BbExport {
         }
 
         # 2b merge, no overlap with the last export
-        $merged = Merge-BbCsv -Parts $parts -After $lastTs
+        # a part closed after the last export holds no exported sample: its rows at or before last_ts are a clock step
+        $lastExp = $null
+        if ($state['last_export_utc']) { try { $lastExp = [datetime]::Parse($state['last_export_utc'], [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AdjustToUniversal) } catch { } }
+        $newParts = @($partFiles | ForEach-Object { ($null -eq $lastExp) -or ($_.LastWriteTimeUtc -gt $lastExp) })
+        for ($n = 0; $n -lt $parts.Count; $n++) { Add-BbUtc -Part $parts[$n] -StartUtc $partFiles[$n].CreationTimeUtc -EndUtc $partFiles[$n].LastWriteTimeUtc }
+        $merged = Merge-BbCsv -Parts $parts -After $lastKey -NewParts $newParts
         $rows = $merged.Rows
         if (-not $rows.Count) {
             Write-BbLog 'export: no sample after last_ts'
@@ -1185,16 +1275,24 @@ function Invoke-BbExport {
             return [pscustomobject]@{ Result = 'nothing'; Rows = 0 }
         }
         $first = $rows[0].Time; $last = $rows[$rows.Count - 1].Time
+        $firstUtc = $rows[0].Utc; $lastUtc = $rows[$rows.Count - 1].Utc
 
         # 3 holes
-        $gaps = Find-BbGaps -Rows $rows -IntervalSeconds $iv -LastTs $lastTs -PartInfo $partInfo -Drops @($state['local_cap_drops']) -Boots @(Get-BbBoots (Get-BbState))
+        $bootsUtc = @(Get-BbBoots (Get-BbState) | ForEach-Object { try { ConvertTo-BbUtc $_ } catch { } } | Where-Object { $_ })
+        $gaps = Find-BbGaps -Rows $rows -IntervalSeconds $iv -LastTs $lastKey -LastTsLocal $lastTs -PartInfo $partInfo -Drops @($state['local_cap_drops']) -Boots $bootsUtc
         $gaps = Add-BbUnreadableGaps -Gaps $gaps -Drops @($state['unreadable_drops'])
+        if ($merged.ClockBack) {
+            # P63: samples the time-zone rules cannot order (the clock was set back by hand) are dropped: reported, never silent
+            $cbk = $merged.ClockBack
+            $gaps = @($gaps) + @([ordered]@{ from = $cbk.From.ToString('yyyy-MM-dd HH:mm:ss.fff'); to = $cbk.To.ToString('yyyy-MM-dd HH:mm:ss.fff'); seconds = [math]::Round($cbk.Rows * $iv, 3); cause = 'clock_reset'; rows = $cbk.Rows })
+            Write-BbLog "export: $($cbk.Rows) samples at times already passed ($($cbk.From) .. $($cbk.To)) could not be ordered (clock set back), dropped" 'WARN'
+        }
         # a short roll of the previous export is expected and named, not a loss of data (P41)
-        $complete = (@($gaps | Where-Object { $_.cause -ne 'export_roll' }).Count -eq 0)
+        $complete = (@($gaps | Where-Object { @('export_roll', 'clock_forward', 'clock_back') -notcontains $_.cause }).Count -eq 0)
 
         # 4 validate
         $required = @(Read-BbCounterFile (Join-Path $CollectorDir 'PerfmonBlackbox.counters.txt'))
-        $bad = Test-BbCsv -Merged $merged -Required $required -WindowFrom $lastTs
+        $bad = Test-BbCsv -Merged $merged -Required $required -WindowFrom $lastKey
         if ($bad.Count) { throw "CSV validation failed: $($bad -join '; ')" }
 
         # 5 CSV + manifest + zip
@@ -1215,6 +1313,8 @@ function Invoke-BbExport {
             window_to = $last.ToString($StampFormat)
             first_sample = $first.ToString($StampFormat)
             last_sample = $last.ToString($StampFormat)
+            first_sample_utc = $firstUtc.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+            last_sample_utc = $lastUtc.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
             utc_offset = ('{0}{1:hh\:mm}' -f $(if ($offset -lt [TimeSpan]::Zero) { '-' } else { '+' }), $offset)
             rows = $rows.Count
             columns = $merged.Columns.Count
@@ -1290,6 +1390,7 @@ function Invoke-BbExport {
         $carried = @(@($state['unreadable_drops']) | Where-Object { $_ } | ForEach-Object { $_.file })
         $state['unreadable_drops'] = @(@((Get-BbState)['unreadable_drops']) | Where-Object { $_ -and ($carried -notcontains $_.file) })
         $state['last_ts'] = $last.ToString($StampFormat)
+        $state['last_ts_utc'] = $lastUtc.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
         $state['seq'] = $manifest.seq
         $state['last_export_utc'] = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
         $state['last_blob'] = $blob

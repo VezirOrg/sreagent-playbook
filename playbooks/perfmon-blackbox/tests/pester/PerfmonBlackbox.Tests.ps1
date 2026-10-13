@@ -341,6 +341,74 @@ Describe 'relog merge per segment (P63)' {
     }
 }
 
+Describe 'Clock changes (P63, DST-A: ordered by UTC)' {
+    BeforeAll {
+        $script:Tz = [TimeZoneInfo]::FindSystemTimeZoneById('W. Europe Standard Time')
+        function TzRows([string[]]$t) { $l = New-Object System.Collections.Generic.List[object]; foreach ($x in $t) { $l.Add([pscustomobject]@{ Time = [datetime]$x; Fields = @($x, '1') }) }; $l }
+        function U([string]$x) { [datetime]::SpecifyKind([datetime]$x, [DateTimeKind]::Utc) }
+    }
+    It 'a fall-back inside one piece: daylight time before the step back, standard after (order rule)' {
+        $p = [pscustomobject]@{ Header = @('h', 'c'); Rows = (TzRows @('2026-10-25T02:59:40', '2026-10-25T02:59:50', '2026-10-25T02:00:00', '2026-10-25T02:00:10')) }
+        Add-BbUtc -Part $p -TimeZone $script:Tz
+        $p.Rows[0].Utc | Should -Be (U '2026-10-25T00:59:40')
+        $p.Rows[2].Utc | Should -Be (U '2026-10-25T01:00:00')
+        $p.Rows[3].Utc | Should -Be (U '2026-10-25T01:00:10')
+    }
+    It 'a piece written only in the repeated hour gets standard time from its own UTC file times' {
+        $p = [pscustomobject]@{ Header = @('h', 'c'); Rows = (TzRows @('2026-10-25T02:15:00', '2026-10-25T02:15:10')) }
+        Add-BbUtc -Part $p -StartUtc (U '2026-10-25T01:14:50') -EndUtc (U '2026-10-25T01:15:20') -TimeZone $script:Tz
+        $p.Rows[0].Utc | Should -Be (U '2026-10-25T01:15:00')
+        $p2 = [pscustomobject]@{ Header = @('h', 'c'); Rows = (TzRows @('2026-10-25T02:15:00', '2026-10-25T02:15:10')) }
+        Add-BbUtc -Part $p2 -StartUtc (U '2026-10-25T00:14:50') -EndUtc (U '2026-10-25T00:15:20') -TimeZone $script:Tz
+        $p2.Rows[0].Utc | Should -Be (U '2026-10-25T00:15:00')
+    }
+    It 'the repeated hour is kept, in UTC order, and named clock_back (nothing lost)' {
+        $p1 = [pscustomobject]@{ Header = @('h', 'c'); Rows = (TzRows @('2026-10-25T02:59:40', '2026-10-25T02:59:50')) }
+        $p2 = [pscustomobject]@{ Header = @('h', 'c'); Rows = (TzRows @('2026-10-25T02:00:00', '2026-10-25T02:00:10', '2026-10-25T02:00:20')) }
+        Add-BbUtc -Part $p1 -StartUtc (U '2026-10-25T00:59:30') -EndUtc (U '2026-10-25T00:59:55') -TimeZone $script:Tz
+        Add-BbUtc -Part $p2 -StartUtc (U '2026-10-25T00:59:58') -EndUtc (U '2026-10-25T01:00:25') -TimeZone $script:Tz
+        $m = Merge-BbCsv -Parts @($p1, $p2) -After (U '2026-10-25T00:59:30')
+        $m.Rows.Count | Should -Be 5
+        $m.ClockBack | Should -BeNullOrEmpty
+        $g = @(Find-BbGaps -Rows $m.Rows -IntervalSeconds 10 -LastTs (U '2026-10-25T00:59:30') -LastTsLocal ([datetime]'2026-10-25T02:59:30') -TimeZone $script:Tz)
+        $g.Count | Should -Be 1
+        $g[0].cause | Should -Be 'clock_back'
+        $g[0].from | Should -Be '2026-10-25 02:59:50.000'
+    }
+    It 'a spring-forward jump is clock_forward, with UTC rows and without (nothing lost)' {
+        $p = [pscustomobject]@{ Header = @('h', 'c'); Rows = (TzRows @('2026-03-29T01:59:50', '2026-03-29T03:00:00')) }
+        Add-BbUtc -Part $p -TimeZone $script:Tz
+        $m = Merge-BbCsv -Parts @($p) -After $null
+        (Find-BbGaps -Rows $m.Rows -IntervalSeconds 10 -LastTs $null -TimeZone $script:Tz)[0].cause | Should -Be 'clock_forward'
+        $rows = @([pscustomobject]@{ Time = [datetime]'2026-03-29T01:59:50'; Part = 0 }, [pscustomobject]@{ Time = [datetime]'2026-03-29T03:00:00'; Part = 0 })
+        (Find-BbGaps -Rows $rows -IntervalSeconds 10 -LastTs ([datetime]'2026-03-29T01:59:40') -TimeZone $script:Tz)[0].cause | Should -Be 'clock_forward'
+        # the same local hole on a day without a change is a real hole
+        $rows2 = @([pscustomobject]@{ Time = [datetime]'2026-03-22T01:59:50'; Part = 0 }, [pscustomobject]@{ Time = [datetime]'2026-03-22T03:00:00'; Part = 0 })
+        (Find-BbGaps -Rows $rows2 -IntervalSeconds 10 -LastTs ([datetime]'2026-03-22T01:59:40') -TimeZone $script:Tz)[0].cause | Should -Be 'missing_samples'
+    }
+    It 'rows the rules cannot order (a clock set back by hand) are dropped and returned, never silently' {
+        $p1 = [pscustomobject]@{ Header = @('h', 'c'); Rows = (TzRows @('2026-10-01T10:00:00', '2026-10-01T10:00:10')) }
+        $p2 = [pscustomobject]@{ Header = @('h', 'c'); Rows = (TzRows @('2026-10-01T09:59:00', '2026-10-01T09:59:10', '2026-10-01T10:01:00')) }
+        Add-BbUtc -Part $p1 -TimeZone $script:Tz; Add-BbUtc -Part $p2 -TimeZone $script:Tz
+        $m = Merge-BbCsv -Parts @($p1, $p2) -After $null
+        $m.Rows.Count | Should -Be 3
+        $m.ClockBack.Rows | Should -Be 2
+        # a part closed after the last export: its rows at or before last_ts are a clock step too, not 'already exported'
+        $p3 = [pscustomobject]@{ Header = @('h', 'c'); Rows = (TzRows @('2026-10-01T09:59:00', '2026-10-01T10:02:00')) }
+        Add-BbUtc -Part $p3 -TimeZone $script:Tz
+        (Merge-BbCsv -Parts @($p3) -After (U '2026-10-01T08:00:10') -NewParts @($true)).ClockBack.Rows | Should -Be 1
+        (Merge-BbCsv -Parts @($p3) -After (U '2026-10-01T08:00:10') -NewParts @($false)).ClockBack | Should -BeNullOrEmpty
+    }
+    It 'pieces on both sides of a UTC offset change never share one relog call' {
+        $mkp = { param([datetime]$fromUtc, [datetime]$toUtc) [pscustomobject]@{ File = [pscustomobject]@{ CreationTimeUtc = $fromUtc; LastWriteTimeUtc = $toUtc; LastWriteTime = $toUtc; FullName = 'x' }; Samples = 90 } }
+        $a = & $mkp (U '2026-10-25T00:30:00') (U '2026-10-25T00:45:00')
+        $b = & $mkp (U '2026-10-25T00:45:02') (U '2026-10-25T01:00:00')
+        $c = & $mkp (U '2026-10-25T01:00:02') (U '2026-10-25T01:15:00')
+        (Get-BbSegments -Pieces @($a, $b, $c) -Boots @() -TimeZone $script:Tz).Count | Should -Be 2
+        (Get-BbSegments -Pieces @($a, $b, $c) -Boots @() -TimeZone ([TimeZoneInfo]::Utc)).Count | Should -Be 1
+    }
+}
+
 Describe 'Roll task (P62)' {
     BeforeEach {
         $script:P = Use-TestRoot (Join-Path $TestDrive ('roll-' + [guid]::NewGuid().ToString('N').Substring(0, 8)))
@@ -583,7 +651,7 @@ Describe 'Invoke-BbExport end to end on synthetic buffers' {
         (Get-Content (Join-Path $script:P.Log 'perfmonblackbox.log') -Raw) | Should -Not -Match 'converting them one by one'
         # the same two pieces again, with the merge forced to fail its check: the per-piece path gives the same window
         $script:Uploads.Clear()
-        $s = Get-BbState; $s['last_ts'] = $null; $s['seq'] = 0; Write-BbJson $script:P.State $s
+        $s = Get-BbState; $s['last_ts'] = $null; $s['last_ts_utc'] = $null; $s['seq'] = 0; Write-BbJson $script:P.State $s
         # new names: a file re-created under a deleted file's name gets its old CreationTime (NTFS tunneling)
         New-TestBlg (Join-Path $TestDrive 'm1.csv') (Join-Path $script:P.Pending '20261001-090500-00-roll.blg')
         Start-Sleep -Milliseconds 50
