@@ -851,8 +851,24 @@ only if justified.
 - A multi-input relog sorts by local time and **mis-orders** pieces across the change.
 - Azure VMs default to UTC (the lab's are UTC); servers with a DST time zone are affected.
 
-The fix is **Emre's gate DST** (DST-A keep the hour via UTC normalisation, DST-B report it as `clock_change`, recommended
-for rc.11, DST-C docs only). **Pending.**
+**Decided: DST-A** (Emre via the vezir, 2026-10-13 ~12:40 +03; options DST-B recommended / DST-A / DST-C). Why: it
+happens once a year on every server in a DST time zone, and he wants it right, not only reported. In rc.11:
+- Every sample gets a UTC time. Normally that is the server's own time-zone rule. For a local time that occurs twice,
+  the piece's UTC file times (start stamped at the ring start, P62; last write) pick the right one. If they cannot, the
+  order inside the piece does: daylight time before the step back, standard time after it.
+- The join, the no-overlap rule (`last_ts`, now also kept as `last_ts_utc`) and the gap search run on UTC. **The repeated
+  hour is kept.** The CSV keeps PerfMon's local timestamps (the skill is unchanged), so in that one zip they step back
+  once.
+- The manifest names the change, and neither entry counts toward `complete`:
+  - `clock_back`: local time stepped back, nothing lost;
+  - `clock_forward`: local time jumped forward, nothing lost (Emre kept this name).
+  The manifest also carries `first_sample_utc` / `last_sample_utc`.
+- A step back that the time-zone rules do not explain (a clock set back by hand) cannot be ordered. Its samples are
+  dropped and reported as `clock_reset`, which counts as a loss.
+- A UTC offset change still splits the relog segments (relog sorts by local time).
+- Known limit, skill side, not changed in rc.11: the skill's range mode (several zips) drops rows of a later zip whose
+  local time is not after the earlier zip's last one, so a zip boundary inside the repeated hour loses those rows in
+  the *analysis* (not in the storage).
 
 ## P64: least privilege for the skill is SRE Agent Author + Standard User (P30 trial, 2026-10-13: PASS)
 

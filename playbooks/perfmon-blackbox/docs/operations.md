@@ -75,9 +75,13 @@ The facts the gap causes need per piece (its time range, interval, whether it wr
 the same check (`relog -q`) and the file itself. Until rc.10 the export converted each piece on its own and joined the
 CSVs itself (P62); that path is now the fallback.
 
-**Clock changes (daylight saving time).** PerfMon writes local time. When the clock goes back one hour, the same
-local times occur twice; when it goes forward, an hour of local time is skipped. Servers in UTC (the Azure default)
-are not affected. How a repeated hour is handled is being decided (decisions P63, gate DST); it is never silent.
+**Clock changes (daylight saving time).** PerfMon writes local time without the offset. When the clock goes back one
+hour, the same local times occur twice; when it goes forward, an hour of local time is skipped. The export gives every
+sample its UTC time from the server's own time-zone rules (and, for a time that occurs twice, from when the piece was
+written), and joins, orders and checks for gaps in UTC. So **nothing is lost and no false gap appears**. The CSV keeps
+PerfMon's local timestamps, so in the zip that covers a fall-back they step back once. The manifest says so
+(`clock_back` or `clock_forward`, neither counts as a loss) and carries `first_sample_utc` / `last_sample_utc`
+(decisions P63). Servers in UTC (the Azure default) never see this.
 
 ## Manifest gaps
 
@@ -89,6 +93,8 @@ are not affected. How a repeated hour is handled is being decided (decisions P63
 | `collector_restart` | the collector was restarted (re-create, start) | none if short; repeated restarts: check the event log |
 | `local_cap` | closed rings were dropped by `LocalKeepMB` (exports failing for long) | fix the upload path (network, DNS, role), consider a larger `LocalKeepMB` |
 | `unreadable_ring` | a piece left unclosed by a shutdown could not be read by `relog` in 3 exports and was deleted (P54, P62; event 2003). Not only power loss or a forced restart: a clean restart can cause it too (lab: a restart while Windows Update was finishing). With the 15-minute roll it is at most 15 minutes. The gap may lie before the manifest's window: it was found only then | none; the span runs from when the collector started writing the piece to its last write |
+| `clock_back` / `clock_forward` | local time stepped back or jumped forward (daylight saving time); the samples are ordered by UTC, nothing is lost | none; it does not make `complete` false |
+| `clock_reset` | the clock was set back by hand (not by a time-zone rule): samples at times already passed cannot be ordered and were dropped | check who changes the server's clock |
 | `missing_samples` | holes inside one ring | the collector was starved or paused; check the system around that time |
 
 ## When the storage is unreachable (P46)
