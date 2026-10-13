@@ -1,10 +1,24 @@
-# perfmon-blackbox: session 4 OPEN (2026-10-13): T08 arc1 RED, researched (ring not closed: PLA skipped its set stop after a long Windows Update preshutdown); gate T08-RED open with Emre. Cap 1000 AAU (P60).
+# perfmon-blackbox: session 4 OPEN (2026-10-13): T08-FIX = rc.10 (15-min roll, P62) published, rolling out to vm1/arc1; then rc.10 tests, T06f, P30, teardown list. Cap 1000 AAU (P60).
 
 Playbook: **perfmon-blackbox**. Read `../../CLAUDE.md`, `CLAUDE.md`, this file, then `decisions.md` (P1–P59; the
 latest are P50–P59) and **`docs/second-lab-plan.md`**. Every `az`/`azd` call runs as `direnv exec . <command>` from
 the repo root. Lab scripts: `tests/run.sh <ID> [vm1|arc1]` or `sh tests/lab/<ID>.sh <machine> [step]` (call a lab
 script **from its own directory or via its repo path**: `common.sh` resolves the lab from `$0`, so a wrapper script
 elsewhere breaks it).
+
+## Session 4 (2026-10-13), in progress
+
+- P60 CAP-1000 (second lab agent cap 1000 AAU/month), P61 KALSIN (skill stays on `deploy-skill.sh`).
+- lab18 restarted 04:56Z (nightly stop was in window); T04/T06 green on both.
+- **T08 arc1 red on rc.9** (05:00Z): clean restart, but PLA did not stop the collector after a long Windows Update
+  preshutdown; the ring stayed unclosed and unreadable (research + salvage in `docs/tests.md`; no variant reads it;
+  multi-input relog fails as a whole on one bad file).
+- **T08-FIX (Emre): P62, rc.10** = Roll task every 15 min (R7), R6 on LocalKeepMB, machine_off from recorded boots,
+  unreadable span from the recorded ring start, tiny pieces (<2 samples) deleted. L05 47/47, T01 green, rc.10 published
+  (SHA in P62), on origin/main 44bb214. `.lab/perfmon-blackbox/pbb-package.env` = rc.10 (`.rc9` backup).
+- Adopter docs: operations.md "How it works on the server" (purpose and reason per step), contradictions a)–d) fixed.
+- Next today: rc.10 rollout → T04, T06, T07, T08, T09, T10, T11, T19 on both, T07b arc1, one T15 → T06f part 2 (arc1)
+  → P30 → live teardown list to the vezir (nothing deleted before Emre's go). Everything ends before 21:45Z.
 
 ## Start here: 2026-10-13 = finish lab18 (`docs/second-lab-plan.md` §0, P58)
 
