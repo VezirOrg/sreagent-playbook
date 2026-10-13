@@ -59,7 +59,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T06f G3 without IIS: no storm; auto-detect | | storm part green (dc, P27); auto-detect pending | pending |
 | T07 scheduled tasks | | green | green |
 | T07b buffer hours measured | | green (21.7 h at 10 s) | **green, computed** (P56, 2026-10-12): 56,562 bytes/sample measured by the 12:07Z export (241 samples, 40 min, no planted load, 94 processes); 512 MB at 10 s = **26.4 h** (P27 formula: 56,440 at 98 processes, 26.4 h), ≥ 6 h |
-| T08 reboot | | green (rc.7: boot ring kept, Boot task after boot, only a 67-s machine_off gap) | pending |
+| T08 reboot | | green (rc.7: boot ring kept, Boot task after boot, only a 67-s machine_off gap) | **red** (rc.9, 2026-10-13 05:00Z: `az vm restart`, clean shutdown (event 1074, 6006), collector Running and Boot task result 0 after boot, but the pre-reboot ring (6 min, 2 MB) is unreadable: kept in `pending\`, and the export shows a 405-s `collector_restart` gap instead of the samples plus a `machine_off` gap. Stopped and reported; under decision) |
 | T09 two exports, no gap, no overlap | | green | green |
 | T10 roll gap ≤ 10 s | | green | green |
 | T10b overrun detected | | pending | green |

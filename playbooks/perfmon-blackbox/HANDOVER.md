@@ -1,4 +1,4 @@
-# perfmon-blackbox: session 4 OPEN (2026-10-13): finishing lab18 (second-lab-plan.md §0). 10-14 second lab, agent cap 1000 AAU (P60). rc.9 on both.
+# perfmon-blackbox: session 4 OPEN (2026-10-13): STOPPED at T08 arc1 RED (pre-reboot ring unreadable after a clean restart), waiting for Emre. Health T04/T06 green both. Cap 1000 AAU (P60).
 
 Playbook: **perfmon-blackbox**. Read `../../CLAUDE.md`, `CLAUDE.md`, this file, then `decisions.md` (P1–P59; the
 latest are P50–P59) and **`docs/second-lab-plan.md`**. Every `az`/`azd` call runs as `direnv exec . <command>` from
