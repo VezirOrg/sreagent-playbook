@@ -12,5 +12,11 @@ for i in $(seq 1 60); do
 done
 echo "after:  $after"
 [ "$after" != "$before" ] && ok 'G3 lines added after IIS appeared' || bad 'G3 unchanged after 30 min'
-guest "$m" collector.ps1 | grep -q 'RESULT: PASS' && ok 'collector equals the expected list, running' || bad 'collector check'
+# the expected list changes as soon as IIS is there; the collector follows at the next Machine Configuration run
+# (every 15 min): wait for it (up to 30 min) instead of checking at once
+for i in $(seq 1 60); do
+  col=$(guest "$m" collector.ps1); echo "$col" | grep -q 'RESULT: PASS' && break; sleep 30
+done
+echo "$col" | grep -E '^status=|^DIFF'; echo "collector checked $(date -u +%H:%MZ)"
+echo "$col" | grep -q 'RESULT: PASS' && ok 'collector equals the expected list, running' || bad 'collector check (30 min)'
 finish

@@ -56,7 +56,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T06c changed MaxSizeMB reaches the server | 16 → 32 MB | pending | green (re-create export complete, 0 gaps, 260/260 rows; file grew to 19.4 MB, ≤ 32 MB) |
 | T06d changed interval reaches the server | 10 → 1 s and back | pending | green (rc.6: 1 → 10 s, clean manifest, P37) |
 | T06e capacity misfit reported | R6 NonCompliant with the numbers | pending | green |
-| T06f G3 without IIS: no storm; auto-detect | | storm part green (dc, P27); auto-detect pending | pending |
+| T06f G3 without IIS: no storm; auto-detect | | storm part green (dc, P27); auto-detect pending | **green** (part 2, rc.11, 2026-10-13): IIS + ASP.NET 4.5 installed 14:04Z; G3 2 → 6 lines; collector re-created through `pending\` at 14:34:22Z (52 → 56 counters, the next Machine Configuration run after the install); the next export merged the pieces before and after (different counter sets) in 1 relog call: 215/215 rows, 0 gaps, complete |
 | T07 scheduled tasks | | green | green |
 | T07b buffer hours measured | | green (21.7 h at 10 s) | **green, computed** (P56, 2026-10-12): 56,562 bytes/sample measured by the 12:07Z export (241 samples, 40 min, no planted load, 94 processes); 512 MB at 10 s = **26.4 h** (P27 formula: 56,440 at 98 processes, 26.4 h), ≥ 6 h |
 | T08 reboot | | green (rc.7: boot ring kept, Boot task after boot, only a 67-s machine_off gap) | **red** (rc.9, 2026-10-13 05:00Z: `az vm restart`, clean shutdown (event 1074, 6006), collector Running and Boot task result 0 after boot, but the pre-reboot ring (6 min, 2 MB) is unreadable: kept in `pending\`, and the export shows a 405-s `collector_restart` gap instead of the samples plus a `machine_off` gap. Fixed by rc.10 (P62). **rc.10: green on both**, 2026-10-13: arc1 restart 08:58Z and vm1 09:03Z, the pre-reboot pieces readable and exported, the only gap `machine_off` (51 s and 69 s), the first sample after the boot has an empty rate value; evidence `rc10-T08-*.txt`) |
@@ -277,6 +277,8 @@ at 10:48Z. arc1 (storage mode) did **not** apply it in the first 70 minutes (see
 | T09, T10, T11 | green | green (roll gap 2.7 s; HIMDS) |
 | T19 (15-min roll merged) | green: one zip from 3 roll pieces + the export piece, 233 rows, 0 gaps, `pending\` empty | green: 3 roll pieces in one zip, no gap |
 | T07b buffer hours | — | green: 58,637 bytes/sample (99 processes), 25.4 h at 10 s |
+| T15 (agent fetch + convert) | — | green: the newest zip (273 rows), hash checked, 0 unparsed / bad / short |
+| T06f part 2 (IIS appears) | — | green, see the T06f row. The script's first run checked the collector at once and failed (52 of 56 counters); it now waits up to 30 min for the next Machine Configuration run (14:09Z ran before the install had finished; the next was 14:33:57Z, 24 min later) |
 
 **arc1 rollout (open).** The rc.11 remediation (10:39Z) wrote the guest assignment, but the deployment failed on the
 package-reader role assignment (`RoleAssignmentExists`: the reader assignment exists under another name, most likely
