@@ -1008,3 +1008,18 @@ continued without waiting for Emre (his word). Plan: start the VMs → apply the
 the Policy view turns Compliant (S2 for Emre) → storage mode checked (T18 on vm1) → the release is asked of Emre (P31).
 The register row says "kept for v1.0.1". Tonight: finish the planted-load question (P71) and its score, then start the
 v1.0.1 preparation (B1 fix, doc fixes F1–F5, F7); every lab run ends before 21:45Z.
+
+## P73: for approved work, the vezir decides lab builds/teardowns and playbook releases (Emre via the vezir, 2026-10-13 ~21:55 +03, standing)
+
+**What.** Emre's new standing permission: within work he has approved, building and tearing down a lab and publishing a
+playbook release (here **v1.0.1**, P70) are done **without waiting for Emre**: the vezir decides and reports to him.
+So P31's "a release is Emre's gate" and P65/P67's "teardown on Emre's go" now go to the **vezir** for approved work.
+Unchanged: blog publication stays Emre's; OPEN-1/OPEN-2 (P8) stay Emre's; the release checks of P31 (SHA in decisions
+before publishing, every file extracted and scrub-checked) stay.
+**For tomorrow:** if the v1.0.1 tests are green, v1.0.1 goes to the vezir for the release decision; lab20's teardown,
+when the work is done, is the vezir's go.
+
+**P71 done 2026-10-13:** plant 18:31:50–18:54:20Z (leak `bbleak` 1200 MB/h; CPU `bbcpu` 18:36:50–18:42:51Z); the
+19:07Z export covered it; second question in a new thread 19:27:07–19:32:29Z; scored **100/100 PASS** (both plants,
+nothing invented). Note for the post: the report calls `gc_worker` a "GC exerciser"; it is the Machine Configuration
+agent's worker. Evidence: `files/post6-shots/D2-*` (masked).
