@@ -1,4 +1,4 @@
-# perfmon-blackbox: session 4 OPEN (2026-10-13): T08-FIX = rc.10 (15-min roll, P62) published, rolling out to vm1/arc1; then rc.10 tests, T06f, P30, teardown list. Cap 1000 AAU (P60).
+# perfmon-blackbox: session 4 OPEN (2026-10-13): rc.11 (relog merge + DST-A, P63) published, rolling out; rc.10 T04/T07/T08 green both; P30 PASS (P64). Then rc.11 tests, T06f, teardown list.
 
 Playbook: **perfmon-blackbox**. Read `../../CLAUDE.md`, `CLAUDE.md`, this file, then `decisions.md` (P1–P59; the
 latest are P50–P59) and **`docs/second-lab-plan.md`**. Every `az`/`azd` call runs as `direnv exec . <command>` from
@@ -17,7 +17,11 @@ elsewhere breaks it).
   unreadable span from the recorded ring start, tiny pieces (<2 samples) deleted. L05 47/47, T01 green, rc.10 published
   (SHA in P62), on origin/main 44bb214. `.lab/perfmon-blackbox/pbb-package.env` = rc.10 (`.rc9` backup).
 - Adopter docs: operations.md "How it works on the server" (purpose and reason per step), contradictions a)–d) fixed.
-- Next today: rc.10 rollout → T04, T06, T07, T08, T09, T10, T11, T19 on both, T07b arc1, one T15 → T06f part 2 (arc1)
+- rc.10 on lab18: T04, T07, T08 green on both (T08 fixed). P30 trial PASS: Author + Standard User suffice (P64);
+  Administrator stays removed. Emre: RELOG-RC11 + gate DST = DST-A → **rc.11** (P63, SHA there), on origin/main 4ce0490;
+  `pbb-package.env` = rc.11 (`.rc10`, `.rc9` backups). Side tests on dc (multi-input relog, tiny pieces, DST simulation)
+  are in `docs/tests.md` with evidence in `files/test-runs/261013-lab18/`.
+- Next today (old line kept for reference): rc.10 rollout → T04, T06, T07, T08, T09, T10, T11, T19 on both, T07b arc1, one T15 → T06f part 2 (arc1)
   → P30 → live teardown list to the vezir (nothing deleted before Emre's go). Everything ends before 21:45Z.
 
 ## Start here: 2026-10-13 = finish lab18 (`docs/second-lab-plan.md` §0, P58)
