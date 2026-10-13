@@ -963,3 +963,26 @@ Standard_LRS) also applies and is accepted. P67 otherwise unchanged; the registe
 **What.** The dc and vm1 auto-shutdown schedules are **Disabled** again (verified). Today: S2+S3, the first zip (S4, C4),
 the agent question (D, S6); everything ends before 21:45Z (Emre's global automation stops the lab ~21:46Z anyway). Then
 the teardown list goes to the vezir; nothing is deleted without Emre's go. P68 no longer applies.
+
+## P70: v1.0.1 after lab20 (B1 + doc fixes, Emre's gate); S2 skipped (Emre via the vezir, 2026-10-13 ~18:25Z, "V101", "S2 ATLA")
+
+**Found on lab20 (fresh-eyes run, P67).**
+- **B1 (product, storage mode):** the policy state of `perfmon-blackbox-vm-storage` stays NonCompliant while every guest
+  assignment is Compliant. Evaluation details: the only failing expression is the existenceCondition's
+  `guestConfiguration.contentUri` equals the storage URL; Azure returns `contentUri` = null on a guest assignment with
+  `contentManagedIdentity` = system. Effect: the Policy view is wrong and every remediation redeploys; recording and
+  uploads are not affected. GitHub mode is not affected.
+- **Doc findings** (deploy.md / parameters.md at v1.0.0): F1 remediation right after a new assignment finds nothing
+  (needs `--resource-discovery-mode ReEvaluateCompliance` or a scan first; step 0 and step 3); F2 step 2's
+  `az policy definition create` drops the generated `metadata` and `displayName` (storage mode depends on the metadata);
+  F3 nobody is told to grant Blob Data Contributor on `packages` to the upload host, nor that the host must reach the PE;
+  F4 `ExportEveryHours` is a string parameter; F5 which subnet for the PE, and the `packageContainerResourceId` output;
+  F7 the `typeHandlerVersion` check is not the agent version. Details: `files/post6-shots/A-timings-and-doc-findings.md`.
+
+**Decided.**
+1. **V101:** once lab20 is done, prepare **v1.0.1**: B1 (in storage mode the existenceCondition checks
+   `contentManagedIdentity` = system and `contentHash`, not `contentUri`) and the doc fixes F1–F5 (F7 with them). The
+   release is Emre's gate (P31): asked through the vezir before publishing. A package or definition change gets an rc and
+   a lab test of storage mode (T18) first.
+2. **S2 is skipped** in post 6 part 1: the policy view is told by S3 (guest assignment Compliant) and C6 (the
+   `complianceStatus` call).
