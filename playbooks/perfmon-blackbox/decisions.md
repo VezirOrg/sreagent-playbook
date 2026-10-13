@@ -904,3 +904,18 @@ template again (second-lab-plan.md). The v1.0.0 tag is not part of this decision
 guards: nothing outside rg-lab18), `azd down --purge --force` 15:14–15:32Z (Key Vault and Log Analytics purged), no
 cross-resource-group dependency; afterwards no resource or role assignment in rg-lab18, no definition or custom role,
 no deleted vault; the template's register row DOWN and its lab-audit **CLEAN**.
+
+## P66: v1.0.0 is released from rc.11, same zip (Emre via the vezir, 2026-10-13, gate P31: "GO / YAYINLANSIN")
+
+- **What:** tag `perfmon-blackbox/v1.0.0` and a GitHub release (not a pre-release) whose only asset is the rc.11 zip,
+  **unchanged**: SHA-256 `806BCADB69F556401DE19754AEB649B7611EB1AE18AA106A5BF0A537A99363DD`. Nothing that ships (package,
+  policy generator, Bicep, skill v2.2, scripts) changed after rc.11 (`git diff` against the rc.11 commit is empty for
+  those paths), and that zip is the one every lab18 test passed on (tests.md "rc.11 on lab18", P65).
+- **Why the same zip:** a rebuild would give a new hash that no test has seen. The release notes say so.
+- **Version label:** the definitions' `--version` is only the guest assignment's label (the zip is identified by its
+  SHA-256); adopters pass `1.0.0` for this release and a higher one for each later release. The lab ran it as 1.0.10.
+- **Known limits at v1.0.0** (in the docs): OPEN-2 (P34), the skill's range mode across a DST fall-back (P63,
+  SKILL-SONRA), short recurring stalls; the README-only fresh-eyes deploy runs on the second lab (10-14) after the
+  release; what it finds goes into v1.0.x.
+- **Before publishing:** the zip is downloaded from rc.11, its SHA-256 checked, every file extracted and scrub-checked
+  (P29/P31); the rc pre-releases stay as they are (lab history), marked superseded in the v1.0.0 notes.
