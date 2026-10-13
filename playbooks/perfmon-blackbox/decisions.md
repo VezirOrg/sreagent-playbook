@@ -817,3 +817,39 @@ recomputed on arc1; one T15. Not re-run, with reasons in `docs/tests.md`.
   in: a closed piece with fewer than 2 samples makes `relog` fail with `PDH_LOG_SAMPLE_TOO_SMALL` (0xC0000BF8, dc,
   `files/test-runs/261013-lab18/research-tiny-piece-dc.txt`): such a piece is deleted, not counted as unreadable,
   and a ring younger than 3 intervals is not rolled.
+
+## P63: the export merges with relog, one call per segment (Emre via the vezir, 2026-10-13, "RELOG-RC11"; rc.11)
+
+**Why.** Emre: "if relog can merge, I prefer it (Windows' own tool), but an unreadable .blg must never be fed into it."
+He chose rc.11, before v1.0.0, knowing the conditions from the side test (`docs/tests.md`, RELOG-DENE): (a) the rate
+values across a boot are tested; (b) relog never gets overlapping or unreadable pieces; (c) the per-piece path stays
+only if justified.
+
+**What (rc.11).**
+1. **Probe.** `relog -q` on every piece. Unreadable → RING-A as before (P54); fewer than 2 samples → deleted (P62).
+   Neither enters a merge.
+2. **Order** by the piece's UTC file time (NTFS `LastWriteTimeUtc`), not by its name (the name holds local time).
+3. **Segments (guard b).** Consecutive pieces form one segment only if no recorded boot lies between them and their
+   local time ranges are strictly increasing (no overlap, no step back). A boot, an overlap or a clock step starts a
+   new segment. So relog never computes a rate across a boot (condition a, by construction) or across overlapping data.
+4. **Merge.** One `relog <pieces of the segment> -f csv` per segment, usually one call per export. Checked: the output
+   is strictly increasing and holds as many rows as the probes' samples.
+5. **Join.** The segments are joined as before (union header, only samples after `last_ts`, gaps). Each row's source
+   piece comes from the probes' begin/end (second resolution; pieces are at least one roll apart).
+6. **Fallback (condition c), kept.** If a segment's merged call fails or its output fails the check, that segment is
+   relogged piece by piece: the code used since rc.1, already tested. Without it, one bad merge would block every
+   export until `LocalKeepMB` starts dropping data.
+7. **Test (condition a).** T08 checks that the first sample after the boot has empty rate cells in the uploaded CSV
+   (nothing computed across the boot). Once, on copies of real pre- and post-boot pieces, a multi-input relog across
+   the boot records what relog would compute there (evidence).
+
+**Daylight saving time (found 2026-10-13, simulated on dc by moving the time zone back 1 h during a capture,
+`files/test-runs/261013-lab18/research-dst-fallback-dc.txt`).** PerfMon writes local time with no per-sample offset.
+- At a fall-back (a repeated local hour), the per-piece join of rc.1–rc.10 **drops the repeated hour silently**: it
+  keeps only rows newer than the previous one, and the next kept row is one interval later, so no gap is reported.
+- At a spring-forward, the 1-h jump is a **false** gap.
+- A multi-input relog sorts by local time and **mis-orders** pieces across the change.
+- Azure VMs default to UTC (the lab's are UTC); servers with a DST time zone are affected.
+
+The fix is **Emre's gate DST** (DST-A keep the hour via UTC normalisation, DST-B report it as `clock_change`, recommended
+for rc.11, DST-C docs only). **Pending.**
