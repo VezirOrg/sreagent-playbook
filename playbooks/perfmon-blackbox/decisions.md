@@ -767,3 +767,47 @@ answers "internal tenants only" in our tenant, so `scripts/deploy-skill.sh` (the
 `/api/v2/extendedAgent/skills/<name>`) stays the way to deploy the skill. A Bicep `deploymentScript` wrapper around the
 script is **rejected** for v1.0.0. `deploy.md` (section 4) and `architecture.md` say why. No follow-up item: the ARM
 path is not re-tried on the second-lab day (Emre's correction, same day).
+
+## P62: a local roll every 15 min bounds the loss of a bad shutdown (Emre via the vezir, 2026-10-13, "T08-FIX"; rc.10)
+
+**Why.** T08 on arc1 (2026-10-13 05:00Z, rc.9) left the pre-reboot ring unreadable after a clean, planned restart
+(`docs/tests.md`, T08 research): the Performance Logs & Alerts service did not stop the collector at shutdown
+after a long Windows Update preshutdown, so the circular file was never closed. No documented tool reads such a
+file (`relog` and `Import-Counter`, every variant: `PDH_BINARY_LOG_CORRUPT`). Until rc.9 everything since the last
+export (up to `ExportEveryHours`, 4 h) sat in that one open file. Emre: "no need for repro; move to a setup that
+accepts a 15-min loss." KEEP-COPY was not chosen: arc1's ring goes at RING-A's third read as designed.
+
+**What (rc.10, package 1.0.9).**
+1. **Roll task.** A third scheduled task `\PerfmonBlackbox\Roll` (SYSTEM, every 15 min, a new DSC resource R7
+   `BlackboxRollTask`) closes the ring into `pending\` (reason `roll`): stop, move, start, under the export's lock.
+   No relog and no upload. The export is unchanged: it rolls too, relogs every piece, joins them into one CSV, one
+   zip, uploads, then deletes the pieces. Accepted loss on a bad shutdown: the open piece, at most 15 min, reported
+   as a gap. 15 min is fixed in the package (no new policy parameter).
+2. **Capacity (R6).** The pieces wait in `pending\` until the export, so `LocalKeepMB` (not `MaxSizeMB`) now limits
+   what a server holds between exports. R6 is Compliant when `LocalKeepMB` holds ≥ 1.5 × `ExportEveryHours` **and** the
+   ring holds ≥ 1.5 × 15 min. Defaults (512 MB, 1024 MB, 10 s, 4 h, ~57 KB/sample): ring ≈ 22 h, LocalKeepMB ≈ 52 h.
+3. **`machine_off` label (finding d).** The Boot task records each boot time in `state.json` (last 20). A hole that
+   contains a recorded boot is `machine_off` (unless the later piece wrapped: `buffer_overrun`), wherever it lies:
+   between two pieces or before the first sample. rc.9 named the T08 arc1 hole `collector_restart`.
+4. **Unreadable span (finding e).** A file's CreationTime is not the ring's start: Windows gives a file re-created
+   under the same name the old creation time (arc1: a ring from 10-13 04:54 showed "created 10-11 12:34"; vm1's
+   10-12 `unreadable_ring` gap 11:43–19:02 was too long for this reason). Each start of the collector records its
+   time in `state.json`, and a closed piece gets that time as its CreationTime when it is moved to `pending\`.
+5. **Roll holes.** A roll's own hole between two pieces (seconds) is `export_roll` like the export's own roll
+   (P41), not counted in `complete`. It appears only at intervals under ~5 s.
+
+**Why the export runs relog per file, not one multi-input relog (Emre's question, recorded here).** The first
+design (design §2.2) planned one `relog <sources> -b -e` call; session 2 implemented one `relog` per piece and a
+join in PowerShell (`Merge-BbCsv`, 56daf3d) without a decision entry: this closes that gap. Reasons:
+(1) **one bad piece must not take the good ones down**: lab, arc1, 2026-10-13, on copies: two good files in one call
+→ rc 0, merged; a good and the unreadable ring in one call, either order → 0xC0000BF7, **0 rows**
+(`files/test-runs/261013-lab18/research-multi-input-relog-arc1.txt`); per file, only the bad piece fails and RING-A
+handles it; (2) the gap causes need per-piece facts a merged output loses: which piece a row came from
+(`machine_off`, `collector_restart`), each ring's own interval (P37), whether it wrapped (P40), bytes per sample (R6);
+(3) pieces can carry different counter lists (G3 lines appear when IIS is installed, T06f): the join makes one union
+header. Multi-input would be a shorter call, not a simpler export.
+
+**Tests (lab18, 2026-10-13).** L05 (new cases: roll, boot list, `machine_off` in a leading hole, span from the
+recorded start, R6 two-part check), T01 on dc; rollout per P55; on vm1 and arc1: T04 (7 resources), T06, T07 (3
+tasks), T08, T09, T10, T11, a new T19 (15-min pieces merged into one CSV, no gap, deleted after upload); T07b
+recomputed on arc1; one T15. Not re-run, with reasons in `docs/tests.md`.
