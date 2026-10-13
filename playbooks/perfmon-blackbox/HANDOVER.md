@@ -1,4 +1,4 @@
-# perfmon-blackbox: session 4 OPEN (2026-10-13): rc.11 GREEN on vm1 + arc1 (T04, T06-T11, T07b, T08 rate across the boot, T19, T15, T06f IIS); flow diagram added; lab18 teardown list sent (gate TEARDOWN-LAB18 waiting for Emre).
+# perfmon-blackbox: session 4 OPEN (2026-10-13): rc.11 GREEN on vm1 + arc1; lab18 TORN DOWN 15:32Z (P65, audit CLEAN); next: v1.0.0 release (Emre GO).
 
 Playbook: **perfmon-blackbox**. Read `../../CLAUDE.md`, `CLAUDE.md`, this file, then `decisions.md` (P1–P59; the
 latest are P50–P59) and **`docs/second-lab-plan.md`**. Every `az`/`azd` call runs as `direnv exec . <command>` from
@@ -12,7 +12,8 @@ elsewhere breaks it).
   Audit; the arc remediations fail on `RoleAssignmentExists` (the hand-restored package reader, P56): a post-v1.0.0
   follow-up. T06f part 2 green (T06f.sh now waits for the next Machine Configuration run).
 - End-to-end flow diagram `docs/img/perfmon-blackbox-flow.svg` (+ Turkish `.tr.svg`, corrected); SKILL-SONRA in P63.
-- Waiting: Emre's TEARDOWN-LAB18 go (GO / KEEP / PARTIAL; KEEP = re-enable the P52 auto-shutdown schedules); v1.0.0 tag.
+- lab18 torn down (P65): 15:32Z, register DOWN, lab-audit CLEAN. No lab is up for this playbook until the second lab (10-14).
+- Emre GO for v1.0.0 (after the teardown).
 - P60 CAP-1000 (second lab agent cap 1000 AAU/month), P61 KALSIN (skill stays on `deploy-skill.sh`).
 - lab18 restarted 04:56Z (nightly stop was in window); T04/T06 green on both.
 - **T08 arc1 red on rc.9** (05:00Z): clean restart, but PLA did not stop the collector after a long Windows Update

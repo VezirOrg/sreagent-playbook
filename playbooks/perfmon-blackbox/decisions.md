@@ -899,3 +899,8 @@ the private lab template goes DOWN and its audit runs. Other resource groups are
 resource that does not delete, a dependency reaching another resource group) stops the teardown and is reported.
 Evidence: `files/test-runs/261013-lab18/teardown.txt` (not in the repo). The second lab (10-14) is built from the
 template again (second-lab-plan.md). The v1.0.0 tag is not part of this decision (P31, Emre's gate).
+
+**Done 2026-10-13:** steps 1–7 15:11–15:13Z (20 role assignments, 3 policy assignments, 4 definitions, 2 custom roles;
+guards: nothing outside rg-lab18), `azd down --purge --force` 15:14–15:32Z (Key Vault and Log Analytics purged), no
+cross-resource-group dependency; afterwards no resource or role assignment in rg-lab18, no definition or custom role,
+no deleted vault; the template's register row DOWN and its lab-audit **CLEAN**.
