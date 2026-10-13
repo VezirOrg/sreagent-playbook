@@ -956,3 +956,10 @@ first zip, the manifest capture and the agent question (S4, S6, C4, D) most like
 tomorrow, the Boot task taking the old ring into a pending piece is expected (P62); the first export covers the time
 since the collector started, with the off hours reported as a gap. Emre's global lab automation (~00:46 +03, disks to
 Standard_LRS) also applies and is accepted. P67 otherwise unchanged; the register row drops the "Disabled" note.
+
+## P69: lab20's auto-shutdown is disabled again; today's plan is finished tonight (Emre via the vezir, 2026-10-13 ~18:00Z; reverses P68)
+
+**Why.** Emre: the 22:00 +03 (19:00Z) stop is blocked so the first zip and the agent question happen this evening.
+**What.** The dc and vm1 auto-shutdown schedules are **Disabled** again (verified). Today: S2+S3, the first zip (S4, C4),
+the agent question (D, S6); everything ends before 21:45Z (Emre's global automation stops the lab ~21:46Z anyway). Then
+the teardown list goes to the vezir; nothing is deleted without Emre's go. P68 no longer applies.
