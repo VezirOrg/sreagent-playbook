@@ -1,21 +1,27 @@
-# perfmon-blackbox: SECOND LAB lab20 UP 2026-10-13 16:59Z (P67, shared with blog post 6); fresh-eyes v1.0.0 deploy steps 0-4 done, waiting for Compliant; VMs stop 19:00Z (P68), continues 10-14.
+# perfmon-blackbox: lab20 UP (P67, blog post 6): fresh-eyes v1.0.0 deploy DONE, first zip + agent answer 18:17Z; B1 found (storage-mode policy view) → v1.0.1 (P70, Emre's gate). Teardown waits for Emre's GO.
 
 Playbook: **perfmon-blackbox**. Read `../../CLAUDE.md`, `CLAUDE.md`, this file, then `decisions.md` (P1–P66; the
 latest are P60–P66) and **`docs/second-lab-plan.md`**. Every `az`/`azd` call runs as `direnv exec . <command>` from
 the repo root. Lab scripts: `tests/run.sh <ID> [vm1|arc1]` (call a lab script via its repo path: `common.sh` resolves
-the lab from `$0`).
-
-
-## Live now (session 5, 2026-10-13)
+the lab ## Live now (session 5, 2026-10-13)
 
 - **lab20 UP** (rg-lab20, dc + vm1, no SQL, no Arc), built 16:32–16:59Z from the template; register row in the template
-  repo. Agent cap 1000 AAU. Auto-shutdown kept: the VMs stop 19:00Z (P68); work continues 2026-10-14.
-- Fresh-eyes deploy of v1.0.0 from the tag docs (storage mode, `ExportEveryHours="1"`): steps 0–4 done 17:01–17:28Z;
-  guest assignment Pending at 17:28Z. Doc findings F1–F7 (v1.0.x): local notes `.lab/lab20-logs/fresh-eyes.md`, copied to
-  `files/post6-shots/` at milestones. **F2 matters**: deploy.md step 2 drops the definition metadata.
-- Lab-only extras to remove at teardown: dc identity Blob Data Contributor on `packages` (upload host), lab SP SRE Agent
-  Author + Standard User on the agent, gc-prereq assignment + its Contributor, pbb-vm-storage + its 4 role assignments,
-  definition `perfmon-blackbox-vm-storage`, the two custom roles. Teardown only on Emre's go (list to the vezir).
+  repo. Agent cap 1000 AAU. Auto-shutdown schedules DISABLED (P69, reverses P68); everything ends before 21:45Z.
+- **Fresh-eyes deploy of v1.0.0** from the tag docs (storage mode, `ExportEveryHours="1"`): steps 0–4 done 17:01–17:21Z;
+  vm1 guest assignment Compliant 17:38Z (dc after); first zips 18:07Z (`complete`, no gaps); agent answer in a new thread
+  18:10–18:17Z (honest "not hard to use"). Timings and findings: `files/post6-shots/A-timings-and-doc-findings.md`.
+- **B1 (product bug, storage mode)** and doc findings F1–F5, F7: P70. Next work = **v1.0.1** (P70), its release is
+  Emre's gate.
+- **Blog post 6 outputs** in `files/post6-shots/` (A, C1–C7, D, S4 fallback text). `files/post6-shots/raw/` holds Emre's
+  raw screenshots: **never delete or change it** (Emre's rule; masked copies are made on the blog side). S2 skipped (P70).
+- **Teardown list** sent to the vezir (P65 order) and waits for Emre's GO. Lab-only extras to remove first: dc identity
+  Blob Data Contributor on `packages` and Blob Data Reader on `perfmon`; Emre's user Blob Data Reader on `perfmon`; lab SP
+  SRE Agent Author + Standard User on the agent; gc-prereq + its Contributor; pbb-vm-storage + its 4 role assignments; the
+  servers' Writer and package Reader grants; the agent identities' Reader on `perfmon`; definition
+  `perfmon-blackbox-vm-storage`; the two custom roles; then `azd down --purge --force` from `.lab/lab20`, register DOWN,
+  lab-audit.
+
+ the vezir).
 
 ## Where it stands
 
