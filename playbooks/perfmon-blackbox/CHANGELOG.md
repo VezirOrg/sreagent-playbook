@@ -2,9 +2,18 @@
 
 Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Release asset.
 
-## Unreleased
+## Unreleased (v1.0.1, P70; found by the fresh-eyes deploy on the second lab)
 
-Nothing yet.
+- **Fix B1 (storage mode):** the definitions' existenceCondition checks `contentManagedIdentity = system` instead of
+  `contentUri`, which Azure returns as null with a managed identity. In v1.0.0 the Policy view of a storage-mode
+  assignment stayed NonCompliant while every server was Compliant, and each remediation redeployed. GitHub mode is
+  unchanged. The package zip is unchanged (only the generated definitions change): re-create the storage-mode
+  definitions with the v1.0.1 generator.
+- **deploy.md:** step 2 passes the definition's metadata and display name (storage mode needs the metadata); remediations
+  use `--resource-discovery-mode ReEvaluateCompliance` (a new assignment has no compliance results yet); 2b says how the
+  package gets into a private-endpoint-only account and who needs Blob Data Contributor; the Machine Configuration agent
+  version check uses the folder name; which subnet for the private endpoint; the `packageContainerResourceId` output.
+- **parameters.md:** the numeric parameters are strings.
 
 ## perfmon-blackbox/v1.0.0 (2026-10-13)
 

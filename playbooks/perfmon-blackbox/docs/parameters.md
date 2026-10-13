@@ -10,11 +10,15 @@
 
 ## All parameters (same on both definitions)
 
+All are policy parameters of the assignment (`--params` in deploy.md step 3). `MaxSizeMB`, `SampleIntervalSeconds`,
+`ExportEveryHours` and `LocalKeepMB` are **strings** (Machine Configuration passes every parameter as text); a JSON
+number fails with `InvalidPolicyParameterType`.
+
 | Parameter | Default | Meaning |
 |---|---|---|
 | `MaxSizeMB` | 512 | size of the circular `.blg` (16–8192); since rc.10 it is closed every 15 min, so it only has to hold 15 minutes (a safety margin if the Roll task does not run) |
 | `SampleIntervalSeconds` | 10 | collector interval (1–300) |
-| `ExportEveryHours` | 4 | export cadence; one of 1, 2, 3, 4, 6, 8, 12, 24 |
+| `ExportEveryHours` | 4 | export cadence; one of 1, 2, 3, 4, 6, 8, 12, 24 (a **string**: `{"ExportEveryHours":{"value":"1"}}`) |
 | `StorageAccountResourceId` | required | the private storage account |
 | `ContainerName` | `perfmon` | container for all servers |
 | `LocalKeepMB` | 1024 | cap for the closed 15-minute pieces and unsent zips on the server; they wait here until the export (and longer while the storage is unreachable); the oldest go first and the loss is reported (`local_cap`) |

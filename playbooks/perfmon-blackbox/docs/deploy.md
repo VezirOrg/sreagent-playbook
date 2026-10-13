@@ -40,9 +40,14 @@ az policy assignment create -n gc-prereq --policy-set-definition "$prereq" --sco
 pp=$(az policy assignment show -n gc-prereq --scope <scope> --query identity.principalId -o tsv)
 az role assignment create --assignee-object-id $pp --assignee-principal-type ServicePrincipal --role Contributor --scope <scope>
 for ref in $(az policy set-definition show -n "$prereq" --query "policyDefinitions[].policyDefinitionReferenceId" -o tsv); do
-  az policy remediation create -n "gc-prereq-$ref" --policy-assignment gc-prereq --definition-reference-id "$ref" -g <rg>
+  az policy remediation create -n "gc-prereq-$ref" --policy-assignment gc-prereq --definition-reference-id "$ref" -g <rg> \
+    --resource-discovery-mode ReEvaluateCompliance
 done
 ```
+
+A new assignment has no compliance results yet, so a plain remediation finds nothing ("Succeeded", 0 deployments):
+`--resource-discovery-mode ReEvaluateCompliance` evaluates first (a few minutes; the same in step 3). Wait until the
+extension `AzurePolicyforWindows` is on each VM before step 3 applies anything.
 
 ## Names: a second deployment in the same tenant or subscription
 
@@ -67,7 +72,7 @@ Both outlive the resource group: on removal they are deleted explicitly ([operat
 ```sh
 az deployment group create -g <storage-rg> -f infra/main.bicep \
   -p storageAccountName=<name> \
-     privateEndpointSubnetId=<subnet resource ID> \
+     privateEndpointSubnetId=<subnet resource ID: an ordinary subnet for private endpoints, not a delegated one> \
      blobPrivateDnsZoneId=<resource ID of privatelink.blob.core.windows.net> \
      readerPrincipalIds='["<agent system identity object ID>","<agent user-assigned identity object ID>"]'
 ```
@@ -78,7 +83,8 @@ The agent's identities: in the portal on the agent resource (Identity), or
 Creates: StorageV2 (no shared key, public network access disabled, no anonymous access, TLS 1.2), container `perfmon`,
 lifecycle delete after 30 days, blob soft delete, the private endpoint with its DNS zone group, the custom roles
 **PerfMon Blackbox Writer** and **PerfMon Blackbox Deployer**, and Storage Blob Data Reader on the container for the
-agent. Keep the outputs `storageAccountResourceId` and `writerRoleDefinitionId`.
+agent. Keep the outputs `storageAccountResourceId`, `writerRoleDefinitionId` and, for storage mode (2b),
+`packageContainerResourceId`.
 
 ## 2. Policy definitions
 
@@ -92,13 +98,17 @@ Pick a release; its notes give the asset URL of `PerfmonBlackbox.zip` and its SH
 
 ```sh
 python3 policy/build_policies.py --content-uri <asset URL> --content-hash <sha256> --version <x.y.z> --out policy/out
+p() { python3 -c 'import json,sys; v=json.load(open(sys.argv[1]))["properties"][sys.argv[2]]; print(v if isinstance(v,str) else json.dumps(v))' "$1" "$2"; }
 for kind in vm arc; do
   f=policy/out/perfmon-blackbox-$kind.json
-  az policy definition create -n perfmon-blackbox-$kind --mode Indexed \
-    --rules  "$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))["properties"]["policyRule"]))' $f)" \
-    --params "$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))["properties"]["parameters"]))' $f)"
+  az policy definition create -n perfmon-blackbox-$kind --mode Indexed --display-name "$(p $f displayName)" \
+    --rules "$(p $f policyRule)" --params "$(p $f parameters)" --metadata "$(p $f metadata)"
 done
 ```
+
+**Pass all four parts** (rules, parameters, metadata, display name): Machine Configuration builds each server's guest
+assignment from the definition's `metadata.guestConfiguration` ([architecture.md](architecture.md#why-the-package-source-is-fixed-when-the-definitions-are-generated));
+without it storage mode does not work.
 
 `perfmon-blackbox-vm` targets `Microsoft.Compute/virtualMachines` (Windows), `perfmon-blackbox-arc` targets
 `Microsoft.HybridCompute/machines` (Windows). Create only the one(s) you need.
@@ -121,7 +131,12 @@ zip **unchanged** into the container and check the hash.
 ```sh
 curl -sL -o PerfmonBlackbox.zip <release asset URL>
 shasum -a 256 PerfmonBlackbox.zip            # must equal the SHA-256 in the release notes
-# from a host that reaches the storage's private endpoint, with Storage Blob Data Contributor on the container:
+# The storage account has no public access: upload from a host inside the network that resolves and reaches its private
+# endpoint (a VM in the VNet; your Mac or a hosted CI runner cannot). That host's identity (or your signed-in account on
+# it) needs Storage Blob Data Contributor on the packages container: main.bicep grants it to nobody, so grant it, e.g.
+#   az role assignment create --assignee-object-id <host identity> --assignee-principal-type ServicePrincipal \
+#     --role "Storage Blob Data Contributor" --scope <packageContainerResourceId>
+# and on the host: az login --identity (or az login), then:
 az storage blob upload --auth-mode login --account-name <account> -c packages -n PerfmonBlackbox.zip -f PerfmonBlackbox.zip --overwrite
 # the storage-mode definitions (packageContainerResourceId is an output of infra/main.bicep):
 python3 policy/build_policies.py --content-uri <release asset URL> --content-hash <sha256> --version <x.y.z> \
@@ -145,8 +160,8 @@ prevent shared key access" can stay enforced.
 
 **Agent versions for storage mode** (system-identity download, GA July 2025): the Machine Configuration agent must be
 **1.29.98.0 or later** (the lab ran 1.29.119.0 on the Azure VM and the Connected Machine agent 1.68 on Arc). Check:
-- Azure VM: `az vm extension show -g <rg> --vm-name <vm> -n AzurePolicyforWindows --query typeHandlerVersion`, or on the
-  server the folder name under `C:\Packages\Plugins\Microsoft.GuestConfiguration.ConfigurationforWindows\`;
+- Azure VM: on the server, the folder name under `C:\Packages\Plugins\Microsoft.GuestConfiguration.ConfigurationforWindows\`
+  (e.g. `1.29.119.0`). The extension's `typeHandlerVersion` (e.g. `1.1`) is the handler, not the agent version;
 - Arc: `az connectedmachine show -g <rg> -n <server> --query agentVersion` (keep the Connected Machine agent current;
   its machine configuration service follows it), or `azcmagent version` on the server.
 Older agents: use GitHub mode.
@@ -175,7 +190,8 @@ w=<last segment of writerRoleDefinitionId>
 az role assignment create --assignee-object-id $pid --assignee-principal-type ServicePrincipal \
   --role "Role Based Access Control Administrator" --scope <storageAccountResourceId> --condition-version 2.0 \
   --condition "((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$w, 2a2b9908-6ea1-4ae2-8e65-a410df84e7d1})) AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$w, 2a2b9908-6ea1-4ae2-8e65-a410df84e7d1}))"
-az policy remediation create -n pbb-vm-1 --policy-assignment pbb-vm -g <rg>    # per resource group in scope
+az policy remediation create -n pbb-vm-1 --policy-assignment pbb-vm -g <rg> \
+  --resource-discovery-mode ReEvaluateCompliance                               # per resource group in scope
 ```
 
 The condition allows exactly the Writer role and the built-in Storage Blob Data Reader (`2a2b9908-…`, granted only in
