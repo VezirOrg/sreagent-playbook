@@ -998,3 +998,13 @@ scheduled hourly export (~19:07Z) covers the window; then the same deploy.md que
 against the truth with `tests/scoring/score.py` (T16 rubric). Emre may have a Bastion session on vm1 meanwhile: the CPU
 burst makes it slow for 6 minutes, and his session's own processes are not part of the truth. Ends before 21:45Z;
 teardown is asked afterwards.
+
+## P72: lab20 stays for the v1.0.1 test; a morning restart is approved (Emre via the vezir, 2026-10-13 ~18:40Z, KEEP-V101)
+
+**Why.** v1.0.1 (P70) is tested on the lab that found B1, instead of a rebuild. **What.** lab20 is **not** torn down
+tonight (the teardown question is dropped for now). Emre's global automation stops the VMs ~21:46Z and moves the disks to
+Standard_LRS (accepted; disk SKUs are not restored, P51). Tomorrow morning the VMs may be started and the v1.0.1 work
+continued without waiting for Emre (his word). Plan: start the VMs → apply the v1.0.1 rc package/definitions in lab20 →
+the Policy view turns Compliant (S2 for Emre) → storage mode checked (T18 on vm1) → the release is asked of Emre (P31).
+The register row says "kept for v1.0.1". Tonight: finish the planted-load question (P71) and its score, then start the
+v1.0.1 preparation (B1 fix, doc fixes F1–F5, F7); every lab run ends before 21:45Z.
