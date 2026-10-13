@@ -78,6 +78,10 @@ time it caused).
 - Process instance names are reused by Windows (`svchost#3`); the skill follows PIDs, but a report about a short-lived
   process can still name the instance only.
 - The analysis is as fresh as the latest export (default every 4 hours); a problem happening now is in the next zip.
+- **Range mode across a DST fall-back.** When the boundary between two zips of a range lies inside the repeated hour
+  of a fall-back, the skill drops the later zip's rows whose local time is not after the earlier zip's last row. Those
+  rows are only missing from the *analysis*: the zips in storage hold them, with UTC times (P63). A skill fix (ordering
+  by UTC) is planned after v1.0.0.
 
 ## How it is proven
 

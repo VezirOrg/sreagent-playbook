@@ -869,6 +869,8 @@ happens once a year on every server in a DST time zone, and he wants it right, n
 - Known limit, skill side, not changed in rc.11: the skill's range mode (several zips) drops rows of a later zip whose
   local time is not after the earlier zip's last one, so a zip boundary inside the repeated hour loses those rows in
   the *analysis* (not in the storage).
+  **SKILL-SONRA (Emre, 2026-10-13): not fixed before v1.0.0.** A post-v1.0.0 item: a skill version bump (order the
+  rows of a range by the CSV's `Utc` column) and then T15–T17 again. rc.11 and the v1.0.0 plan are unchanged.
 
 ## P64: least privilege for the skill is SRE Agent Author + Standard User (P30 trial, 2026-10-13: PASS)
 
