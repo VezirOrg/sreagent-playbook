@@ -924,3 +924,25 @@ no deleted vault; the template's register row DOWN and its lab-audit **CLEAN**.
 https://github.com/VezirOrg/sreagent-playbook/releases/tag/perfmon-blackbox/v1.0.0 (latest, not a pre-release); the
 asset downloaded from the public URL hashes to `806BCADB…63DD`; zip and notes scrub-checked (65 entries, clean); local
 tests L01, L02, L04, L07–L09 green and every relative docs link resolves.
+
+## P67: the second lab is built today and shared with blog post 6 (Emre via the vezir, 2026-10-13 16:30Z)
+
+**Why.** Emre approved the shared lab ("ORTAK-LAB": blog post 6, part 1 of the "black box for Windows servers" series,
+uses this lab) and asked to start today instead of 10-14 (P58 moved).
+**What.**
+- A new lab from the private lab template (latest template), **dc + one IIS member (`vm1` in the record), no SQL, no
+  Arc** (Arc is out of scope today; the post quotes lab18's Arc evidence). Agent active-flow cap 1000 AAU/month (P60).
+  Register row in the template's lab register.
+- **Fresh-eyes deploy of v1.0.0**: steps 0–4 of `docs/deploy.md` read **only at the tag** (README and the docs it
+  links), storage mode (P45), timed per step. Every doc gap goes to a v1.0.x note; a gap that does not block the lab
+  does not stop it.
+- **`ExportEveryHours = 1` in this lab only** (an assignment parameter, `parameters.md`) so the first zip arrives within
+  the day; the product default stays 4 (P19).
+- Skill upload with SRE Agent Author + Standard User (P64), then one agent question in a new thread.
+- For the post (blog request list, D96): timings and doc errors, seven text captures, the agent question with its
+  thread ID, under `files/post6-shots/` (Drive, masked before the blog copies them). Emre takes the six portal
+  screenshots; each is signalled to the vezir when ready.
+- Ends before 21:45Z (P50; plan ~20:00Z). Stop and report if the template build fails or the guest assignment is not
+  Compliant at 18:30Z. Other resource groups (rg-sqlmcp1, rg-lab13, rg-costexport) are not touched.
+- **Teardown only on Emre's go** (list to the vezir), the same order as P65.
+- The full stage suite (second-lab-plan.md §1) is not run today; DoD-1 "all stages green on a fresh lab" stays open.
