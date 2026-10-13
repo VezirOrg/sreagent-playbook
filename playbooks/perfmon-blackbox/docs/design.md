@@ -119,7 +119,9 @@ is uploaded and verified.
    after `last_ts` to the last sample in the newest pending buffer**. As built (rc.9): `relog <file> -f csv` per
    pending buffer, then the CSVs are merged in time order into one (`Merge-BbCsv`: union header, only samples after
    `last_ts`, strictly increasing); the first design's single `relog <sources> -b <last_ts + 1 s> -e <end>` call is not
-   used. **No overlap**: every sample ≤ `last_ts` is excluded by construction.
+   used. **rc.11 (P63):** every piece is probed with `relog -q`; the good pieces, ordered by UTC file time, are merged
+   by one multi-input `relog` per segment (a recorded boot, an overlap or a clock step starts a new segment); the
+   segments are joined by `Merge-BbCsv`; a failed or inconsistent segment falls back to the per-piece path. **No overlap**: every sample ≤ `last_ts` is excluded by construction.
    **No gap**: every sample after `last_ts` still on the disk is included.
 3. **Loss detection.** The CSV is scanned for holes: any step between consecutive samples > 2 × interval, and the
    step from `last_ts` to the first exported sample. Each hole gets a cause:
