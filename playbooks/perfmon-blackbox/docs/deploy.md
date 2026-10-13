@@ -172,6 +172,6 @@ Why a script and not Bicep like the rest: the ARM resource for skills (`Microsof
 "internal tenants only" when this was built, so the skill goes through the agent's data-plane API, which the script
 calls (decisions P61).
 
-The caller needs a role on the agent that may write skills (the lab used SRE Agent Administrator; the
-least-privilege path is to be documented, see [security.md](security.md)). Then ask the agent in a new thread:
+The caller needs **SRE Agent Author + SRE Agent Standard User** on the agent resource (tested without Administrator,
+see [security.md](security.md)). Then ask the agent in a new thread:
 *"Analyse the latest PerfMon capture of `<server>`. The captures are in the storage account `<name>`."*

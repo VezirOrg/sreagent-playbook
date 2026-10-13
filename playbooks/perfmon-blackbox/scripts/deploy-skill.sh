@@ -7,7 +7,7 @@
 # The folder holds SKILL.md (front matter: name, description) and the supporting files (all other files, flat).
 # Without --apply it is a DRY RUN: it builds the request body, GETs the live skill (if any) and prints what would
 # change. With --apply it PUTs /api/v2/extendedAgent/skills/<name>, GETs it back and checks every file byte for byte.
-# Needs: az CLI signed in as a principal with "SRE Agent Administrator" on the agent; python3.
+# Needs: az CLI signed in as a principal with "SRE Agent Author" + "SRE Agent Standard User" on the agent (P64); python3.
 # The ARM path (Microsoft.App/agents/skills) is not used: in our tenant it answers "internal tenants only".
 set -eu
 dir="${1:?usage: deploy-skill.sh <skill-folder> [--apply]}"

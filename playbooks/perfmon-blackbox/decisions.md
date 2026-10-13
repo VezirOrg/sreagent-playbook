@@ -853,3 +853,14 @@ only if justified.
 
 The fix is **Emre's gate DST** (DST-A keep the hour via UTC normalisation, DST-B report it as `clock_change`, recommended
 for rc.11, DST-C docs only). **Pending.**
+
+## P64: least privilege for the skill is SRE Agent Author + Standard User (P30 trial, 2026-10-13: PASS)
+
+The trial planned in P30 and `second-lab-plan.md` §0. On lab18 the lab service principal got **SRE Agent Author** (it
+already held Standard User) on the agent resource only, and **SRE Agent Administrator was removed** (09:10Z). After
+10 minutes for the role change to take effect: `deploy-skill.sh` dry run and `--apply` (PUT, read back identical,
+09:20Z), then T15 on vm1 (the agent fetched the newest zip, hash checked, converter 61 rows, 0 bad cells, PASS 09:23Z).
+Evidence: `files/test-runs/261013-lab18/p30-*.txt`. So adopters need **Author + Standard User** on the agent to deploy
+the skill and ask it; Administrator is not needed. The README, `deploy.md`, `security.md` and the script header say
+so. Administrator is **not** put back on lab18 (P30: only if the trial failed); Author and Standard User stay until the
+teardown, where they are removed with the agent.
