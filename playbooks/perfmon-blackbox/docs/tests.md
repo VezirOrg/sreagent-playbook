@@ -59,7 +59,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T06f G3 without IIS: no storm; auto-detect | | storm part green (dc, P27); auto-detect pending | pending |
 | T07 scheduled tasks | | green | green |
 | T07b buffer hours measured | | green (21.7 h at 10 s) | **green, computed** (P56, 2026-10-12): 56,562 bytes/sample measured by the 12:07Z export (241 samples, 40 min, no planted load, 94 processes); 512 MB at 10 s = **26.4 h** (P27 formula: 56,440 at 98 processes, 26.4 h), ≥ 6 h |
-| T08 reboot | | green (rc.7: boot ring kept, Boot task after boot, only a 67-s machine_off gap) | **red** (rc.9, 2026-10-13 05:00Z: `az vm restart`, clean shutdown (event 1074, 6006), collector Running and Boot task result 0 after boot, but the pre-reboot ring (6 min, 2 MB) is unreadable: kept in `pending\`, and the export shows a 405-s `collector_restart` gap instead of the samples plus a `machine_off` gap. Stopped and reported; cause researched below, gate open) |
+| T08 reboot | | green (rc.7: boot ring kept, Boot task after boot, only a 67-s machine_off gap) | **red** (rc.9, 2026-10-13 05:00Z: `az vm restart`, clean shutdown (event 1074, 6006), collector Running and Boot task result 0 after boot, but the pre-reboot ring (6 min, 2 MB) is unreadable: kept in `pending\`, and the export shows a 405-s `collector_restart` gap instead of the samples plus a `machine_off` gap. Fixed by rc.10 (P62). **rc.10: green on both**, 2026-10-13: arc1 restart 08:58Z and vm1 09:03Z, the pre-reboot pieces readable and exported, the only gap `machine_off` (51 s and 69 s), the first sample after the boot has an empty rate value; evidence `rc10-T08-*.txt`) |
 | T09 two exports, no gap, no overlap | | green | green |
 | T10 roll gap ≤ 10 s | | green | green |
 | T10b overrun detected | | pending | green |
@@ -247,3 +247,18 @@ Emre: "if relog can merge, I prefer it (Windows' own tool), but an unreadable .b
   design, so the merge would also need a guard that refuses overlapping ranges, known only to the second.
 - If the merged call fails anyway, the export needs the per-piece path as a fallback, so there would be **two** paths
   to maintain.
+
+## rc.10 on lab18 (2026-10-13)
+
+Rollout per P55 (definitions → scan → remediation): vm1 on 1.0.9 Compliant 08:15Z, arc1 08:50Z.
+
+| Test | vm1 | arc1 |
+|---|---|---|
+| T04 (7 resources) | green; R6: ring ≈ 22 h, LocalKeepMB ≈ 44 h | green; ring ≈ 26.5 h, LocalKeepMB ≈ 53 h |
+| T07 (Boot, Roll, Export) | green; the roll took 2.8 s | green; 2.6 s |
+| T08 | green (see the T08 row) | green |
+
+When arc1's rc.9 ring (`20261013-050116-00-boot.blg`) was deleted at its third failed read (08:57Z, RING-A), its
+`unreadable_ring` gap was reported as 2026-10-11 12:34 → 2026-10-13 05:00. That span is too long: it is the
+CreationTime problem fixed in rc.10 (P62 item 4), and the piece had been moved by rc.9. T09, T10, T11, T19 and T15 run
+on rc.11, which changes the merge (P63).
