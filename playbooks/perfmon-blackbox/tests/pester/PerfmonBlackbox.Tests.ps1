@@ -306,6 +306,41 @@ Describe 'Pending buffers keep the right reason' {
     }
 }
 
+Describe 'relog merge per segment (P63)' {
+    BeforeAll {
+        function Piece([datetime]$From, [datetime]$To, [int]$Samples) {
+            [pscustomobject]@{ File = [pscustomobject]@{ CreationTimeUtc = $From.ToUniversalTime(); LastWriteTimeUtc = $To.ToUniversalTime(); LastWriteTime = $To; FullName = 'x' }; Samples = $Samples }
+        }
+        $script:S0 = [datetime]'2026-10-01T08:00:00'
+    }
+    It 'consecutive pieces share one segment; an overlap or a boot between them starts a new one' {
+        $a = Piece $script:S0 $script:S0.AddMinutes(15) 90
+        $b = Piece $script:S0.AddMinutes(15).AddSeconds(2) $script:S0.AddMinutes(30) 90
+        $c = Piece $script:S0.AddMinutes(29) $script:S0.AddMinutes(45) 90
+        $d = Piece $script:S0.AddMinutes(50) $script:S0.AddMinutes(60) 60
+        $segs = Get-BbSegments -Pieces @($a, $b, $c, $d) -Boots @($script:S0.AddMinutes(48))
+        $segs.Count | Should -Be 3
+        @($segs[0]).Count | Should -Be 2
+        @($segs[1]).Count | Should -Be 1
+        @($segs[2]).Count | Should -Be 1
+        (Get-BbSegments -Pieces @($a, $b) -Boots @()).Count | Should -Be 1
+        (Get-BbSegments -Pieces @() -Boots @()).Count | Should -Be 0
+    }
+    It 'splits a merged CSV by the sample counts, and refuses one that does not add up or steps back' {
+        $rows = New-Object System.Collections.Generic.List[object]
+        foreach ($i in 0..4) { $rows.Add([pscustomobject]@{ Time = $script:S0.AddSeconds(10 * $i); Fields = @('t', "$i") }) }
+        $part = [pscustomobject]@{ Header = @('h', 'c'); Rows = $rows; Format = 'f'; Path = 'p' }
+        $sp = Split-BbSegment -Part $part -Samples @(2, 3)
+        $sp.Count | Should -Be 2
+        $sp[0].Rows.Count | Should -Be 2
+        $sp[1].Rows[0].Fields[1] | Should -Be '2'
+        Split-BbSegment -Part $part -Samples @(2, 2) | Should -BeNullOrEmpty
+        Split-BbSegment -Part $part -Samples @(5, 0) | Should -BeNullOrEmpty
+        $rows[3] = [pscustomobject]@{ Time = $script:S0; Fields = @('t', 'x') }
+        Split-BbSegment -Part $part -Samples @(2, 3) | Should -BeNullOrEmpty
+    }
+}
+
 Describe 'Roll task (P62)' {
     BeforeEach {
         $script:P = Use-TestRoot (Join-Path $TestDrive ('roll-' + [guid]::NewGuid().ToString('N').Substring(0, 8)))
@@ -533,6 +568,30 @@ Describe 'Invoke-BbExport end to end on synthetic buffers' {
         $r.Rows | Should -Be 30
         Test-Path $tiny | Should -BeFalse
         (Get-BbState)['unreadable_reads'].Count | Should -Be 0
+    }
+    It 'merges the pieces with one relog call; a merge that does not add up falls back to one call per piece (P63)' {
+        New-TestCsv (Join-Path $TestDrive 'm1.csv') $script:T0 30
+        New-TestCsv (Join-Path $TestDrive 'm2.csv') $script:T0.AddSeconds(302) 30
+        New-TestBlg (Join-Path $TestDrive 'm1.csv') (Join-Path $script:P.Pending '20261001-080500-00-roll.blg')
+        Start-Sleep -Milliseconds 50
+        New-TestBlg (Join-Path $TestDrive 'm2.csv') (Join-Path $script:P.Pending '20261001-081000-00-export.blg')
+        $r = Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $script:OkUploader -CollectorDir $script:Collector
+        $r.Rows | Should -Be 60
+        @($r.Manifest.sources).Count | Should -Be 2
+        $r.Manifest.complete | Should -BeTrue
+        (Get-Content (Join-Path $script:P.Log 'perfmonblackbox.log') -Raw) | Should -Match '2 readable pieces merged in 1 relog call'
+        (Get-Content (Join-Path $script:P.Log 'perfmonblackbox.log') -Raw) | Should -Not -Match 'converting them one by one'
+        # the same two pieces again, with the merge forced to fail its check: the per-piece path gives the same window
+        $script:Uploads.Clear()
+        $s = Get-BbState; $s['last_ts'] = $null; $s['seq'] = 0; Write-BbJson $script:P.State $s
+        # new names: a file re-created under a deleted file's name gets its old CreationTime (NTFS tunneling)
+        New-TestBlg (Join-Path $TestDrive 'm1.csv') (Join-Path $script:P.Pending '20261001-090500-00-roll.blg')
+        Start-Sleep -Milliseconds 50
+        New-TestBlg (Join-Path $TestDrive 'm2.csv') (Join-Path $script:P.Pending '20261001-091000-00-export.blg')
+        Mock Split-BbSegment { $null }
+        $r2 = Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $script:OkUploader -CollectorDir $script:Collector
+        $r2.Rows | Should -Be 60
+        (Get-Content (Join-Path $script:P.Log 'perfmonblackbox.log') -Raw) | Should -Match 'converting them one by one'
     }
     It 'keeps the boot list and the ring start that other steps wrote during the export (P62)' {
         New-TestCsv (Join-Path $TestDrive 'k.csv') $script:T0 30

@@ -34,7 +34,17 @@ foreach ($b in $pick) {
     $span = ([datetime]$man.last_sample - [datetime]$man.first_sample).TotalSeconds
     $expRows = [math]::Floor($span / $man.interval_s) + 1
     "  manifest: seq $($man.seq) rows $($man.rows) (window expects ~$expRows) $($man.first_sample) .. $($man.last_sample) complete=$($man.complete) gaps=$(@($man.gaps).Count) roll_s=$($man.roll_seconds) buffer_h=$($man.buffer_hours) identity=$($man.identity) csv hash ok=$okHash pdh=$($head.StartsWith('"(PDH-CSV 4.0)')) missing counters=$($missing.Count)"
-    foreach ($g in @($man.gaps)) { "  gap $($g.from) .. $($g.to) $($g.seconds) s $($g.cause)" }
+    # P63 condition (a): the rate counter of the first sample after each gap (empty = nothing computed across the hole)
+    $hcols = @($head -split '","'); $ci = -1
+    for ($c = 0; $c -lt $hcols.Count; $c++) { if ($hcols[$c] -match 'Processor( Information)?\(_Total\)\\% Processor Time') { $ci = $c; break } }
+    foreach ($g in @($man.gaps)) {
+        $rate = '?'
+        if ($ci -ge 0) {
+            $row = Get-Content $csv | Select-Object -Skip 1 | Where-Object { $_.Substring(1, 23) -match [regex]::Escape(([datetime]$g.to).ToString('HH:mm:ss.fff')) } | Select-Object -First 1
+            if ($row) { $rate = (($row -split '","')[$ci] -replace '"', '').Trim(); if (-not $rate) { $rate = 'empty' } }
+        }
+        "  gap $($g.from) .. $($g.to) $($g.seconds) s $($g.cause) rate-after=$rate"
+    }
     foreach ($src in @($man.sources)) { "  source $($src.name) $($src.bytes) B rows $($src.rows) wrapped=$($src.wrapped)" }
     $ts = @(Get-Content $csv | Select-Object -Skip 1 | ForEach-Object { $_.Substring(1, 23) })
     $fmt = 'MM/dd/yyyy HH:mm:ss.fff'; if ($ts.Count -and [int]$ts[0].Substring(0, 2) -gt 12) { $fmt = 'dd/MM/yyyy HH:mm:ss.fff' }

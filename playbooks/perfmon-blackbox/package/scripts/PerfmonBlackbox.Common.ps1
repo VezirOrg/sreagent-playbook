@@ -230,7 +230,7 @@ function Get-BbBlgInfo {
     # samples, first and last sample of a CLOSED .blg (relog -q); a running circular file cannot be read (lab measurement, decisions P21)
     param([Parameter(Mandatory)][string]$Path)
     $r = Invoke-BbTool relog.exe @($Path, '-q')
-    $info = [ordered]@{ Path = $Path; Bytes = (Get-Item -LiteralPath $Path).Length; Samples = 0; Begin = $null; End = $null; Readable = ($r.ExitCode -eq 0) }
+    $info = [ordered]@{ Path = $Path; Bytes = (Get-Item -LiteralPath $Path).Length; Samples = 0; Begin = $null; End = $null; Readable = ($r.ExitCode -eq 0); ExitCode = $r.ExitCode }
     foreach ($l in $r.Output) {
         if ($l -match '^\s*Samples:\s*(\d+)') { $info.Samples = [int]$Matches[1] }
         elseif ($l -match '^\s*Begin:\s*(.+)$') { $info.Begin = $Matches[1].Trim() }
@@ -336,6 +336,44 @@ function ConvertFrom-BbStamp {
     $s = $Stamp.Trim()
     if ($s -notmatch '\.\d{3}$') { $s = "$s.000" }
     return [datetime]::ParseExact($s, $Format, [System.Globalization.CultureInfo]::InvariantCulture)
+}
+
+function Get-BbSegments {
+    # P63 guard: consecutive readable pieces (in closing order) share one relog call only if no recorded boot lies
+    # between them (relog would compute rates across the restart) and the later one starts after the earlier one
+    # ended (no overlap: relog gives wrong rates on overlapping data). The start is the ring start stamped as
+    # CreationTime (P62); an unstamped piece looks overlapping and so gets a segment of its own (safe).
+    param([object[]]$Pieces = @(), [object[]]$Boots = @())
+    $segs = New-Object System.Collections.Generic.List[object]
+    $cur = @(); $prev = $null
+    foreach ($g in $Pieces) {
+        $split = $false
+        if ($prev) {
+            if ($g.File.CreationTimeUtc -lt $prev.File.LastWriteTimeUtc) { $split = $true }
+            foreach ($b in $Boots) { if ($b -and [datetime]$b -gt $prev.File.LastWriteTime -and [datetime]$b -lt $g.File.LastWriteTime) { $split = $true } }
+        }
+        if ($split -and $cur.Count) { $segs.Add($cur); $cur = @() }
+        $cur += $g; $prev = $g
+    }
+    if ($cur.Count) { $segs.Add($cur) }
+    return , $segs
+}
+
+function Split-BbSegment {
+    # one merged relog CSV of a segment -> one part per piece, by the pieces' sample counts (relog -q). $null when the
+    # merge does not add up (row count differs or the times do not strictly increase): the caller then relogs piece by piece
+    param([Parameter(Mandatory)]$Part, [Parameter(Mandatory)][int[]]$Samples)
+    $total = 0; foreach ($n in $Samples) { if ($n -lt 1) { return $null }; $total += $n }
+    if ($Part.Rows.Count -ne $total) { return $null }
+    for ($i = 1; $i -lt $Part.Rows.Count; $i++) { if ($Part.Rows[$i].Time -le $Part.Rows[$i - 1].Time) { return $null } }
+    $out = @(); $at = 0
+    foreach ($n in $Samples) {
+        $rows = New-Object System.Collections.Generic.List[object]
+        for ($j = $at; $j -lt $at + $n; $j++) { $rows.Add($Part.Rows[$j]) }
+        $out += , ([pscustomobject]@{ Header = $Part.Header; Rows = $rows; Format = $Part.Format; Path = $Part.Path })
+        $at += $n
+    }
+    return , $out
 }
 
 function Read-BbCsv {
@@ -1052,40 +1090,71 @@ function Invoke-BbExport {
             $rollSeconds = [math]::Round(($roll.Started - $roll.Stopped).TotalSeconds, 1)
         }
 
-        # 2 relog each pending buffer, oldest first
+        # 2 probe every piece with relog -q, then merge the good ones with relog, one call per segment (P63)
         $work = Join-Path $p.Work ('export-' + (Get-Date).ToString('yyyyMMddHHmmss'))
         $null = New-Item -ItemType Directory -Force -Path $work
-        $pending = @(Get-ChildItem -LiteralPath $p.Pending -Filter *.blg -ErrorAction SilentlyContinue | Sort-Object Name)
+        # the order the pieces were closed in: UTC file time (the name holds local time, which can step back)
+        $pending = @(Get-ChildItem -LiteralPath $p.Pending -Filter *.blg -ErrorAction SilentlyContinue | Sort-Object LastWriteTimeUtc, Name)
         $parts = @(); $partInfo = @(); $partFiles = @(); $unreadable = @()
         $fmt = $null
+        $good = @()
         foreach ($f in $pending) {
-            $csv = Join-Path $work ($f.BaseName + '.csv')
-            $r = Invoke-BbTool relog.exe @($f.FullName, '-f', 'csv', '-o', $csv, '-y')
-            if (('{0:X8}' -f $r.ExitCode) -eq 'C0000BF8') {
+            $q = Get-BbBlgInfo $f.FullName
+            if (('{0:X8}' -f $q.ExitCode) -eq 'C0000BF8') {
                 # PDH_LOG_SAMPLE_TOO_SMALL: a closed piece with fewer than 2 samples (lab, P62); not an unreadable ring
                 Write-BbLog "pending buffer $($f.Name) holds fewer than 2 samples, deleted"
                 Remove-Item -LiteralPath $f.FullName -Force
                 continue
             }
-            if ($r.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $csv)) {
+            if (-not $q.Readable) {
                 if (-not (Register-BbUnreadableRing -State $state -File $f)) { $unreadable += $f.Name }
                 continue
             }
-            $part = Read-BbCsv -Path $csv -Format $fmt
-            $fmt = $part.Format
-            if (-not $part.Rows.Count) {
-                if (-not (Register-BbUnreadableRing -State $state -File $f)) { $unreadable += $f.Name }
-                continue
-            }
-            if ($state['unreadable_reads'].ContainsKey($f.Name)) { $state['unreadable_reads'].Remove($f.Name) }
-            $parts += $part
-            $partFiles += $f
-            $ringMB = Get-BbPendingMaxMB $f.Name
-            if ($ringMB -le 0) { $ringMB = $cfg['MaxSizeMB'] }
-            $partInfo += [pscustomobject]@{ Name = $f.Name; Reason = (Get-BbPendingReason $f.Name); Bytes = $f.Length
-                Rows = $part.Rows.Count; Interval = (Get-BbMedianStep $part.Rows); MaxSizeMB = $ringMB
-                Wrapped = ($f.Length -ge 0.95 * $ringMB * 1MB) }
+            $good += [pscustomobject]@{ File = $f; Samples = $q.Samples }
         }
+        $k = 0
+        $segments = Get-BbSegments -Pieces $good -Boots @(Get-BbBoots (Get-BbState))
+        foreach ($seg in $segments) {
+            $k++
+            $split = $null
+            $csv = Join-Path $work "segment-$k.csv"
+            $r = Invoke-BbTool relog.exe (@($seg | ForEach-Object { $_.File.FullName }) + @('-f', 'csv', '-o', $csv, '-y'))
+            if ($r.ExitCode -eq 0 -and (Test-Path -LiteralPath $csv)) {
+                $sp = Read-BbCsv -Path $csv -Format $fmt
+                $fmt = $sp.Format
+                $split = Split-BbSegment -Part $sp -Samples @($seg | ForEach-Object { $_.Samples })
+            }
+            if (-not $split) {
+                # fallback (P63 condition c): relog this segment piece by piece, the path used up to rc.10
+                if (@($seg).Count -gt 1) { Write-BbLog "merge of $(@($seg).Count) pieces failed or did not add up (exit $($r.ExitCode)); converting them one by one" 'WARN' }
+                $split = @()
+                foreach ($g in $seg) {
+                    $pcsv = Join-Path $work ($g.File.BaseName + '.csv')
+                    $pr = Invoke-BbTool relog.exe @($g.File.FullName, '-f', 'csv', '-o', $pcsv, '-y')
+                    $one = $null
+                    if ($pr.ExitCode -eq 0 -and (Test-Path -LiteralPath $pcsv)) { $one = Read-BbCsv -Path $pcsv -Format $fmt; $fmt = $one.Format }
+                    $split += , $one
+                }
+            }
+            $i = 0
+            foreach ($g in $seg) {
+                $part = $split[$i]; $i++
+                $f = $g.File
+                if (-not $part -or -not $part.Rows.Count) {
+                    if (-not (Register-BbUnreadableRing -State $state -File $f)) { $unreadable += $f.Name }
+                    continue
+                }
+                if ($state['unreadable_reads'].ContainsKey($f.Name)) { $state['unreadable_reads'].Remove($f.Name) }
+                $parts += $part
+                $partFiles += $f
+                $ringMB = Get-BbPendingMaxMB $f.Name
+                if ($ringMB -le 0) { $ringMB = $cfg['MaxSizeMB'] }
+                $partInfo += [pscustomobject]@{ Name = $f.Name; Reason = (Get-BbPendingReason $f.Name); Bytes = $f.Length
+                    Rows = $part.Rows.Count; Interval = (Get-BbMedianStep $part.Rows); MaxSizeMB = $ringMB
+                    Wrapped = ($f.Length -ge 0.95 * $ringMB * 1MB) }
+            }
+        }
+        if ($good.Count) { Write-BbLog "export: $($good.Count) readable pieces merged in $($segments.Count) relog call(s)" }
         if ($unreadable.Count) { Write-BbLog "unreadable pending buffers kept for the next run: $($unreadable -join ', ')" 'WARN' }
         # counts of files no longer there are dropped; the counts and drops are kept even if this run fails later
         foreach ($k in @($state['unreadable_reads'].Keys)) {
