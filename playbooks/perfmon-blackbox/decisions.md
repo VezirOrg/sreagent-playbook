@@ -919,3 +919,8 @@ no deleted vault; the template's register row DOWN and its lab-audit **CLEAN**.
   release; what it finds goes into v1.0.x.
 - **Before publishing:** the zip is downloaded from rc.11, its SHA-256 checked, every file extracted and scrub-checked
   (P29/P31); the rc pre-releases stay as they are (lab history), marked superseded in the v1.0.0 notes.
+
+**Done 2026-10-13:** tag `perfmon-blackbox/v1.0.0` on e0005bf (main), release
+https://github.com/VezirOrg/sreagent-playbook/releases/tag/perfmon-blackbox/v1.0.0 (latest, not a pre-release); the
+asset downloaded from the public URL hashes to `806BCADB…63DD`; zip and notes scrub-checked (65 entries, clean); local
+tests L01, L02, L04, L07–L09 green and every relative docs link resolves.
