@@ -886,3 +886,16 @@ teardown, where they are removed with the agent.
   `806BCADB69F556401DE19754AEB649B7611EB1AE18AA106A5BF0A537A99363DD` (L05 56/56 and lint clean on dc, with the relog
   merge of real pieces in one call, the fallback, and the DST-A cases in W. Europe time around the 2026 transitions;
   T01 green on dc with 7 resources, 2026-10-13; 12 files extracted and scrub-checked clean before the upload).
+
+## P65: lab18 is torn down (Emre via the vezir, 2026-10-13, gate TEARDOWN-LAB18: "GO")
+
+Every planned lab18 test is green on rc.11 (vm1 and arc1, tests.md "rc.11 on lab18"; T06f part 2 green), so lab18 is
+removed in this order: (1) the role assignments of the policy identities (pbb-vm, pbb-arc-storage, pbb-gc-prereq),
+(2) the role assignments on the product storage account (per-machine Writer with ABAC, package and capture Readers,
+lab Contributor), (3) the dc verifier's role assignments, (4) the lab SP's SRE Agent Author + Standard User on the lab
+agent, (5) the three policy assignments, (6) the four `perfmon-blackbox-*` definitions (subscription scope), (7) the
+two custom roles, (8) the resource group via `azd down --purge` (Key Vault purged). Then (9) the lab register row of
+the private lab template goes DOWN and its audit runs. Other resource groups are not touched. Anything unexpected (a
+resource that does not delete, a dependency reaching another resource group) stops the teardown and is reported.
+Evidence: `files/test-runs/261013-lab18/teardown.txt` (not in the repo). The second lab (10-14) is built from the
+template again (second-lab-plan.md). The v1.0.0 tag is not part of this decision (P31, Emre's gate).
