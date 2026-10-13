@@ -8,6 +8,8 @@
 >
 > Draft until v1.0.0.
 
+![The end-to-end loop: setup, Azure Policy and Machine Configuration, the server, private storage, the SRE Agent](img/perfmon-blackbox-flow.svg)
+
 *Azure Machine Configuration* was formerly called guest configuration (the name lives on in identifiers such as
 `Microsoft.GuestConfiguration`). It is the current service and replaces Azure Automation State Configuration (retiring
 2027-09-30) and the DSC extension

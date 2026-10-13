@@ -6,6 +6,8 @@ skill fetches the server's latest PerfMon capture from your storage and analyses
 verdict ceiling, no cause without a test in time). The captures come from a black-box recorder that Azure Policy keeps
 running on every Azure VM and Arc-enabled server: collection is the input, **the analysis is the value**.
 
+![The end-to-end loop: setup, Azure Policy and Machine Configuration, the server, private storage, the SRE Agent](docs/img/perfmon-blackbox-flow.svg)
+
 > Not an official Microsoft product. Working and versioned, no support promise. See the
 > [repo README](../../README.md).
 
@@ -19,13 +21,14 @@ guide becomes final with `perfmon-blackbox/v1.0.0`.
   after every reboot. The last `MaxSizeMB` of data is always on the disk.
 - Every `ExportEveryHours` (default 4) a scheduled task exports the window **since the last successful export** (no
   gap, no overlap) to CSV, zips it with a `manifest.json`, and uploads it with the **server's own managed identity**
-  into **its own folder** of **your private storage account**. A server cannot write anywhere else, and cannot read.
+  into **its own folder** of **your private storage account**. A server cannot write anywhere else, and cannot read the captures.
 - Any loss (the ring overwrote data before an export, the machine was off, the collector restarted, the local cap
   dropped data) is **written into the manifest** (`gaps[]`, `complete: false`) and the event log. Never silent.
 - If a server's buffer cannot hold the export window (many processes, short interval, small buffer), the guest
   assignment turns **NonCompliant** with the numbers in its reason, before data is lost.
-- Two Azure Policy definitions (DeployIfNotExists): `perfmon-blackbox-vm` for Azure VMs and `perfmon-blackbox-arc`
-  for Arc-enabled servers. Assign the one(s) you need.
+- Azure Policy definitions (DeployIfNotExists): `perfmon-blackbox-vm` for Azure VMs and `perfmon-blackbox-arc`
+  for Arc-enabled servers, which take the package from the GitHub release, and `-vm-storage` / `-arc-storage`, which
+  take it from your own container ([deploy.md](docs/deploy.md)). Assign the one(s) you need.
 - The SRE Agent skill **perfmon-triage** fetches the latest zip of a server, checks it, converts it to SQLite and
   triages it; the report quotes the zip and every gap.
 

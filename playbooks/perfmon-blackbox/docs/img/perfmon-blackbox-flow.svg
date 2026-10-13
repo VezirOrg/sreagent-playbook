@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="960" fill="#f8fafc"/>
+
+  <!-- Title -->
+  <text x="40" y="58" font-size="34" font-weight="700" fill="#0f172a">PerfMon Black Box: the end-to-end loop</text>
+  <text x="40" y="94" font-size="18" fill="#475569">A continuous performance recording on every Windows server (Azure VM + Arc): Azure Policy deploys it, the server uploads with its own identity, the SRE Agent analyses it.</text>
+
+  <!-- Phase labels -->
+  <text x="40" y="150" font-size="14" font-weight="700" fill="#64748b" letter-spacing="1.5">ONE-TIME SETUP</text>
+  <text x="350" y="150" font-size="14" font-weight="700" fill="#64748b" letter-spacing="1.5">CONTINUOUS, AUTOMATIC: THE SERVER SIDE</text>
+  <text x="1280" y="150" font-size="14" font-weight="700" fill="#64748b" letter-spacing="1.5">ON DEMAND</text>
+  <line x1="40" y1="160" x2="310" y2="160" stroke="#cbd5e1" stroke-width="2"/>
+  <line x1="350" y1="160" x2="1240" y2="160" stroke="#cbd5e1" stroke-width="2"/>
+  <line x1="1280" y1="160" x2="1560" y2="160" stroke="#cbd5e1" stroke-width="2"/>
+
+  <!-- Box 1: Setup -->
+  <rect x="40" y="180" width="270" height="440" rx="14" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+  <rect x="40" y="180" width="270" height="56" rx="14" fill="#64748b"/>
+  <rect x="40" y="220" width="270" height="16" fill="#64748b"/>
+  <text x="58" y="215" font-size="19" font-weight="700" fill="#ffffff">① Setup</text>
+  <g font-size="15" fill="#1e293b">
+    <text x="58" y="268" font-weight="700">infra/main.bicep</text>
+    <text x="58" y="292">• Private storage</text>
+    <text x="58" y="314">  + private endpoint</text>
+    <text x="58" y="336">• Shared key off, no SAS</text>
+    <text x="58" y="358">• 2 custom roles</text>
+    <text x="58" y="380">  (Writer, Deployer)</text>
+    <text x="58" y="418" font-weight="700">Policy definitions</text>
+    <text x="58" y="442">• Azure VM and Arc</text>
+    <text x="58" y="464">• Package source fixed in the</text>
+    <text x="58" y="486">  definition: GitHub release</text>
+    <text x="58" y="508">  or your own container (4)</text>
+    <text x="58" y="546" font-weight="700">Skill</text>
+    <text x="58" y="570">• deploy-skill.sh to the agent</text>
+    <text x="58" y="592">  (Author + Standard User suffice)</text>
+  </g>
+
+  <!-- Box 2: Policy -->
+  <rect x="350" y="180" width="270" height="440" rx="14" fill="#ffffff" stroke="#7c3aed" stroke-width="2"/>
+  <rect x="350" y="180" width="270" height="56" rx="14" fill="#7c3aed"/>
+  <rect x="350" y="220" width="270" height="16" fill="#7c3aed"/>
+  <text x="368" y="206" font-size="17" font-weight="700" fill="#ffffff">② Azure Policy +</text>
+  <text x="368" y="227" font-size="17" font-weight="700" fill="#ffffff">Machine Configuration</text>
+  <g font-size="15" fill="#1e293b">
+    <text x="368" y="268" font-weight="700">Assignment parameters</text>
+    <text x="368" y="292">• Target storage + container</text>
+    <text x="368" y="314">• MaxSizeMB = 512</text>
+    <text x="368" y="336">• Sample interval = 10 s</text>
+    <text x="368" y="358">• Export every 4 h</text>
+    <text x="368" y="396" font-weight="700">What reaches the server</text>
+    <text x="368" y="420">• Guest assignment</text>
+    <text x="368" y="442">  "PerfmonBlackbox"</text>
+    <text x="368" y="464">• Zip package, checked</text>
+    <text x="368" y="486">  by SHA-256</text>
+    <text x="368" y="508">• 7 DSC resources</text>
+    <text x="368" y="546" font-weight="700">Self-healing</text>
+    <text x="368" y="570">• Drift is corrected within</text>
+    <text x="368" y="592">  ~15 min; compliance reported</text>
+  </g>
+
+  <!-- Box 3: Machine -->
+  <rect x="660" y="180" width="270" height="440" rx="14" fill="#ffffff" stroke="#ea580c" stroke-width="2"/>
+  <rect x="660" y="180" width="270" height="56" rx="14" fill="#ea580c"/>
+  <rect x="660" y="220" width="270" height="16" fill="#ea580c"/>
+  <text x="678" y="206" font-size="17" font-weight="700" fill="#ffffff">③ Server</text>
+  <text x="678" y="227" font-size="15" fill="#ffffff">Azure VM / Arc (Windows)</text>
+  <g font-size="15" fill="#1e293b">
+    <text x="678" y="268" font-weight="700">Recording (logman)</text>
+    <text x="678" y="292">• Circular .blg, 512 MB, 10 s</text>
+    <text x="678" y="314">• ~1 day of history at hand</text>
+    <text x="678" y="352" font-weight="700">3 scheduled tasks</text>
+    <text x="678" y="376">• Boot: keep the old file, restart</text>
+    <text x="678" y="398">• Roll: every 15 min close the</text>
+    <text x="678" y="420">  file → pending\</text>
+    <text x="678" y="442">• Export: every 4 h</text>
+    <text x="678" y="464">  probe with relog -q</text>
+    <text x="678" y="486">  → merge with relog → CSV (UTC)</text>
+    <text x="678" y="508">  + manifest (gaps) → zip</text>
+    <text x="678" y="546" font-weight="700">Loss is never silent</text>
+    <text x="678" y="570">• Reboot, clock change, overrun:</text>
+    <text x="678" y="592">  written to the manifest with a cause</text>
+  </g>
+
+  <!-- Box 4: Storage -->
+  <rect x="970" y="180" width="270" height="440" rx="14" fill="#ffffff" stroke="#0891b2" stroke-width="2"/>
+  <rect x="970" y="180" width="270" height="56" rx="14" fill="#0891b2"/>
+  <rect x="970" y="220" width="270" height="16" fill="#0891b2"/>
+  <text x="988" y="206" font-size="17" font-weight="700" fill="#ffffff">④ Upload +</text>
+  <text x="988" y="227" font-size="17" font-weight="700" fill="#ffffff">Private Storage</text>
+  <g font-size="15" fill="#1e293b">
+    <text x="988" y="268" font-weight="700">The server's own identity</text>
+    <text x="988" y="292">• System-assigned MI</text>
+    <text x="988" y="314">• VM: IMDS · Arc: HIMDS</text>
+    <text x="988" y="336">• No keys, no SAS</text>
+    <text x="988" y="374" font-weight="700">Least privilege</text>
+    <text x="988" y="398">• Writes only to its own folder,</text>
+    <text x="988" y="420">  cannot read the captures</text>
+    <text x="988" y="458" font-weight="700">Layout</text>
+    <text x="988" y="482">• perfmon/&lt;sub&gt;/&lt;rg&gt;/&lt;server&gt;/</text>
+    <text x="988" y="504">  yyyy/MM/dd/*.zip</text>
+    <text x="988" y="526">• On failure: retries (+5, +15 min);</text>
+    <text x="988" y="548">  the next export catches up</text>
+    <text x="988" y="586">• Lifecycle: deleted after 30 days</text>
+  </g>
+
+  <!-- Box 5: SRE Agent -->
+  <rect x="1280" y="180" width="280" height="440" rx="14" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="1280" y="180" width="280" height="56" rx="14" fill="#2563eb"/>
+  <rect x="1280" y="220" width="280" height="16" fill="#2563eb"/>
+  <text x="1298" y="206" font-size="17" font-weight="700" fill="#ffffff">⑤ Azure SRE Agent</text>
+  <text x="1298" y="227" font-size="15" fill="#ffffff">skill: perfmon-triage</text>
+  <g font-size="15" fill="#1e293b">
+    <text x="1298" y="268" font-weight="700">Fetch</text>
+    <text x="1298" y="292">• Downloads the latest zip (or all</text>
+    <text x="1298" y="314">  zips of a time range)</text>
+    <text x="1298" y="336">• Checks the CSV's SHA-256</text>
+    <text x="1298" y="358">  against the manifest</text>
+    <text x="1298" y="390" font-weight="700">Analyse in the sandbox</text>
+    <text x="1298" y="414">• CSV → SQLite</text>
+    <text x="1298" y="436">• CPU, memory, disk, network,</text>
+    <text x="1298" y="458">  processes: thresholds + trends</text>
+    <text x="1298" y="480">• Every "because" linked to evidence</text>
+    <text x="1298" y="512" font-weight="700">Report</text>
+    <text x="1298" y="536">• Findings, evidence, gaps</text>
+    <text x="1298" y="558">  written to the thread</text>
+    <text x="1298" y="594" fill="#2563eb" font-weight="700">Lab score: 95–100 / 100</text>
+  </g>
+
+  <!-- Forward arrows -->
+  <line x1="312" y1="400" x2="346" y2="400" stroke="#475569" stroke-width="3" marker-end="url(#ah)"/>
+  <line x1="622" y1="400" x2="656" y2="400" stroke="#475569" stroke-width="3" marker-end="url(#ah)"/>
+  <line x1="932" y1="400" x2="966" y2="400" stroke="#475569" stroke-width="3" marker-end="url(#ah)"/>
+  <line x1="1242" y1="400" x2="1276" y2="400" stroke="#475569" stroke-width="3" marker-end="url(#ah)"/>
+
+  <!-- Engineer trigger -->
+  <rect x="1280" y="680" width="280" height="96" rx="14" fill="#eff6ff" stroke="#2563eb" stroke-width="2" stroke-dasharray="6 5"/>
+  <text x="1298" y="710" font-size="16" font-weight="700" fill="#1e3a8a">👤 An engineer asks</text>
+  <text x="1298" y="736" font-size="14" fill="#1e293b">"Analyse the latest PerfMon</text>
+  <text x="1298" y="756" font-size="14" fill="#1e293b">capture of server X"</text>
+  <line x1="1420" y1="678" x2="1420" y2="624" stroke="#2563eb" stroke-width="3" marker-end="url(#ahb)"/>
+
+  <!-- Return loop -->
+  <path d="M 1280 740 L 485 740 L 485 624" fill="none" stroke="#2563eb" stroke-width="3" stroke-dasharray="10 6" marker-end="url(#ahb)"/>
+  <rect x="640" y="712" width="480" height="56" rx="10" fill="#f8fafc"/>
+  <text x="880" y="736" font-size="15" font-weight="700" fill="#1e3a8a" text-anchor="middle">Loop: finding → tune a parameter of the policy assignment</text>
+  <text x="880" y="758" font-size="14" fill="#334155" text-anchor="middle">(shorter interval, bigger file, more frequent export) → a new recording</text>
+
+  <!-- Bottom facts -->
+  <rect x="40" y="820" width="1520" height="110" rx="14" fill="#0f172a"/>
+  <g font-size="15" fill="#e2e8f0">
+    <text x="64" y="854"><tspan font-weight="700" fill="#ffffff">Nothing installed on the server:</tspan> only Windows' own tools (logman, relog, PowerShell 5.1, .NET), run by Machine Configuration (VM extension / Arc agent).</text>
+    <text x="64" y="882"><tspan font-weight="700" fill="#ffffff">Zero keys:</tspan> uploads and agent access use managed identities (so does the package download in storage mode); storage private, shared key off.</text>
+    <text x="64" y="910"><tspan font-weight="700" fill="#ffffff">History ready when it hurts:</tspan> "what happened then?" is already recorded; a bad shutdown loses at most the last 15 min, and the loss is reported.</text>
+  </g>
+</svg>
