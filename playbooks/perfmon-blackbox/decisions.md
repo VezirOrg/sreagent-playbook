@@ -946,3 +946,13 @@ uses this lab) and asked to start today instead of 10-14 (P58 moved).
   Compliant at 18:30Z. Other resource groups (rg-sqlmcp1, rg-lab13, rg-costexport) are not touched.
 - **Teardown only on Emre's go** (list to the vezir), the same order as P65.
 - The full stage suite (second-lab-plan.md §1) is not run today; DoD-1 "all stages green on a fresh lab" stays open.
+
+## P68: lab20 keeps the template's nightly auto-shutdown; the work goes on over two days (Emre via the vezir, 2026-10-13 ~17:12Z, "KAPANMA-AÇ")
+
+**Why.** Emre prefers the lab to stop tonight as the template does, and the deploy to continue tomorrow, over keeping the
+VMs up past 19:00Z. **What.** The auto-shutdown schedules of dc and vm1 (disabled at 17:00Z to keep the VMs up for the
+first zip) are **Enabled** again: 22:00 Turkey time = 19:00Z. Until then: steps 0–3, the skill, the text captures. The
+first zip, the manifest capture and the agent question (S4, S6, C4, D) most likely move to 2026-10-14. When the VMs start
+tomorrow, the Boot task taking the old ring into a pending piece is expected (P62); the first export covers the time
+since the collector started, with the off hours reported as a gap. Emre's global lab automation (~00:46 +03, disks to
+Standard_LRS) also applies and is accepted. P67 otherwise unchanged; the register row drops the "Disabled" note.
