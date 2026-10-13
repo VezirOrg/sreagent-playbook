@@ -218,3 +218,32 @@ reader rejects the file before any time or counter filter applies [O]. The time 
 in a file PDH can open [L: *relog*: "the beginning time to copy the first record"]; they do not get past a file it
 cannot open [G]. So a time-bounded relog is **not** a usable export fallback for this kind of ring: it would add
 retries and no data. Reading the raw records ourselves would need the undocumented `.blg` layout (out of scope).
+
+## RELOG-DENE: one multi-input relog instead of the per-piece join? (side test, 2026-10-13)
+
+Emre: "if relog can merge, I prefer it (Windows' own tool), but an unreadable .blg must never be fed into it." Candidate:
+`relog -q` per piece as a probe (unreadable or < 2 samples → the RING-A path as today), then **one**
+`relog <good pieces> -f csv` for the merge. Tested on dc with the lab's own short probe sets (2 counters vs 3, 1 s and
+2 s, sequential, overlapping and identical files) in `C:\BbDev`, no product file touched. Evidence:
+`files/test-runs/261013-lab18/research-relog-merge-dc.txt`. rc.10 is unchanged.
+
+| Question | Result [O] |
+|---|---|
+| (1) pieces with different counter lists | works: **union header**, blank cells where a piece lacks a counter, rows in time order whatever the input order (A+B = B+A) |
+| (2a) identical pieces (A + a copy of A) | **wrong**: 8 rows instead of 7 (the first timestamp twice) and the rate counter (`% Processor Time`) has values that differ from the single-file relog of A (0 / 2.31 where A alone gives 4.46 / 0.19) |
+| (2b) overlapping pieces (two sets 3 s apart, 1 s) | rows interleaved by time (27 = 12 + 15, no de-duplication); the second set's rate values come out **0** |
+| (2c) a 2 s piece then a 1 s piece | both cadences kept as recorded (no resampling) |
+| **rate counters across a piece boundary** | **differs from the per-piece relog**: per piece, the first sample of every piece has an empty rate value (a rate needs two samples); merged, relog **computes** that first value from the previous piece's last sample (A+B: 15.8 % over the 5 s between the pieces; A+C: 7.9 % over 22 s) |
+| (3) per-piece facts from `-q` + file metadata | `-q` gives samples, begin and end per piece (**to the second**, no milliseconds); interval = (end − begin)/(samples − 1) (P37), wrapped = file size vs `MaxSizeMB` (P40), bytes per sample = size/samples (R6): all available. The source piece of each row must then be **inferred** from the second-resolution begin/end ranges (today it is exact: each row comes from its own piece's CSV) |
+| (4) `-b` and no overlap with `last_ts` | `-b` takes whole seconds and is **inclusive**: `-b` = the second of `last_ts` re-includes the `last_ts` sample; `-b` = that second + 1 starts strictly after it (here: first row 2 s after). So `-b ceil(last_ts)` keeps no overlap at intervals ≥ 1 s; the first exported sample's rate value is empty, as in the per-piece path |
+
+**Reading [G].** The merge works for the plain case. The real difference is the rate counters at the piece boundaries:
+- **Across a roll** (a few seconds, same boot, the raw counters keep counting), relog's computed value is a true
+  average over the boundary. The per-piece path leaves it empty instead, and with the 15-min roll (rc.10) that is one
+  empty rate sample per piece: about 1 in 90 rows at 10 s.
+- **Across a restart** of Windows the raw counters start again from zero, and what relog computes there is not tested.
+  It would need a reboot test.
+- **Duplicates or overlaps** make relog produce wrong rate values, without an error. The pieces never overlap by
+  design, so the merge would also need a guard that refuses overlapping ranges, known only to the second.
+- If the merged call fails anyway, the export needs the per-piece path as a fallback, so there would be **two** paths
+  to maintain.
