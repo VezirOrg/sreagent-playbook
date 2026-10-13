@@ -5,7 +5,7 @@
 > every resource, digs into the worst problems, and writes a ranked report with times, drivers and next steps, quoting
 > any gap in the capture. It follows strict rules: no raw data, a verdict ceiling, and no cause without a test in time.
 >
-> Draft until v1.0.0. Skill: [`skill/perfmon-triage/SKILL.md`](../skill/perfmon-triage/SKILL.md) (v2.1).
+> As of v1.0.0. Skill: [`skill/perfmon-triage/SKILL.md`](../skill/perfmon-triage/SKILL.md) (v2.2).
 
 ## How to ask
 

@@ -4,6 +4,26 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
 
 ## Unreleased
 
+Nothing yet.
+
+## perfmon-blackbox/v1.0.0 (2026-10-13)
+
+First release (decisions P66). The package is the rc.11 zip, unchanged (SHA-256
+`806BCADB69F556401DE19754AEB649B7611EB1AE18AA106A5BF0A537A99363DD`); pass `--version 1.0.0` to the policy generator.
+
+- Machine Configuration package `PerfmonBlackbox` (AuditAndSet, 7 DSC resources): a binary circular PerfMon log
+  (default 512 MB, 10 s), restarted after every boot, closed into `pending\` every 15 minutes, exported every 4 hours
+  with `relog` (probe, merge per segment, UTC times) to CSV + `manifest.json` (every gap named), zipped and uploaded
+  with the server's own managed identity into its own folder of a private storage account.
+- Azure Policy (DeployIfNotExists) for Azure VMs and Arc-enabled servers, the package from the GitHub release or from
+  your own container; `infra/main.bicep` for the private storage and the two custom roles.
+- SRE Agent skill **perfmon-triage v2.2**: fetches the newest zip (or a time range), checks it, converts it to SQLite
+  and writes a ranked report (lab score 95–100 of 100).
+- Tested on an Azure VM and an Arc-enabled server ([docs/tests.md](docs/tests.md)); known limits in
+  [docs/analysis.md](docs/analysis.md#known-limits-v100).
+
+## Development history (rc.1 to rc.11)
+
 - 2026-10-11: playbook created. Design and test plan drafted for approval. Skill v2.0, `deploy-skill.sh` and the
   CSV masker copied in verbatim (provenance in `decisions.md` P7).
 - 2026-10-11: design and test plan rev 2 (P11–P15): Emre's 36 counters as a sanitized template, binary circular

@@ -5,7 +5,7 @@
 > benefit that includes it). Per deployment, the private endpoint costs about USD 7.30 a month.
 >
 > Prices: Azure Retail Prices API (`prices.azure.com`), retail USD, queried 2026-10-11 (storage in Sweden Central).
-> Draft until v1.0.0.
+> As of v1.0.0.
 
 | Item | Price | Per server per month |
 |---|---|---|

@@ -6,7 +6,7 @@
 > 1.5 times 15 minutes; how long they hold depends mostly on the number of processes. The package measures this on every server and reports a
 > misfit as a NonCompliant reason before any data is lost.
 >
-> Draft until v1.0.0 (the table is measured on lab servers and real captures; see decisions P27).
+> As of v1.0.0 (the table is measured on lab servers and real captures; see decisions P27).
 
 ## All parameters (same on both definitions)
 

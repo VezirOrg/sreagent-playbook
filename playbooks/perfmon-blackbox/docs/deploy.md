@@ -1,10 +1,10 @@
 # Deploy
 
-> **Summary.** Four steps: (1) the private storage with `infra/main.bicep`, (2) the two policy definitions from the
+> **Summary.** Four steps: (1) the private storage with `infra/main.bicep`, (2) the policy definitions from the
 > release's package, (3) the assignments with the rights their identity needs, then remediation, (4) the skill on your
 > SRE Agent. Prerequisites first: servers and agent must both reach the storage's private endpoint.
 >
-> Draft until v1.0.0: the README-only fresh-eyes deploy at release validates these steps.
+> As of v1.0.0. Every step was run in the lab on an Azure VM and an Arc-enabled server ([tests.md](tests.md)).
 
 ## Prerequisites
 
@@ -20,9 +20,29 @@
   resolution) that resolves and reaches the same private endpoint. Without it the skill cannot read any capture.
 - **Rights for the deployer**: create a resource group deployment with custom role definitions, policy definitions and
   assignments, and role assignments (Owner, or Contributor + Role Based Access Control Administrator).
-- **Tools**: Azure CLI, Python 3 (to generate the policy definitions).
+- **Tools**: Azure CLI, Python 3 (to generate the policy definitions), git.
 
-All commands run from `playbooks/perfmon-blackbox` with the Azure CLI signed in to the right subscription.
+All commands run from `playbooks/perfmon-blackbox` in a clone of this repository at the release tag, with the Azure CLI
+signed in to the right subscription:
+
+```sh
+git clone --branch perfmon-blackbox/v1.0.0 https://github.com/VezirOrg/sreagent-playbook.git
+cd sreagent-playbook/playbooks/perfmon-blackbox
+```
+
+**Azure VMs only, once per scope: the Machine Configuration prerequisites.** Assign the built-in initiative (it gives
+each VM a system-assigned identity and the Machine Configuration extension), give its identity Contributor, and
+remediate each of its policies:
+
+```sh
+prereq=$(az policy set-definition list --query "[?displayName=='Deploy prerequisites to enable Guest Configuration policies on virtual machines'].name | [0]" -o tsv)
+az policy assignment create -n gc-prereq --policy-set-definition "$prereq" --scope <scope> --mi-system-assigned --location <region>
+pp=$(az policy assignment show -n gc-prereq --scope <scope> --query identity.principalId -o tsv)
+az role assignment create --assignee-object-id $pp --assignee-principal-type ServicePrincipal --role Contributor --scope <scope>
+for ref in $(az policy set-definition show -n "$prereq" --query "policyDefinitions[].policyDefinitionReferenceId" -o tsv); do
+  az policy remediation create -n "gc-prereq-$ref" --policy-assignment gc-prereq --definition-reference-id "$ref" -g <rg>
+done
+```
 
 ## Names: a second deployment in the same tenant or subscription
 
@@ -52,6 +72,9 @@ az deployment group create -g <storage-rg> -f infra/main.bicep \
      readerPrincipalIds='["<agent system identity object ID>","<agent user-assigned identity object ID>"]'
 ```
 
+The agent's identities: in the portal on the agent resource (Identity), or
+`az resource show --ids <agent resource ID> --query identity`.
+
 Creates: StorageV2 (no shared key, public network access disabled, no anonymous access, TLS 1.2), container `perfmon`,
 lifecycle delete after 30 days, blob soft delete, the private endpoint with its DNS zone group, the custom roles
 **PerfMon Blackbox Writer** and **PerfMon Blackbox Deployer**, and Storage Blob Data Reader on the container for the
@@ -59,7 +82,13 @@ agent. Keep the outputs `storageAccountResourceId` and `writerRoleDefinitionId`.
 
 ## 2. Policy definitions
 
-Pick a release; its notes give the asset URL of `PerfmonBlackbox.zip` and its SHA-256.
+Pick a release; its notes give the asset URL of `PerfmonBlackbox.zip` and its SHA-256. For **v1.0.0**:
+
+| | |
+|---|---|
+| asset URL | `https://github.com/VezirOrg/sreagent-playbook/releases/download/perfmon-blackbox%2Fv1.0.0/PerfmonBlackbox.zip` |
+| SHA-256 | `806BCADB69F556401DE19754AEB649B7611EB1AE18AA106A5BF0A537A99363DD` |
+| `--version` | `1.0.0` (the guest assignment's label; a later release passes a higher one) |
 
 ```sh
 python3 policy/build_policies.py --content-uri <asset URL> --content-hash <sha256> --version <x.y.z> --out policy/out
@@ -154,6 +183,14 @@ storage mode, on the package container). **Upgrading from a setup without storag
 create` returns an existing assignment unchanged, with its old condition; then update the condition
 (`az role assignment update`) or the reader grant fails with "does not have permission to perform action
 roleAssignments/write". Repeat for `perfmon-blackbox-arc` (`pbb-arc`). Wait a minute after the role assignments before the remediation.
+
+**A remediation marked Failed with `RoleAssignmentExists`** (storage mode): a server already holds Storage Blob Data
+Reader on the package container under another assignment (for example one granted by hand). The guest assignment is
+still written, but the remediation reports Failed and the next one fails again. Delete the extra assignment (keep the
+one the policy made, its description starts with `perfmon-blackbox:`), then scan and remediate again. Check afterwards
+that the server's guest assignment says `ApplyAndAutoCorrect` (the `Check` command below, with
+`--query properties.guestConfiguration.assignmentType`); in the lab one such server stayed `Audit` until a clean
+remediation (tests.md, "rc.11 on lab18").
 
 What happens per server: the guest assignment `PerfmonBlackbox` is created; one role assignment of the Writer role on
 the container lets the server write only under `<subscriptionId>/<resourceGroup>/<server>/`; within 15–30 minutes the

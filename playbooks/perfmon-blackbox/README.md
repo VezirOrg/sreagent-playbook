@@ -11,8 +11,9 @@ running on every Azure VM and Arc-enabled server: collection is the input, **the
 > Not an official Microsoft product. Working and versioned, no support promise. See the
 > [repo README](../../README.md).
 
-**Status: release candidate in lab testing** (the `perfmon-blackbox/v1.0.0-rc.N` pre-releases are lab test builds, not for use). This
-guide becomes final with `perfmon-blackbox/v1.0.0`.
+**Status: v1.0.0** ([release](https://github.com/VezirOrg/sreagent-playbook/releases/tag/perfmon-blackbox/v1.0.0), package `PerfmonBlackbox.zip`, SHA-256 `806BCADB69F55640…`). Tested end to end
+on an Azure VM and an Arc-enabled server ([docs/tests.md](docs/tests.md)). The `v1.0.0-rc.N` pre-releases were lab
+test builds; do not use them.
 
 ## What it does
 
@@ -79,8 +80,9 @@ export window). Above that, raise `MaxSizeMB`, lengthen the interval or export m
 
 ## Deploy
 
-Step by step, with every command and role: **[docs/deploy.md](docs/deploy.md)** (storage, the two policies, the rights
-of the policy identity, remediation, the skill).
+Step by step, with every command and role: **[docs/deploy.md](docs/deploy.md)** (storage, the policy definitions, the
+rights of the policy identity, remediation, the skill). Use the commands from a clone of this repository at the tag
+`perfmon-blackbox/v1.0.0`; the release notes give the package URL and its SHA-256.
 
 ## On each server
 
