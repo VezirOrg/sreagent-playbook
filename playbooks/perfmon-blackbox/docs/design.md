@@ -115,8 +115,10 @@ is uploaded and verified.
    `.blg` to `pending\<yyyymmdd-hhmmss>.blg` and starts it again. The restart gap (seconds) is a `collector_restart`
    gap in the manifest. T10 measures it (≤ 10 s).
 2. **Window.** Sources = all pending buffers (the just-rolled one included), in time order. The window is **from the first sample
-   after `last_ts` to the last sample in the newest pending buffer**. `relog <sources> -f csv -b <last_ts + 1 s> -e <end>
-   -o export.csv` (relog's begin/end filter). **No overlap**: every sample ≤ `last_ts` is excluded by construction.
+   after `last_ts` to the last sample in the newest pending buffer**. As built (rc.9): `relog <file> -f csv` per
+   pending buffer, then the CSVs are merged in time order into one (`Merge-BbCsv`: union header, only samples after
+   `last_ts`, strictly increasing); the first design's single `relog <sources> -b <last_ts + 1 s> -e <end>` call is not
+   used. **No overlap**: every sample ≤ `last_ts` is excluded by construction.
    **No gap**: every sample after `last_ts` still on the disk is included.
 3. **Loss detection.** The CSV is scanned for holes: any step between consecutive samples > 2 × interval, and the
    step from `last_ts` to the first exported sample. Each hole gets a cause:

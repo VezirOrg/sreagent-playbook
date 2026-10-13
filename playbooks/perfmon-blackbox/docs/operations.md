@@ -40,6 +40,48 @@
 | `[BlackboxBootTask]` / `[BlackboxExportTask]` | `task … is not registered` / field differs | nothing; re-registered |
 | `[BlackboxCapacity]Capacity` | `buffer holds ~N h …` | raise `MaxSizeMB`, lengthen the interval or export more often: [parameters.md](parameters.md) |
 
+## How the export merges the pieces
+
+Each export uploads **one zip with one CSV**, even when the data on the server sits in several files. Folder:
+`C:\ProgramData\PerfmonBlackbox\`.
+
+**The pieces.** The collector writes one circular file, `blg\PerfmonBlackbox.blg`. Windows cannot read that file
+while the collector runs. So whenever the collector is stopped and started again, the file is first moved to
+`pending\` under a new name, and the collector starts a fresh one. A restart therefore never overwrites data that was
+not exported. A pending file is named `<yyyyMMdd-HHmmss>-<nn>-<reason>.blg`, with `-m<MaxSizeMB>` before `.blg` when
+the ring's size limit is known. The reason says why it was closed:
+
+| Reason | When |
+|---|---|
+| `export` | the export's own **roll**: stop the collector, move the file, start it again (a few seconds, `roll_seconds` in the manifest) |
+| `boot` | after a restart of the server: the file was last written before the boot (moved by the Boot task or by Machine Configuration, whichever starts the collector first) |
+| `recreate` | Machine Configuration re-created the collector (counter list, interval or size changed) |
+| `start` | the collector was found stopped and started again |
+
+**The merge.** The export (every `ExportEveryHours`) first rolls, then takes every file in `pending\`, oldest name first:
+
+1. `relog <file> -f csv` converts each file on its own to a CSV.
+2. The CSVs are joined in time order into **one** CSV with one header (all columns of all pieces). Only samples
+   **after `last_ts`** are kept. `last_ts` is the last sample of the last upload that succeeded, kept in `state.json`.
+   A sample that is not newer than the one before it is dropped. So nothing already uploaded is sent again (**no
+   overlap**), and every sample still on the disk after `last_ts` is included (**no gap** of our own making).
+3. Every step between two samples longer than 2 × the interval becomes a **gap** in the manifest, with a cause. A
+   hole **between two pieces** is `machine_off` if the earlier piece was closed by a boot, `buffer_overrun` if the
+   later piece had wrapped (filled and overwritten its oldest samples), otherwise `collector_restart`. A hole
+   **inside one piece** is `missing_samples`. A hole **before the first sample** (from `last_ts`) is `export_roll`
+   (the previous roll, seconds), `buffer_overrun`, `local_cap` or `collector_restart`. See [Manifest gaps](#manifest-gaps).
+4. The CSV and `manifest.json` (window, rows, `sources[]` = the pieces used, `gaps[]`, `complete`) are zipped and uploaded.
+
+**When pieces are deleted.**
+- **After the upload succeeded**: the zip is sent with its MD5, which the storage service checks, and the service answered 201. Then `last_ts`
+  moves forward and the pieces that went into the zip are deleted. If the upload fails (after its retries), nothing
+  is deleted and `last_ts` stays: the next export reads the same pieces again.
+- A piece with no sample after `last_ts` is deleted at once (everything in it was already uploaded).
+- A piece `relog` cannot read stays for the next exports. After **3** failed reads it is deleted, and the next
+  manifest reports its span as an `unreadable_ring` gap.
+- If pending pieces and unsent zips together exceed `LocalKeepMB` (exports failing for a long time), the oldest
+  pieces are deleted first, and the next manifest reports a `local_cap` gap.
+
 ## Manifest gaps
 
 | Cause | Meaning | Action |

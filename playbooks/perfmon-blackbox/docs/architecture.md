@@ -84,7 +84,8 @@ Both use only what ships with Windows: `logman`, `relog`, `schtasks`, `icacls`, 
 
 1. **Roll**: stop the collector, move the ring to `pending\`, start it again (a running circular `.blg` cannot be read;
    the restart costs a few seconds and is measured in every manifest as `roll_seconds`).
-2. **Window**: relog every pending ring to CSV, merge them in time order, keep only samples after the last exported one.
+2. **Window**: relog every pending ring to CSV, merge them in time order, keep only samples after the last exported one
+   (details: [operations.md, How the export merges the pieces](operations.md#how-the-export-merges-the-pieces)).
 3. **Holes**: every step longer than two intervals becomes a gap with a cause (`buffer_overrun`, `collector_restart`,
    `machine_off`, `local_cap`, `missing_samples`, `unreadable_ring`); `complete` is false if there is any.
 4. **Zip** the CSV with `manifest.json`; **upload** with the server's identity; only then move `last_ts` forward.

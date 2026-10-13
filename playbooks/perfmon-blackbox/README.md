@@ -101,7 +101,7 @@ source: [docs/cost.md](docs/cost.md).
 | [docs/architecture.md](docs/architecture.md) | how it fits together (diagram) |
 | [docs/deploy.md](docs/deploy.md) | deploying it |
 | [docs/parameters.md](docs/parameters.md) | parameters, buffer hours, the capacity check |
-| [docs/operations.md](docs/operations.md) | upgrades, troubleshooting, removal |
+| [docs/operations.md](docs/operations.md) | upgrades, troubleshooting, removal, [how the export merges the pieces](docs/operations.md#how-the-export-merges-the-pieces) |
 | [docs/security.md](docs/security.md) | identities, roles, the prefix condition, what runs on servers |
 | [docs/cost.md](docs/cost.md) | cost per server and per deployment |
 | [docs/tests.md](docs/tests.md) | every test and its status |
