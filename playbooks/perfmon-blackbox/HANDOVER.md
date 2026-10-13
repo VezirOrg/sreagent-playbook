@@ -1,4 +1,4 @@
-# perfmon-blackbox: session 3 CLOSED (2026-10-12). Next: 10-13 finish lab18 (second-lab-plan.md §0), 10-14 second lab. rc.9 on both; T16, T17 green on both. CAP-500 OPEN.
+# perfmon-blackbox: session 4 OPEN (2026-10-13): finishing lab18 (second-lab-plan.md §0). 10-14 second lab, agent cap 1000 AAU (P60). rc.9 on both.
 
 Playbook: **perfmon-blackbox**. Read `../../CLAUDE.md`, `CLAUDE.md`, this file, then `decisions.md` (P1–P59; the
 latest are P50–P59) and **`docs/second-lab-plan.md`**. Every `az`/`azd` call runs as `direnv exec . <command>` from
@@ -35,7 +35,7 @@ Every lab run ends before **21:45Z**. Report each milestone to the owner (the ve
 
 **2026-10-14: the second lab** (P57/P58, GÜN-14): build after the teardown, README-only fresh-eyes deploy in storage
 mode, then the full suite on vm1 and arc1. Plan, cost (≈ 1.20 USD/h fixed, 0.110 USD per AAU observed) and timeline:
-`docs/second-lab-plan.md`. **OPEN: CAP-500** (500-AAU active-flow cap on the new agent), Emre's call.
+`docs/second-lab-plan.md`. Agent cap: **1000 AAU/month** on the new agent (P60, Emre; closes CAP-500).
 
 ## State at close (2026-10-12 17:45Z)
 
@@ -77,5 +77,5 @@ mode, then the full suite on vm1 and arc1. Plan, cost (≈ 1.20 USD/h fixed, 0.1
 
 ## Waiting on others
 
-- Emre: CAP-500; the final go on lab18's teardown list (after §0); OPEN-1, OPEN-2 (P8); the v1.0.0 tag.
+- Emre: the final go on lab18's teardown list (after §0); OPEN-1, OPEN-2 (P8); the v1.0.0 tag.
 - The vezir: lab register edits (requests from here); the lab SP secret rotation noted in session 1 (R15).

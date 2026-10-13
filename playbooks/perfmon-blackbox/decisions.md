@@ -752,3 +752,10 @@ whole Entra tenant, Learn *Azure custom roles*; policy definition names are uniq
 the subscription: the request said "tenant-wide" for both, written precisely here). `cost.md`: the SRE Agent's
 always-on cost. Today's results (T16 both, T17, T18c–f, T10e, T07b, rc.9) in the docs. Then a full close: HANDOVER
 rewritten so the next session starts at `second-lab-plan.md` §0; CAP-500 OPEN.
+
+## P60: the second lab's agent cap is 1000 AAU a month (Emre via the vezir, 2026-10-12 21:00, "CAP-1000"; closes CAP-500)
+
+The second lab's SRE Agent gets a monthly active-flow allocation of **1000 AAU** (≈ 110 USD at the 0.110 USD per AAU
+lab18 was billed), **not** the proposed 500 (the Learn minimum). It is set when the agent is built (2026-10-14) and is
+the guard against a runaway loop: past it the agent stops answering instead of spending more. The always-on flow
+(4 AAU per agent-hour) is billed separately and is not limited by it. CAP-500 is closed by this decision.

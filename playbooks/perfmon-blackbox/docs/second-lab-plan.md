@@ -1,6 +1,6 @@
 # Second-lab fresh-eyes deploy: build plan (DRAFT for Emre's approval)
 
-> **Status: draft, 2026-10-12 (P57). Option A decided (P58). Day: **2026-10-14** (P58, GÜN-14). OPEN: the 500-AAU cap.
+> **Status: draft, 2026-10-12 (P57). Option A decided (P58). Day: **2026-10-14** (P58, GÜN-14). Agent cap: **1000 AAU/month** (P60).
 > Nothing is torn down or built, and no Azure change is made for it, until Emre's final go on the teardown list.**
 > Purpose: DoD item 2 (`../../../docs/definition-of-done.md`): someone with no access to the record deploys the
 > playbook into a clean lab **from the README alone** and gets the stage suite green; every gap found is fixed in the
@@ -72,8 +72,8 @@ Measured on lab18 (Azure Cost Management, actual cost, 2026-10-11/12; retail USD
 | SRE Agent **active flow** (the analyses: T15, T16 × 2, T17 × 2, plus the fresh-eyes session's own questions) | variable | lab18's heaviest test day (10-11) used ≈ 370 AAU active ≈ 40 USD |
 
 **Budget for one day (≈ 10 h):** ≈ 12 USD fixed + ≈ 20–40 USD active flow ≈ **35–55 USD**. Guard: the second lab's
-agent gets the minimum monthly active-flow allocation (**500 AAU ≈ 55 USD**, Learn: min 500): if a loop runs away, the
-agent stops answering instead of spending more. If the lab has to stay overnight, ≈ 0.8 USD/h (agent always-on +
+agent gets a monthly active-flow allocation of **1000 AAU ≈ 110 USD** (P60, Emre; the proposed 500, the Learn minimum,
+was not taken): if a loop runs away, the agent stops answering instead of spending more. If the lab has to stay overnight, ≈ 0.8 USD/h (agent always-on +
 Bastion + PEs; VMs stopped by the nightly lab automation) ≈ 11 USD a night.
 
 ## 4. How long it runs
@@ -108,5 +108,5 @@ for the re-run (≈ 3 h), unless Emre says to keep it.
 
 1. ~~Option A, B or C for the name clash~~: **A** (P58).
 2. ~~The day~~: **2026-10-14** (P58, GÜN-14).
-3. The active-flow cap (500 AAU) for the second lab's agent. OPEN.
+3. ~~The active-flow cap for the second lab's agent~~: **1000 AAU/month** (P60; not the proposed 500).
 4. The final go on lab18's teardown list (sent after section 0, item 6).
