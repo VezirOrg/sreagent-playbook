@@ -986,3 +986,15 @@ the teardown list goes to the vezir; nothing is deleted without Emre's go. P68 n
    a lab test of storage mode (T18) first.
 2. **S2 is skipped** in post 6 part 1: the policy view is told by S3 (guest assignment Compliant) and C6 (the
    `complianceStatus` call).
+
+## P71: a planted problem on lab20 for post 6 part 1, and a second agent question (Emre via the vezir, 2026-10-13 ~18:30Z)
+
+**Why.** Emre: an analysis that finds a real problem shows the product better in part 1 than "nothing critical". The
+post says plainly that **the problem was created on purpose** (synthetic load, lab only).
+**What.** On vm1, the T16 plant (`tests/lab/guest/make-trouble.ps1`, lab only, never shipped, P43: memory leak + CPU
+burst) at `-Scale 0.5 -LeakMBPerHour 1200`: a leak in `bbleak` for ~22 min (~450 MB) and all CPUs ≥ 95 % in `bbcpu` for
+6 min (above the skill's 5-minute threshold). Its `truth.json` is the ground truth (start/end times recorded). The
+scheduled hourly export (~19:07Z) covers the window; then the same deploy.md question in a new thread, the report scored
+against the truth with `tests/scoring/score.py` (T16 rubric). Emre may have a Bastion session on vm1 meanwhile: the CPU
+burst makes it slow for 6 minutes, and his session's own processes are not part of the truth. Ends before 21:45Z;
+teardown is asked afterwards.
