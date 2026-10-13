@@ -177,10 +177,11 @@ PRESHUTDOWN or SHUTDOWN (nothing found).
 for every set, every time, at the moment the services stop). On 05:00 the Windows Update preshutdown overran (7043),
 the preshutdown phase took twice as long, and PLA went to "stopped" 16 ms after the phase ended without stopping
 any set; the circular file was left open, unclosed, so `relog` sees `PDH_BINARY_LOG_CORRUPT`. Why PLA skipped its set
-stop is not documented [G: the shutdown ran out of time after the long preshutdown]. Not the cause [O]: Arc (arc1 is
-an Azure VM with the Arc agent; the shutdown path is the Azure guest shutdown, `himds` stopped normally), the young
-ring (vm1 rc.7's ring was 36 min, arc1's nightly rings hours), or `az vm restart` as such (the same "CleanShutdown by
-wvchelper" path left readable rings 6 times). One case only: the Windows Update link is a correlation, not a proof.
+stop is not documented [G: the shutdown ran out of time after the long preshutdown]. Not the cause [O]: `az vm restart` as such
+(the same "CleanShutdown by wvchelper" path left readable rings 6 times), or Arc (arc1 is an Azure VM with the Arc
+agent; the shutdown path is the Azure guest shutdown, `himds` stopped normally; an on-premises Arc server's shutdown
+path was not observed). Not excluded: the ring's age (6 min here; arc1's readable nightly ring had run ≈ 1.7 h since
+the 20:07 roll; vm1's ages were not measured) [G: unlikely, since no set at all was stopped, not only this one]. One case only: the Windows Update link is a correlation, not a proof.
 
 **Why it matters [G].** Reboots during or right after Windows Update (patch nights) are exactly when the preshutdown
 phase is long. The loss is bounded by the time since the last roll: here 6 min because an export had run at 04:54;
