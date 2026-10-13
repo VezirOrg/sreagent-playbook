@@ -59,7 +59,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T06f G3 without IIS: no storm; auto-detect | | storm part green (dc, P27); auto-detect pending | pending |
 | T07 scheduled tasks | | green | green |
 | T07b buffer hours measured | | green (21.7 h at 10 s) | **green, computed** (P56, 2026-10-12): 56,562 bytes/sample measured by the 12:07Z export (241 samples, 40 min, no planted load, 94 processes); 512 MB at 10 s = **26.4 h** (P27 formula: 56,440 at 98 processes, 26.4 h), ≥ 6 h |
-| T08 reboot | | green (rc.7: boot ring kept, Boot task after boot, only a 67-s machine_off gap) | **red** (rc.9, 2026-10-13 05:00Z: `az vm restart`, clean shutdown (event 1074, 6006), collector Running and Boot task result 0 after boot, but the pre-reboot ring (6 min, 2 MB) is unreadable: kept in `pending\`, and the export shows a 405-s `collector_restart` gap instead of the samples plus a `machine_off` gap. Stopped and reported; under decision) |
+| T08 reboot | | green (rc.7: boot ring kept, Boot task after boot, only a 67-s machine_off gap) | **red** (rc.9, 2026-10-13 05:00Z: `az vm restart`, clean shutdown (event 1074, 6006), collector Running and Boot task result 0 after boot, but the pre-reboot ring (6 min, 2 MB) is unreadable: kept in `pending\`, and the export shows a 405-s `collector_restart` gap instead of the samples plus a `machine_off` gap. Stopped and reported; cause researched below, gate open) |
 | T09 two exports, no gap, no overlap | | green | green |
 | T10 roll gap ≤ 10 s | | green | green |
 | T10b overrun detected | | pending | green |
@@ -138,3 +138,61 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
   agent, asked in a new thread to analyse the latest capture, names the zip, finds the leak (rate within 40 %) and the
   CPU burst at its time with its driver, invents nothing (a disk or network problem claimed counts as invented), and
   keeps to the skill's rules. The plants are verified in the capture first. Pass = score ≥ 80, both found (P43).
+
+## T08 on arc1, red on rc.9: why the pre-reboot ring could not be read (research, 2026-10-13)
+
+Research only (Emre via the vezir, 08:35 +03): logs read on arc1 and vm1, `relog` run on a **copy** of the ring (the
+original's SHA-256 was the same before and after the copy), no reboot, no test run, no package change. Evidence (masked):
+`files/test-runs/261013-lab18/` (`T08-arc1.txt`, `research-*.txt`). **[O]** = observed, **[L]** = Learn, **[G]** = guess.
+
+**What the file is.** `pending\20261013-050116-00-boot.blg`, 2,097,152 B, last written 05:00:23Z. `relog -q` on
+the copy: "Unable to read counter information and data from input binary log files", exit 0xC0000BF7 [O], which is
+`PDH_BINARY_LOG_CORRUPT` [L: *Performance Data Helper Error Codes*]. A running circular `.blg` cannot be read
+either, not even as a copy (P21 [O]). So the ring was **never closed**: PLA did not stop the collector before the OS went down.
+
+**What happened at the shutdown.** `az vm restart` (issued by T08) produced a clean, planned shutdown: 05:00:00 event
+1074 "CleanShutdown by wvchelper … Shutdown Type: shutdown", 05:00:32 event 6006, 05:00:33 Kernel-Power 109, boot
+05:00:39 [O]. Normal reboot = 1074 then 6006/6009; unexpected = 41/6008 [L: *Troubleshoot unexpected reboots using
+system event logs*]. No 41/6008 here.
+
+**The difference from every shutdown that left a readable ring** (7 clean shutdowns on lab18 since 10-11 [O]):
+
+| Shutdown | Preshutdown phase (1074 → services stop) | 7043 "did not shut down properly after a preshutdown control" | PLA Operational 1005 "set stopped" | Ring |
+|---|---|---|---|---|
+| arc1 10-11 21:45, 10-12 21:46; vm1 10-11 18:22 (rc.7 T08), 19:01, 21:45, 10-12 21:46 (deallocate, auto-shutdown, restart) | ≈ 16 s | Defender ATP (`Sense`) only | **yes**: PerfmonBlackbox and the Azure agent's own sets (GAEvents, RTEvents), at the second the services stop | readable |
+| **arc1 10-13 05:00 (T08)** | **≈ 32 s** | `Sense` (05:00:16) **and Windows Update** (05:00:32) | **none, for any set**, although the PLA service logs "stopped" at 05:00:32.652 | **unreadable** |
+| vm1 10-11 19:10 (P54's ring) | — (no 1074) | — | none | unreadable (41/6008: an abrupt stop) |
+
+At 04:59:21, 39 s before the restart, Windows Update had started installing a Defender security-intelligence
+update (KB2267602) [O]. arc1 had booted at 04:48 after the night deallocated it [O].
+
+**How shutdown treats services [L: *Service Control Handler Function*; *SERVICE_PRESHUTDOWN_INFO*].** Services that
+accept PRESHUTDOWN get it first; the SCM waits until each stops or its preshutdown timeout ends (default 10 s since
+build 15063). Then SERVICE_CONTROL_SHUTDOWN goes to the services that accept it, and after the shutdown time limit
+(`WaitToKillServiceTimeout`; arc1: 5000 ms [O]) "system shutdown proceeds regardless of whether service shutdown is
+complete". Learn does not say how PLA closes a running counter log at shutdown, and whether it does so in
+PRESHUTDOWN or SHUTDOWN (nothing found).
+
+**Likely cause [G, strongest supported].** PLA closes its running sets as part of the normal service shutdown (1005
+for every set, every time, at the moment the services stop). On 05:00 the Windows Update preshutdown overran (7043),
+the preshutdown phase took twice as long, and PLA went to "stopped" 16 ms after the phase ended without stopping
+any set; the circular file was left open, unclosed, so `relog` sees `PDH_BINARY_LOG_CORRUPT`. Why PLA skipped its set
+stop is not documented [G: the shutdown ran out of time after the long preshutdown]. Not the cause [O]: Arc (arc1 is
+an Azure VM with the Arc agent; the shutdown path is the Azure guest shutdown, `himds` stopped normally), the young
+ring (vm1 rc.7's ring was 36 min, arc1's nightly rings hours), or `az vm restart` as such (the same "CleanShutdown by
+wvchelper" path left readable rings 6 times). One case only: the Windows Update link is a correlation, not a proof.
+
+**Why it matters [G].** Reboots during or right after Windows Update (patch nights) are exactly when the preshutdown
+phase is long. The loss is bounded by the time since the last roll: here 6 min because an export had run at 04:54;
+it can be up to `ExportEveryHours` (4 h). It is never silent: the hole is in the next manifest (here as
+`collector_restart`), and after 3 failed reads RING-A deletes the ring and reports `unreadable_ring` (P54).
+
+**Docs and tests this contradicts (listed, not resolved):**
+1. `docs/operations.md` (`unreadable_ring` row) and `docs/design.md` (`unreadable_ring`): "a ring cut by an abrupt
+   stop (power loss, forced restart)". Observed: a clean, planned restart can leave one.
+2. `decisions.md` P54: "A normal deallocate … left a readable ring, so only abrupt stops cause this."
+3. `docs/test-plan.md` T08 and this file's T08 description: "the next export holds it with only a `machine_off` gap";
+   not met on arc1.
+4. `docs/design.md` §gaps: `machine_off` when "the hole lines up with … a boot time". The 04:54:32–05:01:17 hole
+   contains the 05:00:39 boot but is labelled `collector_restart`; the code labels `machine_off` only when the
+   earlier **readable** part was closed by a boot (`PerfmonBlackbox.Common.ps1`), and the unreadable ring is not a part.
