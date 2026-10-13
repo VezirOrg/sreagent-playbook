@@ -32,6 +32,10 @@ Configuration PerfmonBlackbox {
             Name      = 'ExportTask'
             DependsOn = '[BlackboxFiles]Files'
         }
+        BlackboxRollTask RollTask {
+            Name      = 'RollTask'
+            DependsOn = '[BlackboxFiles]Files'
+        }
         BlackboxCapacity Capacity {
             Name      = 'Capacity'
             DependsOn = '[BlackboxRunning]Running'

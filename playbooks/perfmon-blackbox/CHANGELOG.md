@@ -41,3 +41,8 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
   reported as an `unreadable_ring` gap in the next manifest and as event 2003 (P54, RING-A); L05 39/39. Lab: T10e, T18de.
 - 2026-10-12: docs: name uniqueness for a second deployment (custom role names tenant-wide, policy definition names
   per subscription), custom roles deleted explicitly on removal, the SRE Agent's cost (always-on 4 AAU/h), test status.
+- 2026-10-13: **rc.10** (package 1.0.9, P62, T08-FIX): a `\PerfmonBlackbox\Roll` task (DSC resource R7) closes the
+  ring into `pending\` every 15 min, so a shutdown that leaves the open file unclosed loses at most 15 min; R6 checks
+  `LocalKeepMB` against the export window and the ring against the roll; a hole that contains a recorded boot is
+  `machine_off`; an unreadable ring's span starts at its recorded start (not the file's CreationTime); a piece with
+  fewer than 2 samples is deleted, not counted as unreadable. Adopter docs: "How it works on the server".

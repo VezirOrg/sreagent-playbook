@@ -1,4 +1,4 @@
-# T07 in-guest (Windows PowerShell 5.1): exactly the Boot and Export tasks under \PerfmonBlackbox\, as expected;
+# T07 in-guest (Windows PowerShell 5.1): exactly the Boot, Export and Roll (P62) tasks under \PerfmonBlackbox\, as expected;
 # each run on demand, then Last Result 0 and Last Run Time after the start. Prints RESULT: PASS|FAIL.
 param([switch]$NoRun)
 $ErrorActionPreference = 'Stop'
@@ -8,14 +8,14 @@ $bin = 'C:\ProgramData\PerfmonBlackbox\bin'
 $fail = 0
 $all = @(& schtasks.exe /query /fo csv /nh | ConvertFrom-Csv -Header TaskName, Next, Status | Where-Object { $_.TaskName -like '\PerfmonBlackbox\*' } | ForEach-Object TaskName | Sort-Object -Unique)
 "tasks under \PerfmonBlackbox\: $($all -join ', ')"
-if (($all -join ',') -ne '\PerfmonBlackbox\Boot,\PerfmonBlackbox\Export') { 'UNEXPECTED TASK SET'; $fail = 1 }
-foreach ($k in 'Boot', 'Export') {
+if (($all -join ',') -ne '\PerfmonBlackbox\Boot,\PerfmonBlackbox\Export,\PerfmonBlackbox\Roll') { 'UNEXPECTED TASK SET'; $fail = 1 }
+foreach ($k in 'Boot', 'Export', 'Roll') {
     $exp = New-BbTaskXml -Kind $k -BinDir $bin -ExportEveryHours $cfg['ExportEveryHours']
     foreach ($r in (Compare-BbTask -Kind $k -Actual (Get-BbTask $k) -ExpectedXml $exp)) { "DIFF $r"; $fail = 1 }
 }
 function Info($k) { & schtasks.exe /query /tn "\PerfmonBlackbox\$k" /v /fo csv | ConvertFrom-Csv | Select-Object -First 1 }
 if (-not $NoRun) {
-    foreach ($k in 'Boot', 'Export') {
+    foreach ($k in 'Boot', 'Roll', 'Export') {
         $t0 = Get-Date
         $null = & schtasks.exe /run /tn "\PerfmonBlackbox\$k"
         Start-Sleep 5

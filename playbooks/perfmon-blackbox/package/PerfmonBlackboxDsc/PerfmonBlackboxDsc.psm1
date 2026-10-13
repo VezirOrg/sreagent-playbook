@@ -218,7 +218,30 @@ class BlackboxExportTask {
     [void] Set() { Register-BbTask -Kind 'Export' -Xml $this.Expected() }
 }
 
-# R6: capacity check, audit only (CHOICE 9): buffer hours >= 1.5 x the export window, numbers in the reason
+# R7: \PerfmonBlackbox\Roll (daily, every 15 min, SYSTEM): closes the ring into pending\ (P62)
+[DscResource()]
+class BlackboxRollTask {
+    [DscProperty(Key)] [string] $Name
+    [DscProperty(NotConfigurable)] [Reason[]] $Reasons
+
+    [string] Expected() { return (New-BbTaskXml -Kind 'Roll' -BinDir (Get-BbBinDir)) }
+
+    [Reason[]] Check() {
+        try {
+            $out = @()
+            foreach ($t in (Compare-BbTask -Kind 'Roll' -Actual (Get-BbTask 'Roll') -ExpectedXml $this.Expected())) { $out += New-BbReason 'BlackboxRollTask' 'TaskDiffers' $t }
+            return $out
+        } catch { return @(New-BbReason 'BlackboxRollTask' 'CheckFailed' $_.Exception.Message) }
+    }
+
+    [BlackboxRollTask] Get() { $this.Reasons = $this.Check(); return $this }
+
+    [bool] Test() { return (@($this.Check()).Count -eq 0) }
+
+    [void] Set() { Register-BbTask -Kind 'Roll' -Xml $this.Expected() }
+}
+
+# R6: capacity check, audit only (CHOICE 9): LocalKeepMB >= 1.5 x the export window and the ring >= 1.5 x the 15-min roll (P62)
 [DscResource()]
 class BlackboxCapacity {
     [DscProperty(Key)] [string] $Name

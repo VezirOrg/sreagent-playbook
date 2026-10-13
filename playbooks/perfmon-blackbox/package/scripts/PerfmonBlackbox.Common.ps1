@@ -76,14 +76,52 @@ function Get-BbState {
     param([string]$Path = (Get-BbPaths).State)
     $s = Read-BbJson $Path
     if (-not $s) { $s = @{} }
-    foreach ($k in 'last_ts', 'seq', 'buffer_hours', 'bytes_per_sample', 'local_cap_drops', 'unreadable_reads', 'unreadable_drops', 'last_error', 'last_export_utc') {
+    foreach ($k in 'last_ts', 'seq', 'buffer_hours', 'bytes_per_sample', 'local_cap_drops', 'unreadable_reads', 'unreadable_drops', 'last_error', 'last_export_utc', 'boots', 'ring_started') {
         if (-not $s.ContainsKey($k)) { $s[$k] = $null }
     }
     if ($null -eq $s['seq']) { $s['seq'] = 0 }
     if ($null -eq $s['local_cap_drops']) { $s['local_cap_drops'] = @() }
     if (-not ($s['unreadable_reads'] -is [hashtable])) { $s['unreadable_reads'] = @{} }
     if ($null -eq $s['unreadable_drops']) { $s['unreadable_drops'] = @() }
+    if ($null -eq $s['boots']) { $s['boots'] = @() }
     return $s
+}
+
+$script:BbStampFormat = 'yyyy-MM-dd HH:mm:ss.fff'
+$script:BbRollMinutes = 15   # P62: the Roll task closes the ring every 15 min; fixed in the package
+
+function ConvertFrom-BbStateStamp {
+    # 'yyyy-MM-dd HH:mm:ss.fff' (local time, as PerfMon writes it) -> [datetime], or $null
+    param($Text)
+    if (-not $Text) { return $null }
+    $t = [datetime]::MinValue
+    if ([datetime]::TryParseExact([string]$Text, $script:BbStampFormat, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$t)) { return $t }
+    return $null
+}
+
+function Add-BbBootRecord {
+    # P62: remember the boot times (last 20) so a hole that contains a restart is named machine_off
+    param([Parameter(Mandatory)][datetime]$BootTime, $Paths = (Get-BbPaths))
+    $st = Get-BbState $Paths.State
+    $stamp = $BootTime.ToString($script:BbStampFormat)
+    $boots = @(@($st['boots']) | Where-Object { $_ })
+    if ($boots -contains $stamp) { return }
+    $st['boots'] = @(($boots + $stamp) | Select-Object -Last 20)
+    Write-BbJson $Paths.State $st
+}
+
+function Save-BbState {
+    # write a state the caller read earlier, keeping the keys other steps own and may have written meanwhile:
+    # boots (Add-BbBootRecord) and ring_started (Start-BbCollector), P62
+    param([Parameter(Mandatory)]$State, $Paths = (Get-BbPaths))
+    $disk = Get-BbState $Paths.State
+    foreach ($k in 'boots', 'ring_started') { $State[$k] = $disk[$k] }
+    Write-BbJson $Paths.State $State
+}
+
+function Get-BbBoots {
+    param($State)
+    @(@($State['boots']) | ForEach-Object { ConvertFrom-BbStateStamp $_ } | Where-Object { $_ })
 }
 
 # ---------- counters, template, collector ----------
@@ -215,6 +253,12 @@ function Move-BbBufferToPending {
     if ($Reason -eq 'start' -or $Reason -eq 'boot') {
         try { $bootTime = (Get-CimInstance -ClassName Win32_OperatingSystem).LastBootUpTime } catch { $bootTime = $null }
     }
+    if ($bootTime) { try { Add-BbBootRecord -BootTime $bootTime -Paths $Paths } catch { } }
+    # P62: Windows gives a file re-created under the same name its old CreationTime, so the CreationTime of a ring
+    # is not its start: the start recorded by Start-BbCollector is stamped onto the newest ring when it is moved
+    $started = $null
+    try { $started = ConvertFrom-BbStateStamp (Get-BbState $Paths.State)['ring_started'] } catch { }
+    $newest = $files | Sort-Object LastWriteTime | Select-Object -Last 1
     foreach ($f in ($files | Sort-Object LastWriteTime)) {
         if ($f.Length -le 0) { Remove-Item -LiteralPath $f.FullName -Force; continue }
         $why = $Reason
@@ -224,7 +268,11 @@ function Move-BbBufferToPending {
         $mx = ''
         if ($MaxSizeMB -gt 0) { $mx = "-m$MaxSizeMB" }
         $name = '{0}-{1:D2}-{2}{3}.blg' -f $Now.ToString('yyyyMMdd-HHmmss'), $n, $why, $mx
-        Move-Item -LiteralPath $f.FullName -Destination (Join-Path $Paths.Pending $name)
+        $dest = Join-Path $Paths.Pending $name
+        Move-Item -LiteralPath $f.FullName -Destination $dest
+        if ($started -and $f.FullName -eq $newest.FullName -and $started -le $f.LastWriteTime) {
+            try { [System.IO.File]::SetCreationTime($dest, $started) } catch { }
+        }
         $moved += $name
         $n++
     }
@@ -368,12 +416,16 @@ function Find-BbGaps {
     # holes in the exported window (design sec. 2.2 step 3). Rows carry .Part (index into $PartInfo, each with
     # .Reason = why that pending buffer was closed: export|boot|recreate|start, and .Wrapped = the ring had filled).
     # A hole is a step > 2 x interval. Causes:
-    #   leading hole (from LastTs): buffer_overrun if the first part had wrapped, local_cap if a dropped buffer
-    #     overlaps it, else collector_restart
-    #   hole between two parts: machine_off if the earlier part was closed by a boot, else collector_restart
+    #   leading hole (from LastTs): buffer_overrun if the first part had wrapped, machine_off if it contains a recorded
+    #     boot (P62), export_roll if it is a roll's own few seconds (P41), local_cap if a dropped buffer overlaps it,
+    #     else collector_restart
+    #   hole between two parts: buffer_overrun if the later part had wrapped (P40), machine_off if it contains a recorded
+    #     boot or the earlier part was closed by a boot, export_roll if the earlier part was closed by a roll and the
+    #     hole is a roll's few seconds (P62), else collector_restart
     #   hole inside one part: missing_samples
     param([Parameter(Mandatory)]$Rows, [Parameter(Mandatory)][int]$IntervalSeconds, $LastTs, [object[]]$PartInfo = @(),
-          [object[]]$Drops = @())
+          [object[]]$Drops = @(), [object[]]$Boots = @())
+    $hasBoot = { param($from, $to) foreach ($bt in $Boots) { if ($bt -and [datetime]$bt -gt $from -and [datetime]$bt -lt $to) { return $true } }; return $false }
     $gaps = @()
     if (-not $Rows.Count) { return , $gaps }
     # each part (pending ring) is judged by its OWN interval: after an interval change the older rings were recorded
@@ -395,6 +447,7 @@ function Find-BbGaps {
             $p0 = $null
             if ($PartInfo.Count -gt $Rows[0].Part) { $p0 = $PartInfo[$Rows[0].Part] }
             if ($p0 -and $p0.Wrapped) { $cause = 'buffer_overrun' }
+            elseif (& $hasBoot $LastTs $first) { $cause = 'machine_off' }
             elseif ($sec -le 10 + $limit) { $cause = 'export_roll' }   # the previous export's own roll (P41)
             else {
                 foreach ($d in $Drops) {
@@ -413,7 +466,9 @@ function Find-BbGaps {
             # between two rings: if the LATER ring had wrapped, its own oldest samples were overwritten (P40)
             $cause = 'collector_restart'
             if ($PartInfo.Count -gt $b.Part -and $PartInfo[$b.Part].Wrapped) { $cause = 'buffer_overrun' }
+            elseif (& $hasBoot $a.Time $b.Time) { $cause = 'machine_off' }
             elseif ($PartInfo.Count -gt $a.Part -and $PartInfo[$a.Part].Reason -eq 'boot') { $cause = 'machine_off' }
+            elseif ($PartInfo.Count -gt $a.Part -and @('roll', 'export') -contains $PartInfo[$a.Part].Reason -and $sec -le 10 + $limit) { $cause = 'export_roll' }
         } else { $cause = 'missing_samples' }
         $gaps += [ordered]@{ from = $a.Time.ToString('yyyy-MM-dd HH:mm:ss.fff'); to = $b.Time.ToString('yyyy-MM-dd HH:mm:ss.fff'); seconds = [math]::Round($sec, 3); cause = $cause }
     }
@@ -436,7 +491,8 @@ function Get-BbBufferHours {
 }
 
 function Test-BbCapacity {
-    # R6: buffer hours >= 1.5 x the export window. Returns @{ Ok; Reason; BufferHours; Estimated }
+    # R6 (P62): the closed 15-min pieces wait in pending\ until the export, so LocalKeepMB must hold >= 1.5 x the export
+    # window, and the ring >= 1.5 x the roll interval. Returns @{ Ok; Reason; BufferHours (the ring); KeepHours; Estimated }
     param([Parameter(Mandatory)]$Config, $State, [int]$Processes = 0)
     $bps = $null; $est = $false
     if ($State -and $State['bytes_per_sample']) { $bps = [double]$State['bytes_per_sample'] }
@@ -445,16 +501,24 @@ function Test-BbCapacity {
         $bps = Get-BbEstimatedBytesPerSample $Processes
         $est = $true
     }
-    $hours = Get-BbBufferHours $bps $Config['MaxSizeMB'] $Config['SampleIntervalSeconds']
-    $need = 1.5 * $Config['ExportEveryHours']
+    $keepMB = 1024
+    if ($Config['LocalKeepMB']) { $keepMB = [int]$Config['LocalKeepMB'] }
+    $iv = $Config['SampleIntervalSeconds']
+    $hours = Get-BbBufferHours $bps $Config['MaxSizeMB'] $iv
+    $keep = Get-BbBufferHours $bps $keepMB $iv
+    $needKeep = 1.5 * $Config['ExportEveryHours']
+    $needRing = 1.5 * $script:BbRollMinutes / 60
     $kind = 'measured'
     if ($est) { $kind = "estimated, $Processes processes" }
-    $txt = "buffer holds ~$hours h at $($Config['SampleIntervalSeconds']) s with MaxSizeMB=$($Config['MaxSizeMB']) ($kind, $([int]$bps) bytes/sample), export every $($Config['ExportEveryHours']) h"
-    if ($hours -ge $need) {
-        return @{ Ok = $true; Reason = "$txt; margin ok (>= 1.5 x)"; BufferHours = $hours; Estimated = $est }
+    $txt = "ring holds ~$hours h with MaxSizeMB=$($Config['MaxSizeMB']), LocalKeepMB holds ~$keep h with LocalKeepMB=$keepMB, at $iv s ($kind, $([int]$bps) bytes/sample); roll every $($script:BbRollMinutes) min, export every $($Config['ExportEveryHours']) h"
+    $bad = @()
+    if ($keep -lt $needKeep) { $bad += 'LocalKeepMB holds less than 1.5 x the export window (raise LocalKeepMB, lengthen the interval or export more often)' }
+    if ($hours -lt $needRing) { $bad += "the ring holds less than 1.5 x the $($script:BbRollMinutes)-min roll (raise MaxSizeMB or lengthen the interval)" }
+    if (-not $bad.Count) {
+        return @{ Ok = $true; Reason = "$txt; margin ok (>= 1.5 x)"; BufferHours = $hours; KeepHours = $keep; Estimated = $est }
     }
-    return @{ Ok = $false; BufferHours = $hours; Estimated = $est
-        Reason = "$txt`: less than 1.5 x the export window, data will be lost; raise MaxSizeMB, lengthen the interval or export more often" }
+    return @{ Ok = $false; BufferHours = $hours; KeepHours = $keep; Estimated = $est
+        Reason = "$txt`: $($bad -join '; '); data will be lost" }
 }
 
 # ---------- identity, metadata, blob path ----------
@@ -629,7 +693,35 @@ function Stop-BbCollector {
 function Start-BbCollector {
     $r = Invoke-BbTool logman.exe @('start', $script:BbSetName)
     if ($r.ExitCode -ne 0) { throw "logman start failed ($($r.ExitCode)): $($r.Output -join ' ')" }
+    # P62: the ring's real start, for the span of an unreadable ring
+    try { $p = Get-BbPaths; $st = Get-BbState $p.State; $st['ring_started'] = (Get-Date).ToString($script:BbStampFormat); Write-BbJson $p.State $st } catch { }
     return $r
+}
+
+function Get-BbRingAgeSeconds {
+    # seconds since the collector started writing the current ring (state.ring_started), or $null if unknown
+    try { $t = ConvertFrom-BbStateStamp (Get-BbState)['ring_started'] } catch { $t = $null }
+    if (-not $t) { return $null }
+    return ((Get-Date) - $t).TotalSeconds
+}
+
+function Invoke-BbRollOnly {
+    # P62: the Roll task (every 15 min): close the ring into pending\ (reason roll); no relog, no upload. A ring younger
+    # than 3 intervals is left alone: a piece needs at least 2 samples or relog rejects it (PDH_LOG_SAMPLE_TOO_SMALL).
+    param([switch]$NoLock)
+    $lock = $null
+    if (-not $NoLock) { $lock = Lock-Bb }
+    try {
+        $c = Get-BbCollector
+        if (-not $c) { Write-BbLog 'roll: no collector set, nothing to roll'; return [pscustomobject]@{ Result = 'nocollector' } }
+        $iv = 10
+        try { $iv = (Get-BbConfig)['SampleIntervalSeconds'] } catch { }
+        $age = Get-BbRingAgeSeconds
+        if ($null -ne $age -and $age -lt 3 * $iv) { Write-BbLog "roll: ring only $([int]$age) s old, left for the next roll"; return [pscustomobject]@{ Result = 'young' } }
+        $roll = Invoke-BbRoll -Reason 'roll'
+        Write-BbLog "roll: closed $($roll.Moved -join ', ') in $([math]::Round(($roll.Started - $roll.Stopped).TotalSeconds, 1)) s"
+        return [pscustomobject]@{ Result = 'rolled'; Moved = $roll.Moved }
+    } finally { Unlock-Bb $lock }
 }
 
 function Invoke-BbRoll {
@@ -699,9 +791,11 @@ function Limit-BbLocalKeep {
 }
 
 function Register-BbUnreadableRing {
-    # P54 RING-A: a pending ring relog cannot read (cut by an abrupt stop, never closed) is kept for the next runs;
+    # P54 RING-A: a pending ring relog cannot read (never closed: an abrupt stop, or a shutdown that did not stop the
+    # collector, P62) is kept for the next runs;
     # after $Limit failed reads it is deleted and recorded in state.unreadable_drops, so the next manifest reports it
-    # as an unreadable_ring gap (never silent). The span is as far as the file tells: created .. last written.
+    # as an unreadable_ring gap (never silent). The span: the ring's recorded start (stamped as CreationTime when it
+    # was moved, P62) .. last written.
     # Returns $true when the file was deleted.
     param([Parameter(Mandatory)]$State, [Parameter(Mandatory)][IO.FileInfo]$File, [int]$Limit = 3)
     $reads = $State['unreadable_reads']
@@ -720,7 +814,7 @@ function Register-BbUnreadableRing {
         @(@{ file = $File.Name; from = $from.ToString($fmt); to = $to.ToString($fmt); bytes = $File.Length })
     Remove-Item -LiteralPath $File.FullName -Force
     Write-BbLog "unreadable pending buffer $($File.Name) ($($from.ToString($fmt)) .. $($to.ToString($fmt))): failed read $n of $Limit, deleted; the next manifest reports an unreadable_ring gap" 'WARN'
-    Write-BbEvent "PerfmonBlackbox: pending buffer $($File.Name) ($($from.ToString($fmt)) .. $($to.ToString($fmt))) could not be read $Limit times (cut by an abrupt stop) and was deleted unexported" 'Warning' 2003
+    Write-BbEvent "PerfmonBlackbox: pending buffer $($File.Name) ($($from.ToString($fmt)) .. $($to.ToString($fmt))) could not be read $Limit times (never closed) and was deleted unexported" 'Warning' 2003
     return $true
 }
 
@@ -747,14 +841,21 @@ $script:BbTaskFolder = '\PerfmonBlackbox'
 
 function New-BbTaskXml {
     # Boot: at startup. Export: daily, repeated every ExportEveryHours (24 = once a day), StartWhenAvailable.
-    # Both: SYSTEM (S-1-5-18), highest run level, Windows PowerShell 5.1.
-    param([Parameter(Mandatory)][ValidateSet('Boot', 'Export')][string]$Kind, [Parameter(Mandatory)][string]$BinDir,
+    # Roll (P62): daily, repeated every 15 min, the export script with -RollOnly.
+    # All: SYSTEM (S-1-5-18), highest run level, Windows PowerShell 5.1.
+    param([Parameter(Mandatory)][ValidateSet('Boot', 'Export', 'Roll')][string]$Kind, [Parameter(Mandatory)][string]$BinDir,
           [int]$ExportEveryHours = 4)
     $ps = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
     if ($Kind -eq 'Boot') {
         $trigger = '<BootTrigger><Enabled>true</Enabled><Delay>PT30S</Delay></BootTrigger>'
         $script = Join-Path $BinDir 'Start-PerfmonBlackbox.ps1'
         $taskArgs = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$script`" -Reason boot"
+        $limit = 'PT10M'
+        $restart = ''
+    } elseif ($Kind -eq 'Roll') {
+        $trigger = "<CalendarTrigger><Repetition><Interval>PT$($script:BbRollMinutes)M</Interval><Duration>P1D</Duration><StopAtDurationEnd>false</StopAtDurationEnd></Repetition><StartBoundary>2026-01-01T00:00:00</StartBoundary><Enabled>true</Enabled><ScheduleByDay><DaysInterval>1</DaysInterval></ScheduleByDay></CalendarTrigger>"
+        $script = Join-Path $BinDir 'Export-PerfmonBlackbox.ps1'
+        $taskArgs = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$script`" -RollOnly"
         $limit = 'PT10M'
         $restart = ''
     } else {
@@ -793,7 +894,7 @@ function New-BbTaskXml {
 
 function Get-BbTask {
     # the registered task as XML, or $null
-    param([Parameter(Mandatory)][ValidateSet('Boot', 'Export')][string]$Kind)
+    param([Parameter(Mandatory)][ValidateSet('Boot', 'Export', 'Roll')][string]$Kind)
     $r = Invoke-BbTool schtasks.exe @('/query', '/tn', "$script:BbTaskFolder\$Kind", '/xml')
     if ($r.ExitCode -ne 0) { return $null }
     return [xml](($r.Output -join "`n") -replace '^\s*<\?xml[^>]*\?>', '')
@@ -940,9 +1041,13 @@ function Invoke-BbExport {
         $machine = $Machine
         $account = ($cfg['StorageAccountResourceId'].TrimEnd('/') -split '/')[-1]
 
-        # 1 roll
+        # the current boot, so a hole that contains it is named machine_off (P62; the Boot task records it too)
+        try { Add-BbBootRecord -BootTime (Get-CimInstance -ClassName Win32_OperatingSystem).LastBootUpTime } catch { }
+
+        # 1 roll (a ring younger than 3 intervals is left for the next export: relog needs >= 2 samples, P62)
         $rollSeconds = 0
-        if (-not $NoRoll) {
+        $age = Get-BbRingAgeSeconds
+        if (-not $NoRoll -and -not ($null -ne $age -and $age -lt 3 * $iv)) {
             $roll = Invoke-BbRoll -Reason 'export'
             $rollSeconds = [math]::Round(($roll.Started - $roll.Stopped).TotalSeconds, 1)
         }
@@ -956,6 +1061,12 @@ function Invoke-BbExport {
         foreach ($f in $pending) {
             $csv = Join-Path $work ($f.BaseName + '.csv')
             $r = Invoke-BbTool relog.exe @($f.FullName, '-f', 'csv', '-o', $csv, '-y')
+            if (('{0:X8}' -f $r.ExitCode) -eq 'C0000BF8') {
+                # PDH_LOG_SAMPLE_TOO_SMALL: a closed piece with fewer than 2 samples (lab, P62); not an unreadable ring
+                Write-BbLog "pending buffer $($f.Name) holds fewer than 2 samples, deleted"
+                Remove-Item -LiteralPath $f.FullName -Force
+                continue
+            }
             if ($r.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $csv)) {
                 if (-not (Register-BbUnreadableRing -State $state -File $f)) { $unreadable += $f.Name }
                 continue
@@ -980,7 +1091,7 @@ function Invoke-BbExport {
         foreach ($k in @($state['unreadable_reads'].Keys)) {
             if (-not (Test-Path -LiteralPath (Join-Path $p.Pending $k))) { $state['unreadable_reads'].Remove($k) }
         }
-        Write-BbJson $p.State $state
+        Save-BbState $state
 
         # capacity: bytes per sample of the newest buffer with enough samples (R6 reads it from state.json)
         $meas = $partInfo | Where-Object { $_.Rows -ge 30 } | Select-Object -Last 1
@@ -991,7 +1102,7 @@ function Invoke-BbExport {
         }
         if (-not $parts.Count) {
             Write-BbLog 'export: no readable pending buffer, nothing to export'
-            Write-BbJson $p.State $state
+            Save-BbState $state
             return [pscustomobject]@{ Result = 'nothing'; Rows = 0 }
         }
 
@@ -1001,13 +1112,13 @@ function Invoke-BbExport {
         if (-not $rows.Count) {
             Write-BbLog 'export: no sample after last_ts'
             foreach ($f in $partFiles) { Remove-Item -LiteralPath $f.FullName -Force }
-            Write-BbJson $p.State $state
+            Save-BbState $state
             return [pscustomobject]@{ Result = 'nothing'; Rows = 0 }
         }
         $first = $rows[0].Time; $last = $rows[$rows.Count - 1].Time
 
         # 3 holes
-        $gaps = Find-BbGaps -Rows $rows -IntervalSeconds $iv -LastTs $lastTs -PartInfo $partInfo -Drops @($state['local_cap_drops'])
+        $gaps = Find-BbGaps -Rows $rows -IntervalSeconds $iv -LastTs $lastTs -PartInfo $partInfo -Drops @($state['local_cap_drops']) -Boots @(Get-BbBoots (Get-BbState))
         $gaps = Add-BbUnreadableGaps -Gaps $gaps -Drops @($state['unreadable_drops'])
         # a short roll of the previous export is expected and named, not a loss of data (P41)
         $complete = (@($gaps | Where-Object { $_.cause -ne 'export_roll' }).Count -eq 0)
@@ -1115,7 +1226,7 @@ function Invoke-BbExport {
         $state['last_blob'] = $blob
         $state['last_error'] = $null
         $state['local_cap_drops'] = $newDrops
-        Write-BbJson $p.State $state
+        Save-BbState $state
         # a part may already be gone (a LocalKeepMB drop during a retry wait, P49): its samples are in the uploaded zip
         foreach ($f in $partFiles) { Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue }
         Remove-Item -LiteralPath $zipPath -Force

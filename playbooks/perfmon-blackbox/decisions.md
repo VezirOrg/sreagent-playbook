@@ -811,3 +811,9 @@ header. Multi-input would be a shorter call, not a simpler export.
 recorded start, R6 two-part check), T01 on dc; rollout per P55; on vm1 and arc1: T04 (7 resources), T06, T07 (3
 tasks), T08, T09, T10, T11, a new T19 (15-min pieces merged into one CSV, no gap, deleted after upload); T07b
 recomputed on arc1; one T15. Not re-run, with reasons in `docs/tests.md`.
+- **rc.10** (P62, package version 1.0.9): `PerfmonBlackbox.zip` SHA-256
+  `9508003C5BAA8E0FEC8AE292AD32FFC0936685919BDAA4202533F268D6F9C562` (L05 47/47 and lint clean on dc, T01 green on dc
+  with 7 resources, 2026-10-13; 12 files extracted and scrub-checked clean before the upload). Two lab findings built
+  in: a closed piece with fewer than 2 samples makes `relog` fail with `PDH_LOG_SAMPLE_TOO_SMALL` (0xC0000BF8, dc,
+  `files/test-runs/261013-lab18/research-tiny-piece-dc.txt`): such a piece is deleted, not counted as unreadable,
+  and a ring younger than 3 intervals is not rolled.

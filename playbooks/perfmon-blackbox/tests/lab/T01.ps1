@@ -4,7 +4,7 @@ folder C:\BbDev under a PORTABLE PowerShell 7 (zip extracted to C:\BbDev\pwsh, n
 never on vm1/arc1, which must stay pwsh-free.
   1 build.ps1 -> PerfmonBlackbox.zip + SHA-256
   2 Get-GuestConfigurationPackageComplianceStatus: NonCompliant on a clean box
-  3 Start-GuestConfigurationPackageRemediation, then the status again: Compliant, all 6 resources
+  3 Start-GuestConfigurationPackageRemediation, then the status again: Compliant, all 7 resources (rc.10, P62)
   4 clean up: the collector set, the two tasks, the package files (C:\ProgramData\PerfmonBlackbox\bin etc.)
 #>
 param([string]$Src = 'C:\BbDev\src', [string]$StorageAccountResourceId = '/subscriptions/synthsub/resourceGroups/rg-synth/providers/Microsoft.Storage/storageAccounts/stsynth', [switch]$KeepApplied)
@@ -42,7 +42,7 @@ if ($s1.complianceStatus -ne $false) { "EXPECTED NonCompliant before remediation
 $null = Start-GuestConfigurationPackageRemediation -Path $zip -Parameter $params
 $s2 = Get-GuestConfigurationPackageComplianceStatus -Path $zip -Parameter $params
 Show $s2 'after'
-if ($s2.complianceStatus -ne $true -or @($s2.resources).Count -ne 6) { "EXPECTED Compliant with 6 resources after remediation"; $fail = 1 }
+if ($s2.complianceStatus -ne $true -or @($s2.resources).Count -ne 7) { "EXPECTED Compliant with 7 resources after remediation"; $fail = 1 }
 "logman: " + ((& logman query PerfmonBlackbox) -match '^(Status|Sample Interval|Max Size|Output Location):' -join ' | ')
 "tasks: " + ((& schtasks /query /tn '\PerfmonBlackbox\' /fo csv /nh) -join ' | ')
 if (-not $KeepApplied) {

@@ -176,6 +176,26 @@ Describe 'Gaps and their causes' {
         Get-BbPendingReason '20261011-120000-00-export.blg' | Should -Be 'export'
         Get-BbPendingMaxMB '20261011-120000-00-export.blg' | Should -Be 0
     }
+    It 'a leading hole that contains a recorded boot is machine_off, not collector_restart (P62, T08 arc1)' {
+        $pi = @([pscustomobject]@{ Reason = 'export'; Wrapped = $false })
+        $boot = $script:T0.AddSeconds(380)
+        (Find-BbGaps -Rows @(Rows @(400, 410) @(0, 0)) -IntervalSeconds 10 -LastTs $script:T0 -PartInfo $pi -Boots @($boot))[0].cause | Should -Be 'machine_off'
+        (Find-BbGaps -Rows @(Rows @(400, 410) @(0, 0)) -IntervalSeconds 10 -LastTs $script:T0 -PartInfo $pi)[0].cause | Should -Be 'collector_restart'
+        # a wrapped first part still wins: the ring overwrote samples
+        $pi[0].Wrapped = $true
+        (Find-BbGaps -Rows @(Rows @(400, 410) @(0, 0)) -IntervalSeconds 10 -LastTs $script:T0 -PartInfo $pi -Boots @($boot))[0].cause | Should -Be 'buffer_overrun'
+    }
+    It 'between two pieces: a roll is export_roll, a boot inside is machine_off, a long hole is collector_restart (P62)' {
+        $pi = @([pscustomobject]@{ Reason = 'roll'; Wrapped = $false; Interval = 1 }, [pscustomobject]@{ Reason = 'export'; Wrapped = $false; Interval = 1 })
+        $g = Find-BbGaps -Rows @(Rows @(0, 1, 2, 5, 6) @(0, 0, 0, 1, 1)) -IntervalSeconds 1 -LastTs $script:T0.AddSeconds(-1) -PartInfo $pi
+        $g.Count | Should -Be 1
+        $g[0].cause | Should -Be 'export_roll'
+        (Find-BbGaps -Rows @(Rows @(0, 1, 2, 60, 61) @(0, 0, 0, 1, 1)) -IntervalSeconds 1 -LastTs $script:T0.AddSeconds(-1) -PartInfo $pi)[0].cause | Should -Be 'collector_restart'
+        (Find-BbGaps -Rows @(Rows @(0, 1, 2, 60, 61) @(0, 0, 0, 1, 1)) -IntervalSeconds 1 -LastTs $script:T0.AddSeconds(-1) -PartInfo $pi -Boots @($script:T0.AddSeconds(30)))[0].cause | Should -Be 'machine_off'
+        # at 10 s a roll's few seconds are no hole at all
+        $pi10 = @([pscustomobject]@{ Reason = 'roll'; Wrapped = $false; Interval = 10 }, [pscustomobject]@{ Reason = 'export'; Wrapped = $false; Interval = 10 })
+        (Find-BbGaps -Rows @(Rows @(0, 10, 22, 32) @(0, 0, 1, 1)) -IntervalSeconds 10 -LastTs $script:T0.AddSeconds(-10) -PartInfo $pi10).Count | Should -Be 0
+    }
     It 'missing_samples inside one part' {
         (Find-BbGaps -Rows @(Rows @(10, 20, 90) @(0, 0, 0)) -IntervalSeconds 10 -LastTs $script:T0)[0].cause | Should -Be 'missing_samples'
     }
@@ -205,13 +225,22 @@ Describe 'Blob path, template, collector compare, capacity, tasks' {
         $r.Count | Should -Be 3
         (Compare-BbCollector -Collector $null -Expected $exp -MaxSizeMB 512 -SampleIntervalSeconds 10)[0] | Should -Match 'does not exist'
     }
-    It 'capacity: misfit reported with the numbers' {
-        $cfg = @{ MaxSizeMB = 16; SampleIntervalSeconds = 1; ExportEveryHours = 24 }
+    It 'capacity: misfit reported with the numbers (ring vs the 15-min roll, LocalKeepMB vs the export window, P62)' {
+        $cfg = @{ MaxSizeMB = 16; SampleIntervalSeconds = 1; ExportEveryHours = 24; LocalKeepMB = 1024 }
         $r = Test-BbCapacity -Config $cfg -State @{ bytes_per_sample = 66600 }
         $r.Ok | Should -BeFalse
-        $r.Reason | Should -Match 'buffer holds ~0.1 h at 1 s with MaxSizeMB=16'
+        $r.Reason | Should -Match 'ring holds ~0.1 h with MaxSizeMB=16'
         $r.Reason | Should -Match 'export every 24 h'
-        (Test-BbCapacity -Config @{ MaxSizeMB = 512; SampleIntervalSeconds = 10; ExportEveryHours = 4 } -State @{ bytes_per_sample = 66600 }).Ok | Should -BeTrue
+        $r.Reason | Should -Match 'less than 1.5 x the 15-min roll'
+        $r.Reason | Should -Match 'LocalKeepMB holds less than 1.5 x the export window'
+        $ok = Test-BbCapacity -Config @{ MaxSizeMB = 512; SampleIntervalSeconds = 10; ExportEveryHours = 4; LocalKeepMB = 1024 } -State @{ bytes_per_sample = 66600 }
+        $ok.Ok | Should -BeTrue
+        $ok.KeepHours | Should -BeGreaterThan $ok.BufferHours
+        # only LocalKeepMB too small
+        $k = Test-BbCapacity -Config @{ MaxSizeMB = 512; SampleIntervalSeconds = 10; ExportEveryHours = 24; LocalKeepMB = 64 } -State @{ bytes_per_sample = 66600 }
+        $k.Ok | Should -BeFalse
+        $k.Reason | Should -Match 'LocalKeepMB holds less'
+        $k.Reason | Should -Not -Match '15-min roll \('
     }
     It 'capacity: estimated from the process count before the first export' {
         $r = Test-BbCapacity -Config @{ MaxSizeMB = 512; SampleIntervalSeconds = 10; ExportEveryHours = 4 } -State @{} -Processes 350
@@ -225,6 +254,13 @@ Describe 'Blob path, template, collector compare, capacity, tasks' {
         $exp | Should -Match '<StartWhenAvailable>true</StartWhenAvailable>'
         $exp | Should -Match '<RestartOnFailure><Interval>PT15M</Interval><Count>3</Count></RestartOnFailure>'
         $boot | Should -Not -Match 'RestartOnFailure'
+        $roll = New-BbTaskXml -Kind Roll -BinDir 'C:\ProgramData\PerfmonBlackbox\bin'
+        $roll | Should -Match '<Interval>PT15M</Interval>'
+        $roll | Should -Match '-RollOnly'
+        $roll | Should -Not -Match 'RestartOnFailure'
+        $rx = [xml]($roll -replace '^\s*<\?xml[^>]*\?>', '')
+        (Compare-BbTask -Kind Roll -Actual $rx -ExpectedXml $roll).Count | Should -Be 0
+        (Compare-BbTask -Kind Roll -Actual $rx -ExpectedXml $exp).Count | Should -BeGreaterThan 0
         (New-BbTaskXml -Kind Export -BinDir 'x' -ExportEveryHours 24) | Should -Not -Match '<Repetition>'
         $actual = [xml]($boot -replace '^\s*<\?xml[^>]*\?>', '')
         (Compare-BbTask -Kind Boot -Actual $actual -ExpectedXml $boot).Count | Should -Be 0
@@ -252,6 +288,43 @@ Describe 'Pending buffers keep the right reason' {
         $m2 = Move-BbBufferToPending -Reason 'boot' -Paths $p
         $m2[0] | Should -Match '-start\.blg$'
         (Move-BbBufferToPending -Reason 'export' -Paths $p).Count | Should -Be 0
+    }
+    It 'stamps the recorded ring start as CreationTime and records the boot (P62)' {
+        $p = Use-TestRoot (Join-Path $TestDrive 'stamp')
+        $start = (Get-Date).AddHours(-3); $start = $start.AddTicks(-($start.Ticks % [TimeSpan]::TicksPerSecond))
+        $st = Get-BbState $p.State; $st['ring_started'] = $start.ToString('yyyy-MM-dd HH:mm:ss.fff'); Write-BbJson $p.State $st
+        $f = Join-Path $p.Blg 'PerfmonBlackbox.blg'; Set-Content $f 'x'
+        (Get-Item $f).CreationTime = (Get-Date).AddDays(-2); (Get-Item $f).LastWriteTime = (Get-Date).AddHours(-2)
+        $boot = (Get-Date).AddHours(-1); $boot = $boot.AddTicks(-($boot.Ticks % [TimeSpan]::TicksPerSecond))
+        Mock Get-CimInstance { [pscustomobject]@{ LastBootUpTime = $boot } }
+        $m = Move-BbBufferToPending -Reason 'boot' -Paths $p
+        (Get-Item (Join-Path $p.Pending $m[0])).CreationTime | Should -Be $start
+        @((Get-BbState $p.State)['boots']) | Should -Contain $boot.ToString('yyyy-MM-dd HH:mm:ss.fff')
+        # the same boot is recorded once
+        Add-BbBootRecord -BootTime $boot -Paths $p
+        @((Get-BbState $p.State)['boots']).Count | Should -Be 1
+    }
+}
+
+Describe 'Roll task (P62)' {
+    BeforeEach {
+        $script:P = Use-TestRoot (Join-Path $TestDrive ('roll-' + [guid]::NewGuid().ToString('N').Substring(0, 8)))
+        Mock Get-BbCollector { [pscustomobject]@{ Status = 'Running'; MaxSizeMB = 512 } }
+        Mock Invoke-BbRoll { [pscustomobject]@{ Stopped = (Get-Date); Started = (Get-Date); Moved = @('20261001-081500-00-roll-m512.blg') } }
+    }
+    It 'leaves a ring younger than 3 intervals alone' {
+        $st = Get-BbState; $st['ring_started'] = (Get-Date).AddSeconds(-5).ToString('yyyy-MM-dd HH:mm:ss.fff'); Write-BbJson $script:P.State $st
+        (Invoke-BbRollOnly -NoLock).Result | Should -Be 'young'
+        Should -Invoke Invoke-BbRoll -Times 0 -Exactly
+    }
+    It 'rolls an older ring with reason roll' {
+        $st = Get-BbState; $st['ring_started'] = (Get-Date).AddMinutes(-15).ToString('yyyy-MM-dd HH:mm:ss.fff'); Write-BbJson $script:P.State $st
+        (Invoke-BbRollOnly -NoLock).Result | Should -Be 'rolled'
+        Should -Invoke Invoke-BbRoll -Times 1 -Exactly -ParameterFilter { $Reason -eq 'roll' }
+    }
+    It 'does nothing without a collector set' {
+        Mock Get-BbCollector { $null }
+        (Invoke-BbRollOnly -NoLock).Result | Should -Be 'nocollector'
     }
 }
 
@@ -447,6 +520,28 @@ Describe 'Invoke-BbExport end to end on synthetic buffers' {
         $s = Get-BbState
         $s['unreadable_reads'].Count | Should -Be 0
         @($s['unreadable_drops']).Count | Should -Be 0
+    }
+    It 'a piece with fewer than 2 samples is deleted, not counted as unreadable (P62, PDH_LOG_SAMPLE_TOO_SMALL)' {
+        New-TestCsv (Join-Path $TestDrive 't.csv') $script:T0 30
+        New-TestBlg (Join-Path $TestDrive 't.csv') (Join-Path $script:P.Pending '20261001-080500-00-roll.blg')
+        $tiny = Join-Path $script:P.Pending '20261001-080501-00-export.blg'
+        [IO.File]::WriteAllBytes($tiny, [byte[]](1..64))
+        Mock Invoke-BbTool -ParameterFilter { $FilePath -eq 'relog.exe' -and $ArgumentList[0] -like '*-00-export.blg' } {
+            [pscustomobject]@{ ExitCode = -1073738760; Output = @('At least one of the input binary log files contain fewer than two data samples.') } }
+        $r = Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $script:OkUploader -CollectorDir $script:Collector
+        $r.Result | Should -Be 'uploaded'
+        $r.Rows | Should -Be 30
+        Test-Path $tiny | Should -BeFalse
+        (Get-BbState)['unreadable_reads'].Count | Should -Be 0
+    }
+    It 'keeps the boot list and the ring start that other steps wrote during the export (P62)' {
+        New-TestCsv (Join-Path $TestDrive 'k.csv') $script:T0 30
+        New-TestBlg (Join-Path $TestDrive 'k.csv') (Join-Path $script:P.Pending '20261001-080500-00-roll.blg')
+        $st = Get-BbState; $st['ring_started'] = '2026-10-01 08:05:00.000'; $st['boots'] = @('2026-09-30 07:00:00.000'); Write-BbJson $script:P.State $st
+        $null = Invoke-BbExport -NoRoll -NoLock -Machine $script:Machine -Uploader $script:OkUploader -CollectorDir $script:Collector
+        $s = Get-BbState
+        $s['ring_started'] | Should -Be '2026-10-01 08:05:00.000'
+        @($s['boots']) | Should -Contain '2026-09-30 07:00:00.000'
     }
     It 'reports a buffer_overrun gap (complete: false) when the ring wrapped past last_ts' {
         $s = Get-BbState; $s['last_ts'] = '2026-10-01 07:00:00.000'; Write-BbJson $script:P.State $s
