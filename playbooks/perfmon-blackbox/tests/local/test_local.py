@@ -415,7 +415,9 @@ class L08Policies(unittest.TestCase):
                 self.assertEqual((gc.get('contentManagedIdentity'), meta.get('contentManagedIdentity')),
                                  ('system', 'system') if storage else (None, None))
                 uris = [c['equals'] for c in det['existenceCondition']['allOf'] if c['field'].endswith('guestConfiguration.contentUri')]
-                self.assertEqual(uris, [want])
+                mis = [c['equals'] for c in det['existenceCondition']['allOf'] if c['field'].endswith('guestConfiguration.contentManagedIdentity')]
+                # P70 (B1): Azure returns contentUri = null with a managed identity, so storage mode checks the identity
+                self.assertEqual((uris, mis), ([], ['system']) if storage else ([want], []))
                 self.assertEqual(len(res), 3 if storage else 2)
                 if storage:
                     reader = res[2]

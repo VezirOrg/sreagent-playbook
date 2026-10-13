@@ -251,7 +251,10 @@ def definition(kind, content_uri, content_hash, version, package_container_id=No
                             {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/parameterHash', 'equals': parameter_hash()},
                             # P32: a new package (release) makes machines on the old one non-compliant -> remediated
                             {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.contentHash', 'equals': content_hash},
-                            # P45: a machine still on the other mode's source is redeployed
+                            # P45: a machine still on the other mode's source is redeployed. P70 (B1): with a managed
+                            # identity Azure returns contentUri = null, so storage mode checks the identity instead
+                            {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.contentManagedIdentity', 'equals': 'system'}
+                            if storage else
                             {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.contentUri', 'equals': content_uri},
                         ]},
                         'deployment': {'properties': {
