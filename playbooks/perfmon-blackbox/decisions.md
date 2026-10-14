@@ -1052,3 +1052,21 @@ remediation, vm1 Compliant in storage mode again (T18 vm1 storage). dc stays in 
 **Then.** Clean → P70's claim is measured; the release commit is prepared and pushed, the tag waits for the vezir's
 publish decision. B1 in GitHub mode too → the fix (both modes check `contentHash` and the identity, not `contentUri`) is
 written here first and brought to the vezir **before** it is applied; if the zip SHA would have to change: stop.
+
+## P76: B1 is in GitHub mode too; proposed fix (measured 2026-10-14 on lab20 under P75; fix NOT applied, awaits the vezir)
+
+**Measured (vm1, GitHub mode, `pbb-vm`, v1.0.1 definitions):** vm1 excluded from `pbb-vm-storage` and `pbb-vm` assigned
+02:55–02:56Z. The service re-synced vm1's guest assignment to GitHub mode on its own, **before any remediation**
+(contentManagedIdentity null, label 1.0.1, Compliant 03:11Z; P48's metadata re-sync). The guest assignment GET returns
+`contentUri` = null in GitHub mode as well (as T18c saw on lab18). Scan 03:36:55–03:44:38Z: the Policy view of `pbb-vm` on
+vm1 is **NonCompliant** (03:38:08Z) and the only failing expression is `guestConfiguration.contentUri`. The remediation
+(ReEvaluateCompliance, 03:44:44–03:59:20Z) **deployed 1** to a machine that was already Compliant. So P70's "GitHub mode
+is not affected" was wrong: B1 is in both modes. Evidence: `.lab/lab20-logs/v101/gh/`.
+**Proposed fix (generator only; the zip and its SHA do not change):** the third existenceCondition term never reads
+`contentUri`. Storage mode keeps `contentManagedIdentity equals system` (P74, green); GitHub mode checks
+`contentManagedIdentity notEquals system` (a GitHub-mode assignment has no identity, so null passes; a machine still on a
+storage-mode assignment fails and is redeployed, which keeps P45's purpose). Which release a machine runs is still pinned
+by `contentHash` (P32). L08 asserts that no definition's existenceCondition reads `contentUri`.
+**Test of the fix (if approved):** while vm1 is still on `pbb-vm`: re-create `perfmon-blackbox-vm` with the fixed generator,
+scan, the Policy view of `pbb-vm` on vm1 Compliant, a ReEvaluateCompliance remediation deploys 0; then vm1 back to
+storage mode (P75) and T18 vm1 storage PASS. v1.0.1 then ships the fix for both modes.
