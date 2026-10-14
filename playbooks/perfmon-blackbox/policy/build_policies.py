@@ -256,8 +256,9 @@ def definition(kind, content_uri, content_hash, version, package_container_id=No
                             {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.contentManagedIdentity',
                              ('equals' if storage else 'notEquals'): 'system'},
                             # P80: an assignment the service left in Audit only tests and never applies; with B1 fixed nothing
-                            # else would rewrite it, so it counts as missing and the next remediation restores the mode
-                            {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.assignmentType', 'equals': 'ApplyAndAutoCorrect'},
+                            # else would rewrite it, so it counts as missing and the next remediation restores the mode.
+                            # P83: only a wrong mode counts; null (seen for hours on healthy assignments) passes
+                            {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.assignmentType', 'notIn': ['Audit', 'ApplyAndMonitor']},
                         ]},
                         'deployment': {'properties': {
                             'mode': 'incremental',

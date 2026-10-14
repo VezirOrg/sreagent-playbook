@@ -419,9 +419,10 @@ class L08Policies(unittest.TestCase):
                 self.assertNotIn('contentUri', json.dumps(det['existenceCondition']))
                 mis = [c for c in det['existenceCondition']['allOf'] if c['field'].endswith('guestConfiguration.contentManagedIdentity')]
                 self.assertEqual(mis, [{'field': mis[0]['field'], ('equals' if storage else 'notEquals'): 'system'}])
-                # P80: an Audit assignment is not "present": the remediation restores ApplyAndAutoCorrect
+                # P80: an Audit assignment is not "present": the remediation restores ApplyAndAutoCorrect.
+                # P83: only a wrong mode fails the condition; a null assignmentType passes
                 ats = [c for c in det['existenceCondition']['allOf'] if c['field'].endswith('guestConfiguration.assignmentType')]
-                self.assertEqual([c.get('equals') for c in ats], ['ApplyAndAutoCorrect'])
+                self.assertEqual(ats, [{'field': ats[0]['field'], 'notIn': ['Audit', 'ApplyAndMonitor']}])
                 self.assertEqual(len(res), 3 if storage else 2)
                 if storage:
                     reader = res[2]
