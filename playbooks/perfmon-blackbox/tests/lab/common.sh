@@ -1,6 +1,6 @@
 # common.sh: shared helpers for the lab stage tests (sourced). Never prints a secret; resource IDs are masked.
 here=$(cd "$(dirname "$0")" && pwd); pb=$(cd "$here/../.." && pwd); root=$(cd "$pb/../.." && pwd)
-lab="$root/.lab/perfmon-blackbox"
+lab="${BB_LAB:-$root/.lab/perfmon-blackbox}"   # BB_LAB: another lab's folder (P74)
 rg=$(cd "$lab" && azd env get-value AZURE_RESOURCE_GROUP 2>/dev/null)
 sub=$(az account show --query id -o tsv)
 sa="stbb$(printf '%s' "$sub/$rg" | shasum | cut -c1-12)"

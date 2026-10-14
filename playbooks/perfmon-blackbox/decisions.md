@@ -1023,3 +1023,15 @@ when the work is done, is the vezir's go.
 19:07Z export covered it; second question in a new thread 19:27:07–19:32:29Z; scored **100/100 PASS** (both plants,
 nothing invented). Note for the post: the report calls `gc_worker` a "GC exerciser"; it is the Machine Configuration
 agent's worker. Evidence: `files/post6-shots/D2-*` (masked).
+
+## P74: the v1.0.1 lab check runs on lab20; the lab tests take the lab folder from `BB_LAB` (the vezir, 2026-10-14 ~02:05Z)
+
+**What.** The P72 plan, run by this session: the v1.0.1 storage definition (`perfmon-blackbox-vm-storage`, generator at
+v1.0.1, version label `1.0.1`, the **v1.0.0 zip and hash unchanged**) replaces the v1.0.0 one in the subscription;
+compliance scan, then a remediation with `--resource-discovery-mode ReEvaluateCompliance`; the Policy view must turn
+Compliant (B1), the remediation must deploy nothing to Compliant machines (no needless redeploy), and T18 storage mode
+must pass on vm1. Green → v1.0.1 goes to the vezir for the release (P73).
+**Test harness.** `tests/lab/common.sh` hard-coded lab18's folder (`.lab/perfmon-blackbox`); lab20 lives in `.lab/lab20`
+(template layout, same `scripts/vmssh`). `common.sh` now reads the lab folder from `BB_LAB` (default unchanged), and the
+package hash from `PKG_SHA256` when no `pbb-package.env` exists (as before). Tests that derive the lab18 account name
+(`stbb…`) are not run on lab20; T18 does not use it.
