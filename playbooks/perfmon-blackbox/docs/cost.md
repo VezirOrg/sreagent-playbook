@@ -4,7 +4,8 @@
 > Machine Configuration at USD 6.00 per server per month (unless your Arc servers are already covered, e.g. by a
 > benefit that includes it). Per deployment, the private endpoint costs about USD 7.30 a month.
 >
-> Prices: Azure Retail Prices API (`prices.azure.com`), retail USD, queried 2026-10-11 (storage in Sweden Central).
+> Prices: Azure Retail Prices API (`prices.azure.com`), retail USD, queried 2026-10-11 (storage in Sweden Central;
+> the SRE Agent Unit 2026-10-14).
 > As of v1.0.1.
 
 | Item | Price | Per server per month |
@@ -35,9 +36,11 @@ The agent is billed in Azure Agent Units (AAU) (Learn, *Pricing and billing for 
 | **Always-on flow** (fixed, from creation until the agent is **deleted**; stopping it does not stop this) | 4 AAU per agent-hour | ≈ **0.44 USD an hour**, ≈ **320 USD a month** |
 | **Active flow** (the work: each analysis) | AAU per million tokens, by model | per analysis, see below |
 
-USD per AAU: the Retail Prices API does not list the agent and the pricing page gives no figure; our lab's Azure Cost
-Management bill shows **0.110 USD per AAU** (meter "SRE Agent Unit", 2026-10-11/12, Sweden Central, retail). Treat it
-as an observed price and check your own bill.
+USD per AAU: the Retail Prices API lists the meter **"SRE Agent Unit"** (product "Azure Agent Unit", per unit,
+retail), read 2026-10-14: **0.10 USD** in the US regions, **0.11 USD** in Sweden Central, UK South and Australia East,
+**0.136 USD** in West Europe and North Europe (other regions in between; query
+`prices.azure.com/api/retail/prices?$filter=meterName eq 'SRE Agent Unit'`). Our lab's Azure Cost Management bill
+matches: **0.110 USD per AAU** in Sweden Central (2026-10-11/12). The always-on and active-flow figures above use 0.11.
 
 What it means here: an existing agent can serve this playbook alongside its other work (one agent per environment,
 not one per server); the always-on cost belongs to the agent, not to perfmon-blackbox. A heavy lab test day (many

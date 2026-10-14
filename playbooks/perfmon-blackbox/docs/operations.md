@@ -27,7 +27,23 @@
 |---|---|
 | Is the black box installed and healthy on a server? | the guest assignment `PerfmonBlackbox` of the server: Compliant, and per resource R1–R7 with reasons |
 | Did the last export work? | blobs under `perfmon/<sub>/<rg>/<server>/`, the newest zip's `manifest.json`; on the server `C:\ProgramData\PerfmonBlackbox\state.json` (`last_ts`, `last_error`) and `log\perfmonblackbox.log` |
-| Did we lose data? | the manifest's `complete` and `gaps[]`; event log Application, source `PerfmonBlackbox`, IDs 2001–2002 |
+| Did we lose data? | the manifest's `complete` and `gaps[]`; event log Application, source `PerfmonBlackbox`, IDs 2001–2003 ([Events](#events)) |
+
+## Events
+
+Event log Application, source `PerfmonBlackbox`. A fresh install writes **no event until its first export**: the
+collector is created and started without one, so the first event is **1002**. Exports run at local 00:07 and then every
+`ExportEveryHours`, each with a random delay of up to 10 minutes. (Lab: arc1's Event Viewer shows only 1002s.)
+
+| ID | Level | When |
+|---|---|---|
+| 1001 | Information | the collector was started by `Start-PerfmonBlackbox.ps1`: at a restart of Windows (Boot task) or when a stopped collector is started again |
+| 1002 | Information | an export uploaded a zip, `complete` |
+| 2001 | Warning | `LocalKeepMB` reached: a pending piece was deleted unexported (`local_cap` gap) |
+| 2002 | Warning | an export uploaded a zip, **incomplete** (the gaps are in the message and the manifest) |
+| 2003 | Warning | a piece left unclosed by a shutdown could not be read 3 times and was deleted (`unreadable_ring` gap) |
+| 3001 | Error | the collector could not be started |
+| 3002 | Error | an export failed after all its retries; the next run covers the window |
 
 ## Compliance reasons
 
@@ -112,12 +128,32 @@ as long as the outage is shorter than what `LocalKeepMB` holds (the 15-minute pi
 
 ## Remove
 
-1. Delete the policy assignments (and running remediations) and the definitions.
-2. Delete the guest assignments `PerfmonBlackbox` from the servers (or let them be removed with the assignment), and
-   the per-server Writer role assignments on the container (description "perfmon-blackbox: write only under …").
+1. Note each assignment identity's principal ID (`az policy assignment show -n <name> --scope <scope> --query
+   identity.principalId -o tsv`), then delete the policy assignments (and running remediations) and the definitions.
+   Deleting an assignment deletes its identity but not that identity's role assignments; delete them too:
+   Guest Configuration Resource Contributor and Reader on the scope, PerfMon Blackbox Deployer on the storage resource
+   group, Role Based Access Control Administrator on the storage account, and, if the assignment was made in the portal,
+   the roles the portal granted at the assignment scope ([deploy.md](deploy.md#3b-portal-route)):
+
+   ```sh
+   az role assignment list --all --query "[?principalId=='<principal ID>'].{id:id, role:roleDefinitionName, scope:scope}" -o table
+   az role assignment delete --ids <id> ...
+   ```
+2. Delete the guest assignments `PerfmonBlackbox` from the servers (**not tested**: in the lab they were removed with
+   the machines or the resource group). Per server:
+
+   ```sh
+   az rest --method delete --url "https://management.azure.com<server ID>/providers/Microsoft.GuestConfiguration/guestConfigurationAssignments/PerfmonBlackbox?api-version=2024-04-05"
+   ```
+
+   Then the per-server role assignments the remediations made: the Writer role on the capture container (description
+   "perfmon-blackbox: write only under …") and, in storage mode, Storage Blob Data Reader on the `packages` container
+   (description "perfmon-blackbox: read the Machine Configuration package …").
 3. On each server: `logman stop PerfmonBlackbox; logman delete PerfmonBlackbox`, `schtasks /delete /tn
    \PerfmonBlackbox\Boot /f`, the same for `\PerfmonBlackbox\Export` and `\PerfmonBlackbox\Roll`, then delete `C:\ProgramData\PerfmonBlackbox`.
-4. Delete the storage deployment (account, private endpoint) last, after you no longer need the captures.
+4. Delete the storage deployment (account, private endpoint) last, after you no longer need the captures. With an
+   existing account ([deploy.md](deploy.md#1b-or-an-existing-storage-account)): delete only the `perfmon` and `packages`
+   containers and the agent's Storage Blob Data Reader on `perfmon`.
 5. Delete the two custom roles ("PerfMon Blackbox Writer", "PerfMon Blackbox Deployer", or the names you gave them):
    `az role definition delete --name "<name>" --custom-role-only true`. A role definition is a subscription-level
    object, not a resource of the group, so deleting the resource group does not remove it, and Azure refuses to delete a

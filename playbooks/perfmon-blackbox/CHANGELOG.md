@@ -2,6 +2,16 @@
 
 Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Release asset.
 
+## Docs after v1.0.1 (2026-10-14, no release)
+
+Lessons of a first install outside the lab (decisions P89); the package, policies and skill are unchanged.
+deploy.md: the deployer rights that work (Contributor + RBAC Administrator was not enough), **1b** an existing storage
+account (containers `perfmon` and `packages`, the custom roles as portal JSON), **3b** the portal route (definitions by
+REST PUT, the portal's unconditioned RBAC Administrator grant to delete, PIM Active/Permanent), time to Compliant up to
+about an hour, the first event is 1002. operations.md: an event ID table; Remove covers every grant and the guest
+assignment (the delete command is not tested). cost.md: the Retail Prices API now lists the SRE Agent Unit. security.md
+and deploy.md: Learn's Administrator note for skills next to our tested Author + Standard User.
+
 ## perfmon-blackbox/v1.0.1 (2026-10-14)
 
 Fixes found by the fresh-eyes deploy on the second lab (decisions P70, P86). The package is the v1.0.0 zip, **unchanged**

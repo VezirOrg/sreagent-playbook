@@ -48,5 +48,7 @@ access, TLS 1.2, container private, blob soft delete 7 days, lifecycle delete af
 ## The agent role (note)
 
 Deploying the skill and asking the agent need **SRE Agent Author + SRE Agent Standard User on the agent resource
-only**: tested in the lab without SRE Agent Administrator (decisions P64). Administrator is not needed. The identity
+only**: tested in the lab without SRE Agent Administrator (decisions P64). Learn's *SRE Agent MCP server* page says
+the data plane (threads, skills and more) needs SRE Agent Administrator; our test says Author + Standard User is enough
+for `deploy-skill.sh`. Grant Administrator only if your agent answers 403. The identity
 that deploys skills should never be used to approve agent actions.

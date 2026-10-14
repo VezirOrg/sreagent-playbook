@@ -4,7 +4,9 @@
 > release's package, (3) the assignments with the rights their identity needs, then remediation, (4) the skill on your
 > SRE Agent. Prerequisites first: servers and agent must both reach the storage's private endpoint.
 >
-> As of v1.0.1. Every step was run in the lab on an Azure VM and an Arc-enabled server ([tests.md](tests.md)).
+> As of v1.0.1. Every numbered step was run in the lab on an Azure VM and an Arc-enabled server ([tests.md](tests.md)).
+> 1b (an existing storage account) and 3b (the portal route) come from a first install outside the lab; what was not
+> verified is marked.
 
 ## Prerequisites
 
@@ -18,8 +20,19 @@
   Machine Configuration service endpoints.
 - **Network, agent**: the SRE Agent needs **VNet integration** (sandbox egress in your VNet with private DNS
   resolution) that resolves and reaches the same private endpoint. Without it the skill cannot read any capture.
-- **Rights for the deployer**: create a resource group deployment with custom role definitions, policy definitions and
-  assignments, and role assignments (Owner, or Contributor + Role Based Access Control Administrator).
+- **Rights for the deployer** (Contributor + Role Based Access Control Administrator is **not** enough: Contributor
+  cannot write `Microsoft.Authorization` objects and RBAC Administrator writes only role assignments):
+  - policy definitions (step 2): **Owner** or **Resource Policy Contributor** at **subscription** scope (the
+    definitions live there);
+  - the custom roles (step 1): **Owner** or **User Access Administrator** on the storage resource group;
+  - the storage, private endpoint and DNS zone group (step 1): Contributor on the storage resource group, plus join
+    rights on the subnet and the DNS zone if they live elsewhere;
+  - the assignments and their role grants (step 3): **Owner**, or **Resource Policy Contributor + User Access
+    Administrator** (or Role Based Access Control Administrator), on the machines' resource group **and** on the
+    storage (account and resource group).
+  - Under Privileged Identity Management, make the role assignments you grant **Active** and **Permanent**, not
+    Eligible: the assignment identity cannot activate a role (seen at a first install outside the lab, P89; not
+    tested in the lab).
 - **Tools**: Azure CLI, Python 3 (to generate the policy definitions), git.
 
 All commands run from `playbooks/perfmon-blackbox` in a clone of this repository at the release tag, with the Azure CLI
@@ -85,6 +98,64 @@ lifecycle delete after 30 days, blob soft delete, the private endpoint with its 
 **PerfMon Blackbox Writer** and **PerfMon Blackbox Deployer**, and Storage Blob Data Reader on the container for the
 agent. Keep the outputs `storageAccountResourceId`, `writerRoleDefinitionId` and, for storage mode (2b),
 `packageContainerResourceId`.
+
+## 1b. Or: an existing storage account
+
+You can use a storage account you already have (with its private endpoint) instead of step 1; a first install outside
+the lab did (P89). Give it what `main.bicep` would:
+
+| Needed | Why |
+|---|---|
+| container **`perfmon`** (or pass another name as the assignment parameter `ContainerName`) | the captures; the servers write only under their own prefix |
+| container **`packages`**, exactly this name, holding the release zip unchanged (storage mode, 2b) | the definitions are generated with this container's ID |
+| the two custom roles (below), in the storage account's resource group | the per-server Writer grant and the deployment that makes it |
+| Storage Blob Data Reader on `perfmon` for the agent's identities | the skill reads the captures |
+| a private endpoint (`blob`) whose name the **servers and the agent** both resolve and reach | uploads, the package, the skill |
+
+Fine as they are: shared key access off, anonymous access off, public network access off, TLS 1.2. Optional: the
+lifecycle rule (`main.bicep`: `perfmon-retention`, prefix `perfmon/`, delete after 30 days) and blob soft delete (7
+days); without the rule, captures stay until you delete them. Not tested: an account with a hierarchical namespace (ADLS
+Gen2). **Never grant the servers a storage role by hand**: the remediation grants each one (a hand-made grant of the same
+role makes it fail with `RoleAssignmentExists`, step 3).
+
+The custom roles as JSON for the portal (Access control (IAM) → Add → Add custom role → JSON; `<RG>` is the **storage
+account's** resource group, the role names must be unique in the tenant, see *Names* above):
+
+```json
+{
+  "properties": {
+    "roleName": "PerfMon Blackbox Writer",
+    "description": "perfmon-blackbox: a machine writes its capture zips into its own prefix (assigned per machine by the DINE policy with an ABAC path condition). No read, list or delete.",
+    "assignableScopes": [ "/subscriptions/<SUB_ID>/resourceGroups/<RG>" ],
+    "permissions": [ {
+      "actions": [], "notActions": [],
+      "dataActions": [
+        "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write",
+        "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/add/action"
+      ],
+      "notDataActions": []
+    } ]
+  }
+}
+```
+
+```json
+{
+  "properties": {
+    "roleName": "PerfMon Blackbox Deployer",
+    "description": "perfmon-blackbox: the DINE policy identity deploys the per-machine writer role assignment in this resource group. Deployments only.",
+    "assignableScopes": [ "/subscriptions/<SUB_ID>/resourceGroups/<RG>" ],
+    "permissions": [ {
+      "actions": [ "Microsoft.Resources/deployments/*", "Microsoft.Resources/subscriptions/resourceGroups/read" ],
+      "notActions": [], "dataActions": [], "notDataActions": []
+    } ]
+  }
+}
+```
+
+Then use the account's resource ID as `storageAccountResourceId`, the Writer role's ID
+(`/subscriptions/<SUB_ID>/providers/Microsoft.Authorization/roleDefinitions/<its GUID>`) as `writerRoleDefinitionId`,
+and `<account ID>/blobServices/default/containers/packages` as `packageContainerResourceId`.
 
 ## 2. Policy definitions
 
@@ -209,10 +280,57 @@ that the server's guest assignment says `ApplyAndAutoCorrect` (the `Check` comma
 remediation (tests.md, "rc.11 on lab18").
 
 What happens per server: the guest assignment `PerfmonBlackbox` is created; one role assignment of the Writer role on
-the container lets the server write only under `<subscriptionId>/<resourceGroup>/<server>/`; within 15–30 minutes the
-agent applies the package and the assignment turns Compliant. Parameters: [parameters.md](parameters.md).
+the container lets the server write only under `<subscriptionId>/<resourceGroup>/<server>/`; the agent applies the
+package and the assignment turns Compliant **within about an hour** of the remediation (its first cycle only tests, the
+next one applies; the lab measured ~45 minutes). Until then the guest assignment can show no assignment type
+("typically resolves within one hour", Learn, machine configuration assignments). Parameters: [parameters.md](parameters.md).
+
+The first sign on the server is **not** an event at install: the collector is created and started without one. The
+first event of source `PerfmonBlackbox` is **1002** (export uploaded, complete) after the first export: at local 00:07
+and then every `ExportEveryHours`, plus a random delay of up to 10 minutes. Event 1001 (collector started) comes only
+at a restart of Windows or when a stopped collector is started again. All IDs: [operations.md](operations.md#events).
 
 Check: `az rest --method get --url https://management.azure.com<server ID>/providers/Microsoft.GuestConfiguration/guestConfigurationAssignments/PerfmonBlackbox?api-version=2024-04-05 --query properties.complianceStatus`.
+
+## 3b. Portal route
+
+The steps above are the lab-tested CLI. Done in the portal (a first install outside the lab did, P89; the portal route as
+a whole was **not** run in the lab), four things differ:
+
+1. **Create the definitions by a REST PUT of the generated file, not in the portal's definition editor.** The editor does
+   not keep `metadata.guestConfiguration` (a Microsoft Q&A answer says "Duplicate definition" drops it; Learn documents
+   no way to set it there), and without it storage mode does not work. The generated file
+   (`policy/out/<name>.json`) is already the request body. In Cloud Shell, PowerShell (**verified** at that install:
+   201, metadata read back):
+
+   ```powershell
+   Invoke-AzRestMethod -Method PUT -Payload (Get-Content ./perfmon-blackbox-vm-storage.json -Raw) `
+     -Path "/subscriptions/<SUB_ID>/providers/Microsoft.Authorization/policyDefinitions/perfmon-blackbox-vm-storage?api-version=2021-06-01"
+   ```
+
+   Bash (the same call, **not verified**):
+
+   ```sh
+   az rest --method put --body @perfmon-blackbox-vm-storage.json \
+     --url "https://management.azure.com/subscriptions/<SUB_ID>/providers/Microsoft.Authorization/policyDefinitions/perfmon-blackbox-vm-storage?api-version=2021-06-01"
+   ```
+
+   Check either way: `az policy definition show -n perfmon-blackbox-vm-storage --query metadata.guestConfiguration`
+   must not be empty. Repeat for `perfmon-blackbox-arc-storage` if you have Arc servers.
+2. **The assignment's identity is named by a GUID**, not by the assignment's name. Find its principal ID on the
+   assignment (Managed Identity), then grant roles in Access control (IAM) with "User, group, or service principal"
+   and search for that ID.
+3. **The portal grants roles by itself.** Assigning with a managed identity, the portal grants every role in the
+   definition's `roleDefinitionIds` at the assignment scope (Learn, *Remediate non-compliant resources*): Guest
+   Configuration Resource Contributor and Reader (wanted) and **Role Based Access Control Administrator without a
+   condition, on the whole assignment scope** (broader than [security.md](security.md)). Add what step 3 needs and the
+   portal does not (PerfMon Blackbox Deployer on the storage resource group; RBAC Administrator **on the storage account
+   with the condition** of step 3, pasted in Conditions → code editor with `$w` replaced by the Writer role's GUID),
+   then **delete the unconditioned RBAC Administrator** at the assignment scope. Wait a minute.
+4. **Remediate** with "Re-evaluate resource compliance before remediating" ticked (the CLI's
+   `--resource-discovery-mode ReEvaluateCompliance`).
+
+Under Privileged Identity Management, every role assignment above is **Active**, **Permanent** (prerequisites).
 
 ## 4. The skill
 
@@ -225,6 +343,8 @@ Why a script and not Bicep like the rest: the ARM resource for skills (`Microsof
 "internal tenants only" when this was built, so the skill goes through the agent's data-plane API, which the script
 calls (decisions P61).
 
-The caller needs **SRE Agent Author + SRE Agent Standard User** on the agent resource (tested without Administrator,
-see [security.md](security.md)). Then ask the agent in a new thread:
+The caller needs **SRE Agent Author + SRE Agent Standard User** on the agent resource: tested in the lab without
+Administrator (decisions P64, [security.md](security.md)). Learn's *SRE Agent MCP server* page says the data plane
+(threads, skills and more) needs **SRE Agent Administrator**; if Author + Standard User gets a 403 on your agent, that
+is the role to try. Then ask the agent in a new thread:
 *"Analyse the latest PerfMon capture of `<server>`. The captures are in the storage account `<name>`."*
