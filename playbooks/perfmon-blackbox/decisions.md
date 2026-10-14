@@ -1226,3 +1226,8 @@ bug as far as the evidence goes** (the states exist, are correct, and remediatio
 that cannot be reproduced from any API. Next: (a) Emre opens the Arc machine arc1 → Policies to see whether
 pbb-arc-storage is listed there; (b) re-check the blade after the daily cycle (by ~05:37Z tomorrow), with tomorrow's
 null check. No definition change.
+**P85 CLOSED (the vezir, ~08:55Z).** Emre changed the portal's scope selection and the Compliance blade then showed
+pbb-arc-storage "100 % (1 out of 1)" and pbb-vm-storage 2 of 2. **Cause: the portal's scope filter** (Emre's verdict);
+the targeted scan started 08:42Z may have finished around the same time and is noted as a possible contributor only.
+**No playbook change.** The CLI and Resource Graph were right all along; candidates 1–3 above are dropped. T20c/T20d stay
+CLI measurements; Emre's S2-new shot is the first portal evidence of the Arc assignment counting arc1.
