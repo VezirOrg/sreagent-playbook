@@ -11,6 +11,9 @@ running on every Azure VM and Arc-enabled server: collection is the input, **the
 > Not an official Microsoft product. Working and versioned, no support promise. See the
 > [repo README](../../README.md).
 
+**Blog series:** [part 1 (English)](https://sreagent.emreguclu.io/posts/perfmon-blackbox-part-1/) ·
+[1. bölüm (Türkçe)](https://sreagent.emreguclu.io/tr/posts/perfmon-blackbox-part-1/)
+
 **Status: v1.0.1** ([release](https://github.com/VezirOrg/sreagent-playbook/releases/tag/perfmon-blackbox/v1.0.1), package `PerfmonBlackbox.zip`, SHA-256 `806BCADB69F55640…`,
 the same zip as v1.0.0; v1.0.1 fixes the policy definitions and the deploy docs: [CHANGELOG](CHANGELOG.md)). Tested end to
 end on an Azure VM and an Arc-enabled server ([docs/tests.md](docs/tests.md)). The `v1.0.0-rc.N` pre-releases were lab
