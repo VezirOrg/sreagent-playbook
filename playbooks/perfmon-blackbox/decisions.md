@@ -1281,3 +1281,18 @@ the code; the export's clock-aligned schedule (local 00:07 + every N h, random d
 operations.md "Remove" omits the storage-mode reader grant on the package container and the assignment identity's own
 role assignments, and gives no command for deleting a guest assignment; the time to first Compliant is "15–30 min" in
 deploy.md but "about an hour per machine" in operations.md (upgrade).
+
+## P88: a portal version of the quick-install guide, also on Drive only (the vezir for Emre, 2026-10-14)
+
+**What.** Emre installs by hand in the Azure portal. A portal guide (`files/perfmon-blackbox/quick-install-portal-v1.0.1.md`)
+and paste-ready files (`files/perfmon-blackbox/portal-json/`: the two storage-mode definitions from `build_policies.py`
+for v1.0.1 with a placeholder container ID, the same as subscription-scope ARM templates with policy expressions escaped
+`[[`, the Writer and Deployer role JSONs, the RBAC Administrator condition) go to Drive, not the repo (as P87). Click paths
+cite Learn; every step not verified on Learn or in the lab is marked; the portal path itself was never run in the lab.
+**Findings.** (1) STOP raised to the vezir: Learn documents no way to store `metadata.guestConfiguration` through the
+portal's policy definition editor (a Microsoft Q&A answer says "Duplicate definition" drops it), and storage mode needs
+it; the guide creates the definitions in Cloud Shell (the lab-tested CLI) or by a custom template deployment.
+(2) The portal grants the definition's `roleDefinitionIds` at the assignment scope by itself (Learn, Remediate
+non-compliant resources), which includes Role Based Access Control Administrator **without** the delegation condition, at
+RG scope: broader than security.md. The guide adds the conditioned one on the storage account and removes the RG-scope
+one. A later repo change could drop RBAC Administrator from `roleDefinitionIds` or document this; not decided here.
