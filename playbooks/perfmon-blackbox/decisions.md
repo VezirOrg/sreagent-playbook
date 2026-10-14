@@ -1327,3 +1327,25 @@ our test (P64) passed with SRE Agent Author + Standard User; Learn's *SRE Agent 
 operations need SRE Agent Administrator. Both are stated, ours as the tested one.
 **Not verified in the lab:** the portal route as a whole (only its PUT step and the definitions' metadata were checked,
 outside the lab), the PIM setting, the guest assignment delete, an HNS (ADLS Gen2) account.
+
+## P90: the default ExportEveryHours becomes 1 in v1.0.2 (Emre via the vezir, 2026-10-14, "VARSAYILAN-1")
+
+**Decision.** The policy parameter `ExportEveryHours` defaults to **1** (was 4, P19) from v1.0.2. v1.0.2 is cut after
+T22b (2026-10-15 morning), so both land in one release; if T22b passes, v1.0.2 carries only this change.
+**Why.** An export ships only the pieces since `last_ts`, so hourly exports add no overlap and no duplicate data, only
+more and smaller zips (24 Put Blob calls a day instead of 6; still < 0.01 USD a month, cost.md). The skill's range
+queries get a 1-hour grain instead of 4, and a machine that dies loses at most about an hour of not-yet-exported data
+(the pieces in `pending\`) instead of up to 4. R6 is easier to meet (LocalKeepMB must hold 1.5 h, not 6 h). The lab ran
+1 on arc1 and vm1 (P71, P82) and the first install outside the lab runs 1 (P89).
+**Where.** Only the definitions' `defaultValue` (`policy/build_policies.py`), the docs and the tests that read the
+default. **The package is not changed**: the `'4'` in `package/PerfmonBlackbox.config.ps1`, the DSC class and
+`New-BbTaskXml` are fallbacks that never apply, because every definition passes all six parameters to the guest
+assignment (`configurationParameter`). So the v1.0.1 zip (and its SHA-256, the `contentHash`) can stay unchanged in
+v1.0.2, as v1.0.1 reused the v1.0.0 zip.
+**Existing installs (checked before the change).** The existenceCondition compares the guest assignment's
+`parameterHash` with `base64(concat(…, parameters('ExportEveryHours'), …))`, i.e. the assignment's **effective** value.
+Nothing changes until an adopter updates the definitions to v1.0.2. Then: an assignment that sets `ExportEveryHours`
+explicitly keeps its value and its hash; an assignment that relied on the default moves from 4 to 1 at its next
+remediation (a new parameterHash, so NonCompliant, then redeployed with 1; the collector keeps its data, only the Export
+task's trigger changes). To keep 4, pass `{"ExportEveryHours":{"value":"4"}}` in the assignment. Not a forced redeploy
+of untouched installs.
