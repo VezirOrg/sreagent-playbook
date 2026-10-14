@@ -1174,3 +1174,15 @@ identity null, Compliant 04:16Z. The lab test below checks `notIn` on null; if i
 Compliant; remediation 0 deployments. The Audit case is not reproducible on demand, so the Audit branch is covered by L08
 and by P80's measurement (the operator differs only in how null is treated). If the vezir prefers to keep P80 as is,
 the CHANGELOG states the null window as a known window instead.
+**APPROVED as (a) (the vezir under P73, 2026-10-14 ~10:45 +03).** Apply now: `notIn ["Audit", "ApplyAndMonitor"]` (fallback
+two `notEquals` terms if null does not pass); re-create the two storage definitions, scan, remediate, expect 0 deployments
+everywhere; condition (1) restarts on the P83 definitions (at least two refresh cycles, no flapping; stop at once on a
+flap); L08 asserts the term; test-plan.md and tests.md get a test row for it (P79 style); the CHANGELOG states the null
+window openly (seen after the nightly stop, filled in by the service), that P83 tolerates it, and that the null case is
+"verified by logic, measurement pending". **Release timing:** v1.0.1 does not ship today. Tomorrow morning after the
+nightly stop: start the VMs, scan, expect Compliant and 0 deployments (that is the null measurement); then the release
+commit and the vezir tags. lab20 is not torn down today (normal nightly stop before 21:45Z; teardown after the check). If
+the check fails: fix first, release after.
+**AGENT-ARC (P82) GO (the vezir, same message):** idle question ~08:05Z, plant ~08:20Z, second question after the ~09:07Z
+export, scored by ~09:30Z; thread IDs to the vezir; any P83 scan or remediation inside the plant window is named in the
+report.
