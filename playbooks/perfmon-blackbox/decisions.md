@@ -1352,3 +1352,11 @@ of untouched installs.
 **Confirmed (Emre via the vezir, 2026-10-14, "PAKET-AYNI"):** v1.0.2 reuses the v1.0.1 zip **unchanged** (same
 SHA-256 `806BCADB…63DD`, same `contentHash`), and the package fallback `'4'` stays. v1.0.2 is cut on 2026-10-15
 morning after T22b.
+
+## P91: the README links the blog series (Emre via the vezir, 2026-10-14)
+
+**What.** The blog series on this playbook is live. The playbook README gets one "Blog series" line linking part 1 in
+English and Turkish (`sreagent.emreguclu.io/posts/perfmon-blackbox-part-1/`, `…/tr/posts/perfmon-blackbox-part-1/`;
+both answered 200 on 2026-10-14). The blog site itself is already public in the root README. Docs only, no release.
+The root README's playbook row is not changed here: that is a root change (root CLAUDE.md rule 4), asked of the vezir
+separately if wanted.
