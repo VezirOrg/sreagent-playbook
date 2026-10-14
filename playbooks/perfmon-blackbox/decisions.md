@@ -1187,6 +1187,10 @@ the check fails: fix first, release after.
 export, scored by ~09:30Z; thread IDs to the vezir; any P83 scan or remediation inside the plant window is named in the
 report.
 
+**P83 measured (lab20, 2026-10-14).** Definitions re-created 07:46:44Z; scan 07:46–07:59Z: vm1, dc and arc1 Compliant;
+remediations 0 and 0 (08:16:50Z). No machine had a null `assignmentType` during the run, so the null case is still
+pending (T22b, next morning). Condition (1) restarted on the P83 definitions (`p80/watch2.log`).
+
 ## P84: the repo keeps "vm1" for the lab's web member (Emre via the vezir, 2026-10-14 ~11:05 +03, "REPO-VM1")
 
 **What.** The playbook's docs, tests and evidence keep calling the Azure VM member `vm1`; its real lab name stays on the
