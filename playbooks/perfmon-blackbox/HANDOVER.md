@@ -1,4 +1,4 @@
-# perfmon-blackbox: v1.0.1 release commit on main (P86, 2026-10-14, same zip); the vezir tags it; T22b is a post-release check 2026-10-15 morning (fail = v1.0.2).
+# perfmon-blackbox: v1.0.1 PUBLISHED 2026-10-14 (P86, same zip, public SHA checked); next: T22b post-release check 2026-10-15 morning on lab20 (fail = v1.0.2), then teardown.
 
 Playbook: **perfmon-blackbox**. Read `../../CLAUDE.md`, this file, then `decisions.md` (P1–P86; today's are P74–P86).
 Every `az`/`azd` call runs as `direnv exec . <command>` from the repo root. The owner is the vezir (P73): releases,
@@ -8,10 +8,10 @@ teardowns and lab builds for approved work are the vezir's call; ask before anyt
 
 - **Released:** v1.0.0 (P66), tag `perfmon-blackbox/v1.0.0`, asset `PerfmonBlackbox.zip` SHA-256
   `806BCADB69F556401DE19754AEB649B7611EB1AE18AA106A5BF0A537A99363DD`. Skill perfmon-triage v2.2.
-- **v1.0.1 released by P86 ("YAYIN-BUGÜN", Emre via the vezir):** release commit `perfmon-blackbox: release v1.0.1` on
-  `main` (stash applied, CHANGELOG `perfmon-blackbox/v1.0.1 (2026-10-14)`). **The vezir** tags `perfmon-blackbox/v1.0.1`
-  and creates the GitHub release; notes and the zip for it are in `files/perfmon-blackbox/release-v1.0.1/`. After the
-  tag: check the deploy.md asset URL resolves and hashes to 806BCADB…63DD. Generator-only fixes; the package, skill, infra and scripts have no diff since v1.0.0,
+- **v1.0.1 PUBLISHED (P86, "YAYIN-BUGÜN", Emre via the vezir):** tag `perfmon-blackbox/v1.0.1` on 63040d9, release
+  https://github.com/VezirOrg/sreagent-playbook/releases/tag/perfmon-blackbox/v1.0.1 (Latest, 2026-10-14 10:32:53Z),
+  only asset `PerfmonBlackbox.zip`; the vezir downloaded it from deploy.md's public URL: SHA-256 806BCADB…63DD, matches.
+  Notes and zip as published: `files/perfmon-blackbox/release-v1.0.1/`. Generator-only fixes; the package, skill, infra and scripts have no diff since v1.0.0,
   so v1.0.1 ships the **identical zip** (same SHA). In `policy/build_policies.py` the existenceCondition:
   - **B1 (P70, P76):** never reads `contentUri` (Azure returns null in both modes); storage mode checks
     `contentManagedIdentity equals system`, GitHub mode `notEquals system`.
@@ -58,9 +58,7 @@ lab20 is kept running for this (nightly stop as usual).
      pattern in decisions P80 "measured"), scan, remediate, expect 0. Then a v1.0.2 release commit; the vezir tags.
 3. **Portal check:** Policy → Compliance with the **correct scope** (subscription VezirLabs / rg-lab20; P85): pbb-vm-storage
    2 of 2, pbb-arc-storage 1 of 1, both Compliant.
-4. If the vezir has not yet confirmed: the tag `perfmon-blackbox/v1.0.1` exists, its only asset hashes to 806BCADB…63DD,
-   and the deploy.md asset URL resolves.
-5. **lab20 teardown** on the vezir's GO (P73), P65 order, then register DOWN in the private lab template's `docs/labs.md`
+4. **lab20 teardown** (after T22b) on the vezir's GO (P73), P65 order, then register DOWN in the private lab template's `docs/labs.md`
    (same commit as the teardown) and lab-audit. Remove explicitly first:
    - **Emre's user Blob Data Reader on `perfmon`** (lab-scoped), dc identity Blob Data Contributor on `packages` and Blob
      Data Reader on `perfmon`, the agent identities' Reader on `perfmon`, lab SP SRE Agent Author + Standard User on

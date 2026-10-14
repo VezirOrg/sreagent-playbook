@@ -1259,3 +1259,9 @@ fails, v1.0.2. The P70 correction (GitHub mode was affected too) stays stated op
 listed with their results.
 **T22b becomes a post-release check.** lab20 keeps running (nightly stop as usual) for T22b on 2026-10-15 morning. Green:
 tests.md and the CHANGELOG say what was measured. Red: the P83 fallback (two `notEquals` terms) ships as v1.0.2, same zip.
+
+**P86 done (the vezir, 2026-10-14 10:32:53Z):** tag `perfmon-blackbox/v1.0.1` on 63040d9 (main), release
+https://github.com/VezirOrg/sreagent-playbook/releases/tag/perfmon-blackbox/v1.0.1 (Latest, not a pre-release), only
+asset `PerfmonBlackbox.zip`. The vezir downloaded it from the public URL used in deploy.md: SHA-256 `806BCADB…63DD`,
+matches (P31). Before the push this session checked the same SHA on the v1.0.0 asset and the lab copy. Release notes
+scrub-checked clean. T22b stays a post-release check (2026-10-15 morning); if it fails, v1.0.2.
