@@ -255,6 +255,9 @@ def definition(kind, content_uri, content_hash, version, package_container_id=No
                             # contentUri = null on the guest assignment in both modes, so the mode is told by the identity
                             {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.contentManagedIdentity',
                              ('equals' if storage else 'notEquals'): 'system'},
+                            # P80: an assignment the service left in Audit only tests and never applies; with B1 fixed nothing
+                            # else would rewrite it, so it counts as missing and the next remediation restores the mode
+                            {'field': 'Microsoft.GuestConfiguration/guestConfigurationAssignments/guestConfiguration.assignmentType', 'equals': 'ApplyAndAutoCorrect'},
                         ]},
                         'deployment': {'properties': {
                             'mode': 'incremental',
