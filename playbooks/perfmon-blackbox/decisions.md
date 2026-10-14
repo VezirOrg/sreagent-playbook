@@ -1300,3 +1300,30 @@ one. A later repo change could drop RBAC Administrator from `roleDefinitionIds` 
 account with private endpoints, so main.bicep is not used, and the vezir walks Emre through the install live. The
 session delivered the role JSONs, the two definitions, one combined ARM wrapper (`definitions-arm.json`) and the
 condition text into `portal-json/`. The per-kind ARM files were folded into that one file.
+
+## P89: docs fixed from the first install outside the lab (Emre via the vezir, 2026-10-14 ~20:15 +03, "DOK-DÜZELT")
+
+**What.** A first install outside the lab (3 Azure VMs, an existing storage account with private endpoints, done by
+hand with the portal and Cloud Shell; the vezir walked it through live) succeeded: the collector is Running, the first
+export was pending at the time. Its lessons, the P87/P88 gaps and two price/role facts go into the docs on `main`. Docs
+only: no package or skill change, **no release** (v1.0.1 stays the latest).
+**Changes.** (1) deploy.md prerequisites: the rights that work (policy definitions: Owner or Resource Policy Contributor
+at subscription scope; custom roles: Owner or User Access Administrator; assignments with role grants: Owner, or
+Resource Policy Contributor + User Access Administrator / RBAC Administrator, on the machines' RG and on the storage).
+(2) deploy.md "Portal route": definitions by REST PUT of the generated file (the portal editor does not keep
+`metadata.guestConfiguration`, P88; the PUT was verified at that install with `Invoke-AzRestMethod` in Cloud Shell:
+201 and the metadata read back), the assignment identity found by its principal ID, the portal's own grant of the
+definition's `roleDefinitionIds` (an unconditioned RBAC Administrator at the assignment scope, to be deleted), and role
+assignments under PIM as Active / Permanent. (3) deploy.md "Existing storage account": what main.bicep sets that
+matters, the custom roles as portal JSON with placeholders. (4) Events: a fresh install writes no event before its first
+export; the first is 1002 (`Install-BbCollector` starts the collector without an event; 1001 only comes from
+`Start-PerfmonBlackbox.ps1`, at boot or when it starts a stopped collector). Lab evidence: arc1's Event Viewer shot (M4,
+P81) shows only 1002s. A table of all IDs goes into operations.md. (5) operations.md Remove: the assignment identity's
+role assignments, the storage-mode reader grants, the portal's grants, and a guest assignment delete command (marked
+untested). (6) Time to first Compliant: "up to about an hour" with the lab's ~45 min, in place of "15–30 minutes".
+(7) cost.md: the Retail Prices API now lists meter "SRE Agent Unit" (product "Azure Agent Unit"); read 2026-10-14:
+0.10 USD (US regions), 0.11 (swedencentral, uksouth, australiaeast), 0.136 (westeurope, northeurope). (8) Skill roles:
+our test (P64) passed with SRE Agent Author + Standard User; Learn's *SRE Agent MCP server* page says data-plane skill
+operations need SRE Agent Administrator. Both are stated, ours as the tested one.
+**Not verified in the lab:** the portal route as a whole (only its PUT step and the definitions' metadata were checked,
+outside the lab), the PIM setting, the guest assignment delete, an HNS (ADLS Gen2) account.
