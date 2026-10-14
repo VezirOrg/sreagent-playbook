@@ -2,7 +2,8 @@
 # lab-arc1.sh: build arc1, an Azure VM prepared per Learn "Evaluate Azure Arc-enabled servers on an Azure virtual
 # machine" (design sec. 5, decisions P6/P10), and onboard it to Azure Arc in the lab resource group.
 #   direnv exec . playbooks/perfmon-blackbox/tests/lab/lab-arc1.sh
-# Steps: (0) the VM policy and the VM prerequisites must already exclude arc1 (lab-policy.sh with ARC_VM=arc1);
+# Steps: (0) the VM policy (VM_POLICY, default pbb-vm) and the VM prerequisites must already exclude arc1 (lab-policy.sh
+# with ARC_VM=arc1, or by hand on another lab: P77);
 # (1) Windows Server 2022 VM `arc1` in the lab's vm subnet, no public IP; (2) run command, while the guest agent still
 # runs: OpenSSH server (Bastion access, as the template's VMs), MSFT_ARC_TEST, the Connected Machine agent installed;
 # (3) every VM extension removed; (4) guest agent disabled and IMDS (169.254.169.254, .253) blocked; (5) over SSH:
@@ -12,7 +13,7 @@ set -eu
 . "$(dirname "$0")/common.sh"
 loc=$(az group show -n "$rg" --query location -o tsv)
 vnet=$(az network vnet list -g "$rg" --query "[0].name" -o tsv)
-ns=$(az policy assignment show -n pbb-vm --scope "/subscriptions/$sub/resourceGroups/$rg" --query "notScopes[?ends_with(@, '/arc1')] | length(@)" -o tsv)
+ns=$(az policy assignment show -n "${VM_POLICY:-pbb-vm}" --scope "/subscriptions/$sub/resourceGroups/$rg" --query "notScopes[?ends_with(@, '/arc1')] | length(@)" -o tsv)
 [ "$ns" = 1 ] || { echo "STOP: run lab-policy.sh with ARC_VM=arc1 first (arc1 must be outside the VM policy)"; exit 1; }
 
 if ! az vm show -g "$rg" -n arc1 -o none 2>/dev/null; then

@@ -1074,3 +1074,16 @@ by `contentHash` (P32). L08 asserts that no definition's existenceCondition read
 **Test of the fix (if approved):** while vm1 is still on `pbb-vm`: re-create `perfmon-blackbox-vm` with the fixed generator,
 scan, the Policy view of `pbb-vm` on vm1 Compliant, a ReEvaluateCompliance remediation deploys 0; then vm1 back to
 storage mode (P75) and T18 vm1 storage PASS. v1.0.1 then ships the fix for both modes.
+
+## P77: v1.0.1 is not released until it is proven on an Arc machine in the lab (Emre via the vezir, 2026-10-14 07:15 +03)
+
+**Emre:** "Arc da ekle laba mutlaka" ("add Arc to the lab, without fail"). The CHANGELOG's "Arc: not verified in the lab"
+note is withdrawn: **Arc evidence is a precondition of the v1.0.1 release.**
+**What.** An `arc1` is added to lab20 the way lab18 had one (Learn: "Evaluate Azure Arc-enabled servers on an Azure VM",
+with the private lab template's Arc support); the template's lab register row of lab20 lists arc1 and the Arc resources
+to remove at teardown. On arc1, with the P76 generator: **storage mode** (`perfmon-blackbox-arc-storage`): Policy view
+Compliant, a ReEvaluateCompliance remediation deploys 0, T18 arc1 storage PASS (upload with HIMDS); **GitHub mode**
+(`perfmon-blackbox-arc`, by the P48 procedure): the same measurement. If time is short, the vezir is asked which first.
+The vm1 steps (P76 test, back to storage, T18) finish as planned. Everything ends before 21:45Z; if it does not fit
+today, lab20 stays up tonight (KEEP) and the work goes on tomorrow, said to the vezir early. **Stop:** Arc onboarding
+blocked by a subscription policy or quota. The release commit carries the Arc results; no tag.
