@@ -1149,3 +1149,28 @@ After P80 is green: one idle question on arc1, then the T16 plant on arc1 (CPU b
 `tests/scoring/score.py` (T16 rubric). Emre takes the thread and consumption screens. ExportEveryHours is 1 on arc1, so
 each question waits for the next hourly export after its window. Ends before 21:45Z; the plan and times go to the vezir
 first.
+
+**P80 measured (lab20, 2026-10-14).** Fix applied 06:42:15Z to `perfmon-blackbox-vm-storage` and `-arc-storage`. Scan
+06:42–06:50Z: vm1 **NonCompliant** (Audit), dc and arc1 Compliant. Remediations: arc1 0 deployments (07:03Z), vm1
+**1 deployment** (07:04Z); vm1's guest assignment Pending/ApplyAndAutoCorrect at 07:03:58Z, Compliant/ApplyAndAutoCorrect
+07:17Z. Second scan 07:17–07:29Z: all three Compliant; second remediations 0 and 0 (07:42Z). Condition (1) (stability)
+is being watched (`p80/watch2.log`, every 5 min until ~10:45Z, with each machine's last check time). Condition (2): the
+deployment itself writes ApplyAndAutoCorrect (vm1 07:03:58Z, arc1 05:09Z and 06:05Z), so no Null window was seen after
+a remediation. **But Null was seen on existing assignments:** at 02:10:12Z, before any change today, dc's and vm1's
+guest assignments (written by v1.0.0, last check 21:32Z/21:16Z the night before, VMs stopped overnight) had
+`assignmentType` **null**; after the definition update and scan (02:18Z) both read ApplyAndAutoCorrect with the same
+last check time, i.e. the service filled it in, not the agent. Under P80's `equals ApplyAndAutoCorrect` a scan in such a
+window marks the machine NonCompliant and a remediation then redeploys it once (needless, harmless: same content). That
+is a small B1 relapse, not flapping. Proposed follow-up: P83.
+
+## P83: P80's condition checks "not Audit/ApplyAndMonitor" instead of "equals ApplyAndAutoCorrect" (lab20, 2026-10-14; PROPOSED, NOT applied, awaits the vezir)
+
+**Why.** P80 measured: `assignmentType` can be **null** on a healthy existing assignment for hours (02:10Z evidence above),
+and Learn says it may be Null after a new assignment. `equals ApplyAndAutoCorrect` turns every such window into a
+NonCompliant state and a needless redeploy. What P80 must catch is a *wrong* mode, not a missing value.
+**Proposed fix (generator only; the zip and its SHA do not change):** the existenceCondition term becomes
+`guestConfiguration.assignmentType notIn ["Audit", "ApplyAndMonitor"]` (a null/missing field passes `notIn` in Azure
+Policy) in both modes and both kinds; L08 asserts it. **Test:** re-create the two storage definitions, scan, all three
+Compliant; remediation 0 deployments. The Audit case is not reproducible on demand, so the Audit branch is covered by L08
+and by P80's measurement (the operator differs only in how null is treated). If the vezir prefers to keep P80 as is,
+the CHANGELOG states the null window as a known window instead.
