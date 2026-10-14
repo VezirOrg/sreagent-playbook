@@ -2,7 +2,12 @@
 
 Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Release asset.
 
-## Unreleased (v1.0.1, P70; found by the fresh-eyes deploy on the second lab)
+## perfmon-blackbox/v1.0.1 (2026-10-14)
+
+Fixes found by the fresh-eyes deploy on the second lab (decisions P70, P86). The package is the v1.0.0 zip, **unchanged**
+(SHA-256 `806BCADB69F556401DE19754AEB649B7611EB1AE18AA106A5BF0A537A99363DD`); only the generated policy definitions and
+the docs change. Pass `--version 1.0.1` to the policy generator, re-create the definitions, run a compliance scan, then
+remediate.
 
 - **Fix B1 (both modes; decisions P70, P74–P76):** the definitions' existenceCondition no longer reads `contentUri`, which
   Azure returns as null on the guest assignment **in both package modes**. Storage mode checks `contentManagedIdentity =
@@ -11,17 +16,24 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
   **Correction:** the first note of this fix (P70) said GitHub mode was not affected; that was never measured and was
   wrong. v1.0.0 affected GitHub mode too (measured on the second lab, P76). Lab check on an Azure VM: storage mode and
   GitHub mode, Policy view Compliant and a re-evaluating remediation deploys nothing. **Arc:** verified on an
-  Arc-enabled server in both modes (Policy view Compliant, remediation 0 deployments, export uploaded). The package zip
-  is unchanged (only the generated definitions change): re-create the definitions with the v1.0.1 generator, run a
-  compliance scan, then remediate.
+  Arc-enabled server in both modes (Policy view Compliant, remediation 0 deployments, export uploaded).
 - **Fix: a guest assignment left in `Audit` is repaired (decisions P80, P83).** The service can leave a guest assignment
   in `assignmentType` `Audit` (seen after a mode switch); the agent then only tests and never corrects. v1.0.0 cured this
   by accident, through B1's redeploys. The existenceCondition now treats `Audit` and `ApplyAndMonitor` as not present,
   so one remediation restores `ApplyAndAutoCorrect` (lab: one deployment, then 0).
-  **Known window, tolerated:** `assignmentType` can read **null** on a healthy assignment, e.g. after the VMs were
-  stopped overnight, until the service fills it in (seen for hours in the lab). The condition lets null pass, so this
-  window does not cause a redeploy. That null case is verified by logic; its lab measurement is pending at the time of
-  writing.
+  **Known window:** `assignmentType` can read **null** on a healthy assignment, e.g. after the VMs were stopped
+  overnight, until the service fills it in (seen for hours in the lab, before this fix). The condition lets null pass,
+  so this window should cause no redeploy: **tolerated by P83 by logic; measurement pending** (T22b, 2026-10-15
+  morning). If that measurement fails, the fix ships as v1.0.2 (same zip).
+- **New tests for B1 (decisions P79, P80, P83; [docs/tests.md](docs/tests.md), lab of 2026-10-14):**
+  - T20 Policy view agrees with the machine: **green** on all four, T20a storage / T20b GitHub on an Azure VM, T20c
+    storage / T20d GitHub on an Arc-enabled server (v1.0.0 stayed NonCompliant in both modes).
+  - T21 no needless redeploy (`ReEvaluateCompliance` on Compliant servers): **green**, 0 deployments on all four, T21a–d
+    (v1.0.0 redeployed every time).
+  - T22a a guest assignment left in `Audit` is repaired once: **green** (one deployment, then Compliant and 0).
+  - T22b null `assignmentType` after the nightly stop: **pending**, a post-release check (2026-10-15 morning).
+  - L08 (local) asserts the existenceCondition: no `contentUri`, the identity term per mode, the `assignmentType notIn`
+    term.
 - **deploy.md:** step 2 passes the definition's metadata and display name (storage mode needs the metadata); remediations
   use `--resource-discovery-mode ReEvaluateCompliance` (a new assignment has no compliance results yet); 2b says how the
   package gets into a private-endpoint-only account and who needs Blob Data Contributor; the Machine Configuration agent

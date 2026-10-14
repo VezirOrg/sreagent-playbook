@@ -5,7 +5,7 @@
 > every resource, digs into the worst problems, and writes a ranked report with times, drivers and next steps, quoting
 > any gap in the capture. It follows strict rules: no raw data, a verdict ceiling, and no cause without a test in time.
 >
-> As of v1.0.0. Skill: [`skill/perfmon-triage/SKILL.md`](../skill/perfmon-triage/SKILL.md) (v2.2).
+> As of v1.0.1. Skill: [`skill/perfmon-triage/SKILL.md`](../skill/perfmon-triage/SKILL.md) (v2.2).
 
 ## How to ask
 
@@ -15,7 +15,7 @@ In a new thread of the agent:
 
 Variations: "the last 3 captures of `<server>`" (consecutive zips are merged into one database), "what happened on
 `<server>` between 14:00 and 15:00" (the agent picks the capture and narrows the window), "which servers have captures"
-(`--list-machines`). The trigger is manual in v1.0.0; an Azure Monitor alert as trigger is decided for phase 2.
+(`--list-machines`). The trigger is manual in v1.0.x; an Azure Monitor alert as trigger is decided for phase 2.
 
 ## What the skill does, step by step
 

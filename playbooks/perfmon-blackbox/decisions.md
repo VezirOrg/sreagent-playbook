@@ -1244,3 +1244,18 @@ pbb-arc-storage "100 % (1 out of 1)" and pbb-vm-storage 2 of 2. **Cause: the por
 the targeted scan started 08:42Z may have finished around the same time and is noted as a possible contributor only.
 **No playbook change.** The CLI and Resource Graph were right all along; candidates 1–3 above are dropped. T20c/T20d stay
 CLI measurements; Emre's S2-new shot is the first portal evidence of the Arc assignment counting arc1.
+
+## P86: v1.0.1 ships today, before T22b (Emre via the vezir, 2026-10-14 ~12:50 +03, "YAYIN-BUGÜN")
+
+**What.** v1.0.1 is released on 2026-10-14, not after T22b. Reverses P83's "Release timing" (release after the next
+morning's null check). The release commit applies the named stash (`bbbcac9…`, the v1.0.1 doc edits), the CHANGELOG
+"Unreleased" becomes `perfmon-blackbox/v1.0.1 (2026-10-14)`, and it is pushed to `main`; the vezir then tags
+`perfmon-blackbox/v1.0.1` and attaches the **identical** `PerfmonBlackbox.zip` (SHA-256
+`806BCADB69F556401DE19754AEB649B7611EB1AE18AA106A5BF0A537A99363DD`, P31: the v1.0.0 asset, every file scrub-checked
+for v1.0.0). Between the push and the tag, deploy.md on `main` names an asset URL that does not exist yet; the vezir
+tags right after the push.
+**The null window in the CHANGELOG:** tolerated by P83 by logic; measurement pending (T22b, 2026-10-15 morning); if it
+fails, v1.0.2. The P70 correction (GitHub mode was affected too) stays stated openly, and the B1 tests T20–T22 are
+listed with their results.
+**T22b becomes a post-release check.** lab20 keeps running (nightly stop as usual) for T22b on 2026-10-15 morning. Green:
+tests.md and the CHANGELOG say what was measured. Red: the P83 fallback (two `notEquals` terms) ships as v1.0.2, same zip.
