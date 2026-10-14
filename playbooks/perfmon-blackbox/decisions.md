@@ -1197,3 +1197,17 @@ pending (T22b, next morning). Condition (1) restarted on the P83 definitions (`p
 scrub denylist and nothing in the repo changes for this decision (P78 still lets other own lab machine names, such as
 `arc1` and `dc`, appear). The blog uses the real name and links it to `vm1` in one sentence; that is the blog's business,
 not this repo's.
+
+## P85: S2-new showed pbb-arc-storage as "0 out of 0" in the portal; the backend counts arc1 (lab20, 2026-10-14 ~08:30Z)
+
+**Seen (Emre, portal Policy → Compliance, scope rg-lab20, ~08:30Z):** pbb-vm-storage "100 % (2 out of 2)",
+pbb-arc-storage "100 % (0 out of 0)". **Checked 08:36Z, without touching arc1:** the Policy Insights API (`az policy state
+list` / `summarize`, latest and all records) and Azure Resource Graph (`policyresources`, the portal's source) both
+hold arc1 (`Microsoft.HybridCompute/machines`) as **Compliant** under pbb-arc-storage, definition
+perfmon-blackbox-arc-storage, 1 of 1, latest record 08:05:46Z. The record history is continuous (06:28, 06:43, 06:56,
+07:18, 07:35, 07:48, 08:05Z): the P83 re-creation at 07:46Z did not wipe it, and the 07:46–07:59Z scan evaluated it
+(07:48:05 and 07:48:23Z). The "arc1 Compliant" readings of P80/P83 come from these policy states, not from the guest
+assignment. pbb-arc-storage has no notScopes; arc1 is in rg-lab20 and matched (it has states). **So it is not a product
+bug and not a missing scan:** the portal row did not reflect the backend at that moment (display/caching on the portal
+side; not reproducible from the APIs). **What to do:** reload the Compliance blade (or open the assignment); retake S2-new
+when it shows 1 out of 1. No change to the lab or the product.
