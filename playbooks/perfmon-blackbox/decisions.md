@@ -1349,3 +1349,6 @@ explicitly keeps its value and its hash; an assignment that relied on the defaul
 remediation (a new parameterHash, so NonCompliant, then redeployed with 1; the collector keeps its data, only the Export
 task's trigger changes). To keep 4, pass `{"ExportEveryHours":{"value":"4"}}` in the assignment. Not a forced redeploy
 of untouched installs.
+**Confirmed (Emre via the vezir, 2026-10-14, "PAKET-AYNI"):** v1.0.2 reuses the v1.0.1 zip **unchanged** (same
+SHA-256 `806BCADB…63DD`, same `contentHash`), and the package fallback `'4'` stays. v1.0.2 is cut on 2026-10-15
+morning after T22b.
