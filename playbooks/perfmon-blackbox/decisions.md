@@ -1169,8 +1169,8 @@ is a small B1 relapse, not flapping. Proposed follow-up: P83.
 and Learn says it may be Null after a new assignment. `equals ApplyAndAutoCorrect` turns every such window into a
 NonCompliant state and a needless redeploy. What P80 must catch is a *wrong* mode, not a missing value.
 **Proposed fix (generator only; the zip and its SHA do not change):** the existenceCondition term becomes
-`guestConfiguration.assignmentType notIn ["Audit", "ApplyAndMonitor"]` (a null/missing field passes `notIn` in Azure
-Policy) in both modes and both kinds; L08 asserts it. **Test:** re-create the two storage definitions, scan, all three
+`guestConfiguration.assignmentType notIn ["Audit", "ApplyAndMonitor"]` (Learn does not say how null meets `notIn`; null passing `notEquals` is measured: P76 GitHub mode,
+identity null, Compliant 04:16Z. The lab test below checks `notIn` on null; if it fails, two `notEquals` terms) in both modes and both kinds; L08 asserts it. **Test:** re-create the two storage definitions, scan, all three
 Compliant; remediation 0 deployments. The Audit case is not reproducible on demand, so the Audit branch is covered by L08
 and by P80's measurement (the operator differs only in how null is treated). If the vezir prefers to keep P80 as is,
 the CHANGELOG states the null window as a known window instead.
