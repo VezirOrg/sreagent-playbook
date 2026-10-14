@@ -75,6 +75,16 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T18d storage mode without the reader role (P45) | no download, old config keeps running | — | **green** (arc1, P56, 2026-10-12): reader role removed, assignment moved to rc.9 (re-PUT 12:53:26Z) with rc.8 in the container: downloads 12:56:58Z and 13:01:59Z → 403, assignment Pending / "Failed to download assignment" (never Compliant), collector Running on rc.8. Also: an unchanged re-PUT does not download again (stays Compliant without the role, P56); a service re-sync put rc.8 back at 12:58Z (P55: scan first) |
 | T18e a different zip under the same name (P45) | rejected by the hash, old config keeps running | — | **green** (arc1, P56, 2026-10-12): reader role back, assignment pins rc.9 (re-PUT 13:19:44Z), the container holds rc.8 under the same name: every download (13:22:11Z, 13:32:16Z) "Failed to validate package" (hash 8ada… ≠ the pinned one), assignment Pending, collector Running on rc.8. One read at 13:30Z returned Compliant with the old hash (a stale report), the next read 13:31Z Pending with the rc.9 hash. **Restore** (rc.9 into `packages`, re-PUT 13:33:31Z): arc1 on rc.9, `T18.sh arc1 storage` PASS ~15:35Z (own identity, reader only on the container, export works); vm1 on rc.9 from GitHub, `T18.sh vm1 github` PASS |
 | T18f shared key disabled, no SAS (P45) | storage download + exports + agent fetch on an account with shared key off | **green** (2026-10-12, rc.8: shared key off, public access off, no key/SAS in code; storage download T18c, T11, T15) | **green** (same run: T18 storage, T11) |
+| T20a Policy view, storage, Azure VM (P76, P79) | v1.0.1 definitions on lab20 | **green** (2026-10-14: vm1 and dc Compliant 02:11:57Z, after the scan alone; NonCompliant before with v1.0.0 = B1) | — |
+| T20b Policy view, GitHub, Azure VM (P76) | v1.0.1 with the P76 fix | **green** (04:16:07Z; with the P70-only definition it was NonCompliant at 03:38Z, failing only on `contentUri`: B1 in GitHub mode) | — |
+| T20c Policy view, storage, Arc (P76) | | — | **green** (lab20 arc1, 06:06:55Z; T18 arc1 storage PASS 06:38Z, upload with HIMDS) |
+| T20d Policy view, GitHub, Arc (P76) | | — | **green** (lab20 arc1, 05:10:26Z) |
+| T21a no needless redeploy, storage, Azure VM | ReEvaluateCompliance on Compliant servers | **green** (0 deployments, 02:19Z and 02:41Z; v1.0.0 redeployed every time) | — |
+| T21b no needless redeploy, GitHub, Azure VM | | **green** (0, 04:26–04:44Z; the P70-only definition deployed 1 at 03:44–03:59Z) | — |
+| T21c no needless redeploy, storage, Arc | | — | **green** (0, 06:18–06:37Z) |
+| T21d no needless redeploy, GitHub, Arc | | — | **green** (0, 05:21–05:35Z) |
+| T22a Audit repaired once (P80) | vm1 left in `Audit` by the service re-sync | **green** (2026-10-14: NonCompliant 06:43Z; 1 deployment 07:04Z; ApplyAndAutoCorrect and Compliant 07:17Z; next scan Compliant, remediations 0 at 07:42Z) | arc1 0 deployments (was ApplyAndAutoCorrect) |
+| T22b null after the nightly stop (P83) | `notIn` term on lab20 | **pending** (measured the next morning: scan, expect Compliant and 0 deployments; null seen 2026-10-14 02:10Z on dc and vm1, before P83) | pending |
 | T13 lifecycle rule | | green | — |
 | T14 storage private | | green | — |
 
@@ -96,7 +106,8 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
   three groups have 12/2/6 counters; shipped files are pure ASCII and name no lab.
 - **L08 policy generator.** Two definitions, one resource type each, the same parameters, the parameter hash in step
   with the configuration parameters, the package hash pinned, and the ABAC condition evaluates to the exact expected
-  text.
+  text; no existenceCondition reads `contentUri` and the identity term is `equals system` (storage) or `notEquals
+  system` (GitHub), and `assignmentType` must be not in `Audit`, `ApplyAndMonitor` (P80, P83), for both kinds (P76).
 - **L09 scorer.** A report naming both planted problems scores 100; a missing CPU burst, a wrong leak rate or an
   invented problem (also a network or disk problem claimed) lose points; a negated cause or an area called fine does not.
 

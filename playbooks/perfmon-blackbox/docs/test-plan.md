@@ -57,6 +57,9 @@ a test for every stage, end to end, the last one being the analysis). Design: `d
 | T18e | P45 | A different zip under the same name → rejected | a different zip in the container under `PerfmonBlackbox.zip` while the hash pins the release: rejected by the hash check; the machine keeps its old configuration; with the right zip it turns Compliant | arc1 (P56; was vm1) |
 
 | T18f | P45 | **Shared key disabled, no SAS** | on the storage account with `allowSharedKeyAccess=false` and public network access disabled (T14): storage-mode download (T18b/T18c), an export upload from each machine (T11) and the agent's fetch (T15) all work; no step in the lab or the docs uses a key or a SAS | vm1, arc1, agent |
+| T20a–d | P76, P79 | **Policy view agrees with the machine (B1)** | after a compliance scan, a server whose guest assignment is Compliant (identity `system` in storage mode, none in GitHub mode) is **Compliant** in the policy state of its assignment; a: storage, Azure VM; b: GitHub, Azure VM; c: storage, Arc; d: GitHub, Arc | vm1, arc1 |
+| T21a–d | P76, P79 | **No needless redeploy (B1)** | a remediation with `--resource-discovery-mode ReEvaluateCompliance` on Compliant servers deploys **0** (same four cases as T20) | vm1, arc1 |
+| T22a–b | P80, P83 | **Mode repair without a null relapse** | a: a guest assignment in `Audit` is NonCompliant in the Policy view and one remediation deploys it once, restoring `ApplyAndAutoCorrect`; then T20/T21 hold. b: after the nightly stop (`assignmentType` may read null until the service fills it in), a scan finds the servers **Compliant** and a remediation deploys **0** | vm1, dc, arc1 |
 
 ### T16 scoring (ground truth from planted problems)
 
@@ -78,6 +81,7 @@ claims backed by `LINK:`, no raw data. **Pass = score ≥ 80, both plants found,
 | L04 | `perfmon_fetch_latest.py` selection logic | on synthetic blob listings it picks the newest zip, ignores other prefixes, rejects a zip whose manifest hash does not match |
 | L05 | Export script logic (Pester, Windows runner) | CSV validation rejects a bad header, an empty file and a missing counter; blob path built right from a sample resource ID; window logic on synthetic sample times: no overlap with `last_ts`, holes found and classified (`buffer_overrun`, `collector_restart`, `local_cap`), `state.json` moves only after a good upload; an unreadable ring is kept for 2 runs, deleted on the 3rd failed read with event 2003 and reported as an `unreadable_ring` gap, also after a failed upload (P54) |
 | L07 | Template | `PerfmonBlackbox.template.xml` holds exactly the 36 lines of the counter list, no location, date or machine field; placeholders only `{{MaxSizeMB}}` and `{{SampleIntervalSeconds}}` |
+| L08 | Policy generator | both kinds and both modes: the parameter hash in step with the configuration parameters, the package hash pinned, API 2024-04-05, the ABAC condition exact; **no existenceCondition reads `contentUri`** and the identity term is `equals system` (storage) or `notEquals system` (GitHub) (P76); `assignmentType` must be **not in** `Audit`, `ApplyAndMonitor` (P80, P83: a null value passes) |
 | L06 | Repo safety | `scripts/scrub-check.sh --self-test` passes; scrub check on the tree is clean |
 
 ## End-to-end order on a fresh lab (DoD centre)

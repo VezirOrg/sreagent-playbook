@@ -10,10 +10,18 @@ Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Rel
   Policy view of every assignment stayed NonCompliant while the servers were Compliant, and each remediation redeployed.
   **Correction:** the first note of this fix (P70) said GitHub mode was not affected; that was never measured and was
   wrong. v1.0.0 affected GitHub mode too (measured on the second lab, P76). Lab check on an Azure VM: storage mode and
-  GitHub mode, Policy view Compliant and a re-evaluating remediation deploys nothing. **Arc:** the Arc definitions come
-  from the same generator with the same condition, but this fix was **not verified on an Arc machine in the lab** (the
-  second lab has none). The package zip is unchanged (only the generated definitions change): re-create the definitions
-  with the v1.0.1 generator, run a compliance scan, then remediate.
+  GitHub mode, Policy view Compliant and a re-evaluating remediation deploys nothing. **Arc:** verified on an
+  Arc-enabled server in both modes (Policy view Compliant, remediation 0 deployments, export uploaded). The package zip
+  is unchanged (only the generated definitions change): re-create the definitions with the v1.0.1 generator, run a
+  compliance scan, then remediate.
+- **Fix: a guest assignment left in `Audit` is repaired (decisions P80, P83).** The service can leave a guest assignment
+  in `assignmentType` `Audit` (seen after a mode switch); the agent then only tests and never corrects. v1.0.0 cured this
+  by accident, through B1's redeploys. The existenceCondition now treats `Audit` and `ApplyAndMonitor` as not present,
+  so one remediation restores `ApplyAndAutoCorrect` (lab: one deployment, then 0).
+  **Known window, tolerated:** `assignmentType` can read **null** on a healthy assignment, e.g. after the VMs were
+  stopped overnight, until the service fills it in (seen for hours in the lab). The condition lets null pass, so this
+  window does not cause a redeploy. That null case is verified by logic; its lab measurement is pending at the time of
+  writing.
 - **deploy.md:** step 2 passes the definition's metadata and display name (storage mode needs the metadata); remediations
   use `--resource-discovery-mode ReEvaluateCompliance` (a new assignment has no compliance results yet); 2b says how the
   package gets into a private-endpoint-only account and who needs Blob Data Contributor; the Machine Configuration agent
