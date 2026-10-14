@@ -1211,3 +1211,18 @@ assignment. pbb-arc-storage has no notScopes; arc1 is in rg-lab20 and matched (i
 bug and not a missing scan:** the portal row did not reflect the backend at that moment (display/caching on the portal
 side; not reproducible from the APIs). **What to do:** reload the Compliance blade (or open the assignment); retake S2-new
 when it shows 1 out of 1. No change to the lab or the product.
+**P85 revised (~08:50Z): "the portal lagged" is withdrawn, the cause is open.** After a refresh (Emre ~08:40Z) the blade
+still shows 0 of 0, and the assignment's detail page (~08:45Z) shows "No resources found" with no resource-type or
+location filter. Re-checked: every API returns arc1 for pbb-arc-storage: Policy Insights `queryResults` at the
+subscription (1 row), `summarize` at the subscription, the resource group and the management group (1 compliant),
+Resource Graph `policyresources` (1 row, Compliant, stateWeight 200, isDeleted false, the management group set). Field by
+field, arc1's record under pbb-arc-storage equals vm1's under pbb-vm-storage except the assignment, the definition, the
+resource ID/type and the timestamp. Both definitions are mode Indexed, version 1.0.0; both assignments definitionVersion
+1.*.*, enforcement Default, location swedencentral. Differences that remain: (1) **two resources are named arc1** in
+rg-lab20, the Azure VM that hosts the Arc agent (lab only) and the Arc machine; (2) pbb-arc-storage was created today
+05:37Z, pbb-vm-storage yesterday 17:07Z (no daily evaluation cycle has run for it yet); (3) the resource type. No portal
+evidence ever showed arc1 counted under an Arc assignment: T20c/T20d were measured with the CLI only. **Not a definition
+bug as far as the evidence goes** (the states exist, are correct, and remediation acts on them); a portal display issue
+that cannot be reproduced from any API. Next: (a) Emre opens the Arc machine arc1 → Policies to see whether
+pbb-arc-storage is listed there; (b) re-check the blade after the daily cycle (by ~05:37Z tomorrow), with tomorrow's
+null check. No definition change.
