@@ -1186,3 +1186,10 @@ the check fails: fix first, release after.
 **AGENT-ARC (P82) GO (the vezir, same message):** idle question ~08:05Z, plant ~08:20Z, second question after the ~09:07Z
 export, scored by ~09:30Z; thread IDs to the vezir; any P83 scan or remediation inside the plant window is named in the
 report.
+
+## P84: the repo keeps "vm1" for the lab's web member (Emre via the vezir, 2026-10-14 ~11:05 +03, "REPO-VM1")
+
+**What.** The playbook's docs, tests and evidence keep calling the Azure VM member `vm1`; its real lab name stays on the
+scrub denylist and nothing in the repo changes for this decision (P78 still lets other own lab machine names, such as
+`arc1` and `dc`, appear). The blog uses the real name and links it to `vm1` in one sentence; that is the blog's business,
+not this repo's.
