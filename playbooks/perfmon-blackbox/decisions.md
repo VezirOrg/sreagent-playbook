@@ -1200,6 +1200,9 @@ report.
 **P83 measured (lab20, 2026-10-14).** Definitions re-created 07:46:44Z; scan 07:46–07:59Z: vm1, dc and arc1 Compliant;
 remediations 0 and 0 (08:16:50Z). No machine had a null `assignmentType` during the run, so the null case is still
 pending (T22b, next morning). Condition (1) restarted on the P83 definitions (`p80/watch2.log`).
+**P83 condition (1) CLOSED (stable).** 21 samples 07:44–09:26Z, every one Compliant/ApplyAndAutoCorrect on all three; agent
+reports since the P83 definitions: vm1 08:44 and 09:16Z, dc 08:26 and 09:13Z, arc1 08:12 and 09:24Z; no remediation
+needed (P85's scan 08:42–08:50Z changed nothing). No flapping. The watcher keeps running to ~10:45Z as a spare.
 
 ## P84: the repo keeps "vm1" for the lab's web member (Emre via the vezir, 2026-10-14 ~11:05 +03, "REPO-VM1")
 
