@@ -1052,6 +1052,10 @@ remediation, vm1 Compliant in storage mode again (T18 vm1 storage). dc stays in 
 **Then.** Clean → P70's claim is measured; the release commit is prepared and pushed, the tag waits for the vezir's
 publish decision. B1 in GitHub mode too → the fix (both modes check `contentHash` and the identity, not `contentUri`) is
 written here first and brought to the vezir **before** it is applied; if the zip SHA would have to change: stop.
+**Lesson (2026-10-14):** a remediation must be created at or below its assignment's scope. `pbb-vm` sat on the VM, so
+`az policy remediation create -g <rg>` was refused (`InvalidCreateRemediationRequest`, "out of scope"); use
+`--resource <VM ID>` (and `az policy remediation show -n <name> --resource <VM ID>`). Lab poll loops stop on a create
+error instead of polling a remediation that does not exist (this cost 30 minutes once).
 
 ## P76: B1 is in GitHub mode too; proposed fix (measured 2026-10-14 on lab20 under P75; fix NOT applied, awaits the vezir)
 

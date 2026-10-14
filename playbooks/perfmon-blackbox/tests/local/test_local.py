@@ -414,10 +414,11 @@ class L08Policies(unittest.TestCase):
                 self.assertEqual((gc['contentUri'], meta['contentUri']), (want, want))
                 self.assertEqual((gc.get('contentManagedIdentity'), meta.get('contentManagedIdentity')),
                                  ('system', 'system') if storage else (None, None))
-                uris = [c['equals'] for c in det['existenceCondition']['allOf'] if c['field'].endswith('guestConfiguration.contentUri')]
-                mis = [c['equals'] for c in det['existenceCondition']['allOf'] if c['field'].endswith('guestConfiguration.contentManagedIdentity')]
-                # P70 (B1): Azure returns contentUri = null with a managed identity, so storage mode checks the identity
-                self.assertEqual((uris, mis), ([], ['system']) if storage else ([want], []))
+                # B1 (P70, P76): Azure returns contentUri = null in both modes, so no existenceCondition reads it and the
+                # mode is told by the identity
+                self.assertNotIn('contentUri', json.dumps(det['existenceCondition']))
+                mis = [c for c in det['existenceCondition']['allOf'] if c['field'].endswith('guestConfiguration.contentManagedIdentity')]
+                self.assertEqual(mis, [{'field': mis[0]['field'], ('equals' if storage else 'notEquals'): 'system'}])
                 self.assertEqual(len(res), 3 if storage else 2)
                 if storage:
                     reader = res[2]
