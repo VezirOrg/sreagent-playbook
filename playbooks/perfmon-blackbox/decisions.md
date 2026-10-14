@@ -1265,3 +1265,19 @@ https://github.com/VezirOrg/sreagent-playbook/releases/tag/perfmon-blackbox/v1.0
 asset `PerfmonBlackbox.zip`. The vezir downloaded it from the public URL used in deploy.md: SHA-256 `806BCADB…63DD`,
 matches (P31). Before the push this session checked the same SHA on the v1.0.0 asset and the lab copy. Release notes
 scrub-checked clean. T22b stays a post-release check (2026-10-15 morning); if it fails, v1.0.2.
+
+## P87: a quick-install guide for v1.0.1 is drafted on Drive, not in the repo (the vezir for Emre, 2026-10-14)
+
+**What.** A one-page Turkish quick-install guide for v1.0.1 (one resource group, storage mode, Azure VM and Arc
+branches) is written to the project's Drive folder (`files/perfmon-blackbox/quick-install-v1.0.1.md`), for Emre to try
+at a customer. It is **not committed**: `main` is public, and Emre decides later whether it enters the repo. It is
+written only from deploy.md, parameters.md, operations.md and README.md at tag `perfmon-blackbox/v1.0.1`; where those
+are silent or wrong it says so in a "gaps" list at its top instead of inventing.
+**Gaps found that concern the repo docs** (for a later doc fix, not done here): deploy.md's "Contributor + Role Based
+Access Control Administrator" cannot create policy definitions, policy assignments or custom role definitions
+(Contributor's NotActions exclude `Microsoft.Authorization/*/Write`; RBAC Administrator only writes role assignments;
+Learn, built-in roles, Privileged); no minimum Azure CLI version; event 1002 (export uploaded, complete) is named only in
+the code; the export's clock-aligned schedule (local 00:07 + every N h, random delay ≤ 10 min) is only in the code;
+operations.md "Remove" omits the storage-mode reader grant on the package container and the assignment identity's own
+role assignments, and gives no command for deleting a guest assignment; the time to first Compliant is "15–30 min" in
+deploy.md but "about an hour per machine" in operations.md (upgrade).
