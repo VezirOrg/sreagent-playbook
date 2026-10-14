@@ -1128,3 +1128,24 @@ records and uploads: T18 PASS 05:11Z, last upload 06:17Z).
 asserts it. Then an Audit assignment is NonCompliant in the Policy view and the next remediation writes
 ApplyAndAutoCorrect (one deployment, a needed one). Test: re-create the definitions, scan: vm1 NonCompliant (Audit);
 remediation deploys 1 (vm1 only); after it, vm1 ApplyAndAutoCorrect and Compliant, T20/T21 green again on all three.
+**APPROVED (the vezir under P73, 2026-10-14 ~09:15 +03).** Conditions: (1) **stability**: after the fix vm1 is watched
+over at least two service refresh cycles; if the service flips it back to Audit and remediations keep redeploying
+(flapping), the fix is a new B1: stop and report. (2) **new machine**: Learn says `assignmentType` may show Null for up to
+an hour after a new assignment; with the new condition such a machine shows NonCompliant meanwhile and a remediation may
+deploy needlessly. That window is measured (on dc or arc1 if possible, else from the evidence) and written here and in
+the CHANGELOG as a known window.
+
+## P81: in-machine screenshots on arc1 (Emre via the vezir, 2026-10-14 ~09:10 +03, "İÇ-M1-M4")
+
+Emre takes four screenshots inside arc1 over RDP: M1 Performance Monitor → Data Collector Sets → User Defined →
+PerfmonBlackbox Running; M2 Task Scheduler → the PerfmonBlackbox tasks; M3 Explorer at `C:\ProgramData\PerfmonBlackbox`;
+M4 Event Viewer → the PerfmonBlackbox "export uploaded" event. This session tells the vezir how arc1 is reached and
+which credential applies (by the Key Vault secret's name, never its value). Nothing on arc1 is changed for the shots.
+
+## P82: the agent analysis shots are redone on arc1 (Emre via the vezir, 2026-10-14 ~09:15 +03, "AGENT-ARC")
+
+After P80 is green: one idle question on arc1, then the T16 plant on arc1 (CPU burst + memory leak,
+`tests/lab/guest/make-trouble.ps1`, lab only; same settings as P71) and a second question in a new thread, scored with
+`tests/scoring/score.py` (T16 rubric). Emre takes the thread and consumption screens. ExportEveryHours is 1 on arc1, so
+each question waits for the next hourly export after its window. Ends before 21:45Z; the plan and times go to the vezir
+first.
