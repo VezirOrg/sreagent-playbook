@@ -1,100 +1,116 @@
-# perfmon-blackbox: v1.0.1 B1 fix GREEN on lab20 (Policy view Compliant, 0 redeploys, T18 PASS); release STOPPED: GitHub-mode contentUri question reported to the vezir (2026-10-14).
+# perfmon-blackbox: v1.0.1 lab-green on Azure VM + Arc (B1, P80, P83); release WAITS for T22b (null check, 2026-10-15 morning), release edits parked in a named stash.
 
-## Session 6 (2026-10-14, in progress): v1.0.1 lab check (P74)
+Playbook: **perfmon-blackbox**. Read `../../CLAUDE.md`, this file, then `decisions.md` (P1–P85; today's are P74–P85).
+Every `az`/`azd` call runs as `direnv exec . <command>` from the repo root. The owner is the vezir (P73): releases,
+teardowns and lab builds for approved work are the vezir's call; ask before anything outward-facing.
 
-- 02:10:35Z v1.0.1 storage definition applied (zip/hash unchanged, label 1.0.1); scan 02:10:41–02:18:22Z → the Policy
-  view of pbb-vm-storage **Compliant** on dc and vm1 at 02:11:57Z (was NonCompliant: B1 fixed); remediation 1
-  (ReEvaluateCompliance) 0 deployments; T18 vm1 storage **PASS** 02:33–02:35Z (`BB_LAB=.lab/lab20`, `T18.sh` directly:
-  `run.sh` passes only one argument). Evidence: `.lab/lab20-logs/v101/`.
-- **STOP (brief's rule: a doc contradicts a test result):** P70 and the CHANGELOG say "GitHub mode is not affected", but
-  GitHub mode's existenceCondition still compares `contentUri`, and lab18 (T18c, 2026-10-12, commit 7db0e9f) recorded
-  that the guest assignment GET hides `contentUri` in GitHub mode too. If the policy engine sees it the same way, GitHub
-  mode has B1 as well. Never measured (no Policy-view state of pbb-vm was recorded). Reported to the vezir; not fixed.
-- AAU 73 vs 35: "first-run setup" **not proven** (see the report to the vezir; traces in `.lab/lab20-logs/v101/aau/`).
-
-Playbook: **perfmon-blackbox**. Read `../../CLAUDE.md`, `CLAUDE.md`, this file, then `decisions.md` (P1–P73; the latest
-are P67–P73). Every `az`/`azd` call runs as `direnv exec . <command>` from the repo root.
-
-## Where it stands
+## Where it stands (end of session 6, 2026-10-14)
 
 - **Released:** v1.0.0 (P66), tag `perfmon-blackbox/v1.0.0`, asset `PerfmonBlackbox.zip` SHA-256
   `806BCADB69F556401DE19754AEB649B7611EB1AE18AA106A5BF0A537A99363DD`. Skill perfmon-triage v2.2.
-- **v1.0.1 in progress (P70), on `main` after this session, untagged:**
-  - **B1 fix** in `policy/build_policies.py`: storage mode's existenceCondition checks
-    `guestConfiguration.contentManagedIdentity = system` instead of `contentUri` (Azure returns contentUri = null with a
-    managed identity, so the Policy view stayed NonCompliant and every remediation redeployed). GitHub mode unchanged.
-    L08 updated; L01 L02 L04 L07 L08 L09 green. **The package zip does not change** (same SHA): only the generated
-    definitions do, so v1.0.1 can ship the v1.0.0 zip again (decide at release; P31 checks still apply).
-  - **Doc fixes** F1–F5, F7 in `docs/deploy.md` and `docs/parameters.md`; CHANGELOG "Unreleased". Version banners
-    ("As of v1.0.0") and the README status are NOT yet bumped: do that in the release commit.
-- **lab20 is UP and KEPT** (rg-lab20, dc + vm1, no Arc, built 2026-10-13 16:32–16:59Z from the private lab template;
-  register row "kept for v1.0.1"). Template auto-shutdown schedules Disabled (P69); Emre's global automation stops the
-  VMs ~21:46Z nightly and moves disks to Standard_LRS (accepted, not restored). Agent cap 1000 AAU.
-  Product deployed there by the **fresh-eyes run** (P67): storage mode, `pbb-vm-storage` on the RG (dc and vm1),
-  `ExportEveryHours="1"`, storage `stpbb…` (the playbook's), skill perfmon-triage deployed with Author + Standard User.
-  Local lab state: `.lab/lab20/` (template clone + azd env), `.lab/lab20-logs/` (raw notes, outputs), `.lab/fresh/`
-  (the v1.0.0 clone used for the fresh-eyes run; its `policy/out/` has the v1.0.0 definitions).
-- **Blog post 6 part 1** outputs are done (`files/post6-shots/`: A timings + findings, C1–C7, D, D2, S4 fallback; all
-  masked). **`files/post6-shots/raw/` is Emre's raw screenshots: never delete or change it.** S2 is skipped (P70) unless
-  tomorrow's Policy view is Compliant and Emre wants it.
+- **v1.0.1 on `main`, untagged.** Generator-only fixes; the package, skill, infra and scripts have no diff since v1.0.0,
+  so v1.0.1 ships the **identical zip** (same SHA). In `policy/build_policies.py` the existenceCondition:
+  - **B1 (P70, P76):** never reads `contentUri` (Azure returns null in both modes); storage mode checks
+    `contentManagedIdentity equals system`, GitHub mode `notEquals system`.
+  - **P80 + P83:** `guestConfiguration.assignmentType notIn ["Audit", "ApplyAndMonitor"]`. An assignment the service left
+    in Audit is repaired by one remediation; a **null** assignmentType (seen 2026-10-14 02:10Z on dc and vm1 after the
+    nightly stop, filled in later by the service) passes, so it causes no redeploy.
+  - L08 asserts all of it; L01 L02 L04 L07 L08 L09 green.
+- **Lab results 2026-10-14 (lab20; tests.md T20–T22):** T20a–d (Policy view Compliant) and T21a–d (remediation deploys 0)
+  green on an Azure VM and on Arc, storage and GitHub mode; T18 vm1 storage, arc1 github and arc1 storage PASS; T22a
+  (Audit repaired with one deployment, then 0) green; P83 applied 07:46Z: all Compliant, remediations 0; P83 stability
+  closed (21 samples 07:44–09:26Z, two agent reports per machine, no flapping). **T22b (null after the nightly stop) is
+  PENDING**: CHANGELOG says "verified by logic, measurement pending".
+- **AGENT-ARC (P82) done:** idle question on arc1 (thread d0842b4b…) and the planted run (thread 28b1a3d4…) 95/100 PASS.
+  Masked texts and README in `files/post6-shots/agent-arc/`. Blog shots S2-new (final), S3, M1–M4 taken by Emre.
+- **P84 (REPO-VM1):** the repo keeps `vm1` for the template's web member; its real name stays on the denylist.
+- **P85 closed:** the portal's "0 out of 0" for pbb-arc-storage was the portal scope filter; no playbook change.
 
-## What session 5 did (2026-10-13 evening)
+## Parked: the v1.0.1 release edits (named stash)
 
-P67 second lab today, shared with post 6 → lab20 built (27m39s) → fresh-eyes deploy steps 0–4 (17:01–17:21Z), vm1
-Compliant 17:38Z, first zip 18:07Z (`complete`), agent answer 18:10–18:17Z (honest "not hard to use") → P68/P69
-shutdown on/off → found **B1** and F1–F7 → P70 (v1.0.1, S2 skipped) → S4 path for Emre (dc/vm1 Bastion + Edge; Emre's
-user got Blob Data Reader on `perfmon`) → P71 planted leak + CPU, second question **100/100 PASS** → P72 keep lab20 →
-B1 fix + doc fixes committed → P73 vezir decides releases/teardowns for approved work.
+`git stash list` shows **"v1.0.1 release edits — apply at release after T22b"** (stash commit `bbbcac906be2…`; the
+stack is shared with other worktrees, so find it by that message, never by `stash@{n}` alone, and never bare `git stash
+pop`). It holds: README status v1.0.1, the "As of v1.0.1" banners (architecture, cost, analysis, operations, deploy,
+parameters, security; analysis "manual in v1.0.x"), deploy.md (clone the tag, asset URL `perfmon-blackbox%2Fv1.0.1`,
+`--version 1.0.1`). **It must not land on `main` before the tag and asset exist** (main is public; deploy.md would point
+at a missing asset). Apply with `git stash apply <sha>` only in the release step below, then drop that entry (found by
+its message).
 
-## Next (tomorrow, 2026-10-14; the vezir may start the VMs without Emre, P72)
+## Next (fresh session, 2026-10-15 morning; every lab step ends before 21:45Z)
 
-1. Start lab20's VMs (`az vm start -g rg-lab20 -n dc` and the member; the member's real name is in
-   `files/private-refs.md` terms: the template's first IIS member). The Boot task taking the old ring into a pending
-   piece is expected; the next export reports the off-hours as a gap.
-2. Re-create `perfmon-blackbox-vm-storage` with the **current** generator (deploy.md step 2/2b as now written, with
-   `--metadata`, version label `1.0.1`), same package container and hash. Then `az policy state trigger-scan -g rg-lab20`
-   **before** any remediation (P55); remediate with `--resource-discovery-mode ReEvaluateCompliance`.
-3. Check: the guest assignments stay/return Compliant with `assignmentType` ApplyAndAutoCorrect; **the Policy view of
-   pbb-vm-storage turns Compliant** for vm1 and dc (that is the B1 test; S2 for Emre if he wants it); a second remediation
-   finds nothing to deploy (no needless redeploy); an export uploads (storage mode, T18 on vm1).
-4. Green → bring v1.0.1 to the **vezir** (P73): release commit (banners, README status, CHANGELOG section), zip = the
-   v1.0.0 asset re-attached unchanged if nothing in the package changed (SHA in decisions first, files scrub-checked,
-   P31), tag `perfmon-blackbox/v1.0.1`.
-5. Then lab20 teardown on the **vezir's** go (P73), P65 order. Lab-only extras to remove first: dc identity Blob Data
-   Contributor on `packages` and Blob Data Reader on `perfmon`; **Emre's user Blob Data Reader on `perfmon`**; lab SP
-   SRE Agent Author + Standard User on the agent; gc-prereq + its Contributor; pbb-vm-storage + its 4 role assignments
-   (GC Resource Contributor, Reader, Deployer, conditioned RBAC Administrator); the servers' Writer and package Reader
-   grants; the agent identities' Reader on `perfmon`; definition `perfmon-blackbox-vm-storage`; the two custom roles;
-   then `azd down --purge --force --cwd .lab/lab20`, register DOWN, lab-audit. Also `C:\BbDev\` on vm1 goes with the VM.
-6. Later (unchanged): the skill's range mode across a DST fall-back (P63 SKILL-SONRA); RoleAssignmentExists tolerance.
+1. **Start lab20's VMs:** `az vm start -g rg-lab20 -n dc`, the web member (its real name: `files/private-refs.md`; the
+   template's first IIS member) and `-n arc1` (the Azure VM that hosts the Arc agent; the Arc machine reconnects by
+   itself, check `az connectedmachine show -g rg-lab20 -n arc1 --query status`). Do **not** touch anything else first.
+2. **T22b (P83 null check), before any remediation:**
+   - Right after the start, record each guest assignment (vm1, dc, arc1: `complianceStatus`, `assignmentType`,
+     `lastComplianceStatusChecked`; script pattern in `.lab/lab20-logs/v101/p80/watch2.sh`). A null `assignmentType` here
+     is exactly the case under test: note it.
+   - `az policy state trigger-scan -g rg-lab20`, then `az policy state list -g rg-lab20` for pbb-vm-storage and
+     pbb-arc-storage: **expect all Compliant**.
+   - Remediate both with `--resource-discovery-mode ReEvaluateCompliance` (`--policy-assignment <name> -g rg-lab20`):
+     **expect 0 deployments** each. Script pattern: `.lab/lab20-logs/v101/p83/run.sh`.
+   - Green → T22b row in `docs/tests.md` green (with whether null was actually seen), decisions entry, CHANGELOG: drop
+     "measurement pending" (say what was measured).
+   - **If T22b fails** (NonCompliant on a null assignmentType, or a deployment): STOP, write it into decisions and bring
+     it to the vezir before changing anything. The prepared fallback (P83): replace the `notIn` term by two terms,
+     `assignmentType notEquals Audit` and `notEquals ApplyAndMonitor` (null passing `notEquals` is measured: P76 GitHub
+     mode). Generator only; zip/SHA unchanged; L08 updated; re-create the two storage definitions as in P80/P83 (command
+     pattern in decisions P80 "measured"), scan, remediate, expect 0. Release only after that is green.
+3. **Portal check:** Policy → Compliance with the **correct scope** (subscription VezirLabs / rg-lab20; P85): pbb-vm-storage
+   2 of 2, pbb-arc-storage 1 of 1, both Compliant.
+4. **Release commit** (bring it to the vezir first, P73): apply the named stash; CHANGELOG "Unreleased" becomes
+   `perfmon-blackbox/v1.0.1 (2026-10-15)`; SHA unchanged in decisions (P31: the zip is the v1.0.0 asset, every file
+   already scrub-checked for v1.0.0); commit, push. Then **the vezir** tags `perfmon-blackbox/v1.0.1` and attaches the
+   **identical** `PerfmonBlackbox.zip` (SHA-256 806BCADB…63DD); check the asset URL in deploy.md resolves.
+5. **lab20 teardown** on the vezir's GO (P73), P65 order, then register DOWN in the private lab template's `docs/labs.md`
+   (same commit as the teardown) and lab-audit. Remove explicitly first:
+   - **Emre's user Blob Data Reader on `perfmon`** (lab-scoped), dc identity Blob Data Contributor on `packages` and Blob
+     Data Reader on `perfmon`, the agent identities' Reader on `perfmon`, lab SP SRE Agent Author + Standard User on
+     the agent.
+   - Assignments pbb-vm-storage and pbb-arc-storage, each with its 4 role assignments (GC Resource Contributor, Reader,
+     Deployer, conditioned RBAC Administrator); gc-prereq + its Contributor; stale state rows of the deleted pbb-arc /
+     pbb-vm need nothing.
+   - The servers' (dc, vm1, arc1) Writer grant on `perfmon` and Blob Data Reader on `packages`.
+   - Definitions `perfmon-blackbox-vm`, `-vm-storage`, `-arc`, `-arc-storage` (subscription scope); custom roles
+     `PerfMon Blackbox Writer` / `Deployer`.
+   - Then `azd down --purge --force --cwd .lab/lab20` (the RG takes the Arc machine resource `arc1`, the arc1 VM, NICs,
+     disks, storage, `C:\BbDev\` on the VMs). Register row DOWN; lab-audit.
 
-## Open questions
+## WAITING (not this playbook's to decide)
 
-- For Emre (through the vezir): delete the rc pre-releases (all / keep all = current / keep rc.11)? OPEN-1, OPEN-2 (P8).
-- The full stage suite on a fresh lab (DoD-1) was not run on lab20 (P67); decide whether v1.0.1's lab check is enough.
+- Emre (through the vezir): delete the rc pre-releases (all / keep all = current / keep rc.11)? OPEN-1, OPEN-2 (P8).
+- DoD-1: the full stage suite on a fresh lab was not run on lab20 (P67); the vezir decides whether v1.0.1's lab check
+  is enough.
+- Later (unchanged): the skill's range mode across a DST fall-back (P63 SKILL-SONRA); RoleAssignmentExists tolerance.
 
 ## Lab facts that bite
 
 - The first Machine Configuration cycle after a new package only **tests**; the next applies: ~45 min end to end.
-- After a definition update, **run a compliance scan before remediating** (P55), or the service re-sync reverts it.
-  A guest assignment can turn `Audit` (agent: `custom_inguest`) after a race between the container zip and the
-  assignment hash: check `assignmentType`, and a second scan + remediation fixes it (arc1, 2026-10-13).
+- After a definition update, **scan before remediating** (P55). A remediation's scope must be at or below its
+  assignment's: `--resource <id>` for a VM-scope assignment, `-g` only for an RG-scope one (P75).
+- `assignmentType` can read `Audit` after a mode switch (P80) and **null** after the nightly stop (P83); check it.
+- The guest assignment GET's `lastComplianceStatusChecked` moves only with an agent report (roughly every 15–60 min).
 - A remediation marked Failed can still have written the guest assignment: read the deployment operations.
-- `az role assignment list --all --role "<custom name>"` crashes in az 2.89: filter on `roleDefinitionName` in the query.
-  JMESPath `starts_with` on scopes is case-sensitive (`resourcegroups` vs `resourceGroups`): compare lower-cased.
+- Portal Policy → Compliance: check the **scope** selection before trusting a count (P85).
+- `tests/run.sh` passes only one argument: run `T18.sh <vm1|arc1> <storage|github>` directly with `BB_LAB=$PWD/.lab/lab20`.
+- `tests/lab/common.sh` resolves its guest scripts from `$0`: source it only from a script in `tests/lab/` (under
+  `sh -c` the `guest` helper silently does nothing). arc1 needs `--user $VM_ADMIN_USERNAME` (not domain-joined).
+- `ask-agent` runs from inside `.lab/lab20` but under the **repo root's** direnv (`direnv exec . bash -c "cd .lab/lab20 &&
+  scripts/ask-agent …"`); `direnv exec .` inside `.lab/lab20` has no az login. It prints `thread <id>` on stderr; the
+  report is the longest agent message.
+- Background logs through `grep` buffer: write watcher output straight to the file.
+- The product storage account is private-endpoint only: list blobs from inside a VM, not from the laptop.
+- `az role assignment list --all --role "<custom name>"` crashes in az 2.89: filter on `roleDefinitionName`. JMESPath
+  `starts_with` on scopes is case-sensitive.
 - The lab SP cannot read Microsoft Graph: empty principal names do not mean orphans.
-- `T01` on dc: wait until no `gc_worker` process is left. T16/T17 start right after a 4-hourly export.
-- Masking: pipe lab output through `perl -pe 's/stbb\w+/<account>/g'` and mask GUIDs; never list subscription-wide
-  role assignments into evidence (they name other labs). The `ls` alias (eza) breaks on paths: use `/bin/ls`.
-- Drive (`files/`) refuses concurrent writes: write locally, copy at milestones.
-
-- lab20: the member VM's real name differs from `vm1` (template naming); mask it in every evidence file. Its storage
-  account for the product is the playbook's own `stpbb…`, not the template's `sta…`.
-- `ask-agent` (template script) prints `thread <id>` on stderr; the report is the longest agent message.
-- Policy evaluation details are only listed with `az policy state list --resource <id> --expand PolicyEvaluationDetails`.
+- Masking: GUIDs, `stpbb…`/`sta…` names, the tenant; the member's real name is `vm1` in every committed file (P84);
+  never list subscription-wide role assignments into evidence. `ls` is eza: use `/bin/ls`.
+- Drive (`files/`) refuses concurrent writes: write locally, copy at milestones. `files/post6-shots/raw/` is Emre's: never
+  change it.
 
 ## Standing rules (decisions)
 
 - P73: for approved work the vezir decides lab builds/teardowns and releases; blog publication and OPEN-1/OPEN-2 stay Emre's.
 - P31 checks: SHA into decisions.md before publishing; every file of a release zip extracted and scrub-checked first.
 - P50–P53: no lab run crosses 21:45Z; never restore disk SKUs; the product never changes a machine's power state.
+- P78/P84: own lab machine names may appear (dc, arc1); the web member stays `vm1`.
