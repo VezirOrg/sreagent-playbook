@@ -1092,3 +1092,11 @@ storage mode**, Compliant, with at least one export uploaded, and stays until hi
 GO). No agent analysis on arc1. Order on arc1 therefore: **GitHub mode first** (`pbb-arc`, measured), then storage mode
 (`pbb-arc-storage`, measured: it is also the final state). A first `pbb-arc-storage` (04:24Z) was removed with its role
 assignments before any remediation deployed (its remediation cancelled) when this order was set (04:28Z).
+
+## P78: our own lab machine names are not masked (Emre via the vezir, 2026-10-14 ~08:00 +03)
+
+The names of our own lab machines (dc, the template's IIS member, arc1, SQL members) are exempt from the alias / masking
+rule: they may appear as they are in the public repo, the blog and screenshots. Existing docs are **not** rewritten (they
+keep `vm1`); new text does not have to translate either way. Still masked: subscription and tenant IDs, admin accounts,
+and all third-party data. Note: the scrub denylist (private, shared, outside this playbook) still lists the IIS member's
+name, so until the vezir changes the denylist this playbook keeps writing `vm1` in committed files.
