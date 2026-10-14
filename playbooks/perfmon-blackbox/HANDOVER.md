@@ -1,14 +1,17 @@
-# perfmon-blackbox: v1.0.1 lab-green on Azure VM + Arc (B1, P80, P83); release WAITS for T22b (null check, 2026-10-15 morning), release edits parked in a named stash.
+# perfmon-blackbox: v1.0.1 release commit on main (P86, 2026-10-14, same zip); the vezir tags it; T22b is a post-release check 2026-10-15 morning (fail = v1.0.2).
 
-Playbook: **perfmon-blackbox**. Read `../../CLAUDE.md`, this file, then `decisions.md` (P1–P85; today's are P74–P85).
+Playbook: **perfmon-blackbox**. Read `../../CLAUDE.md`, this file, then `decisions.md` (P1–P86; today's are P74–P86).
 Every `az`/`azd` call runs as `direnv exec . <command>` from the repo root. The owner is the vezir (P73): releases,
 teardowns and lab builds for approved work are the vezir's call; ask before anything outward-facing.
 
-## Where it stands (end of session 6, 2026-10-14)
+## Where it stands (session 7, 2026-10-14 ~13:00 +03)
 
 - **Released:** v1.0.0 (P66), tag `perfmon-blackbox/v1.0.0`, asset `PerfmonBlackbox.zip` SHA-256
   `806BCADB69F556401DE19754AEB649B7611EB1AE18AA106A5BF0A537A99363DD`. Skill perfmon-triage v2.2.
-- **v1.0.1 on `main`, untagged.** Generator-only fixes; the package, skill, infra and scripts have no diff since v1.0.0,
+- **v1.0.1 released by P86 ("YAYIN-BUGÜN", Emre via the vezir):** release commit `perfmon-blackbox: release v1.0.1` on
+  `main` (stash applied, CHANGELOG `perfmon-blackbox/v1.0.1 (2026-10-14)`). **The vezir** tags `perfmon-blackbox/v1.0.1`
+  and creates the GitHub release; notes and the zip for it are in `files/perfmon-blackbox/release-v1.0.1/`. After the
+  tag: check the deploy.md asset URL resolves and hashes to 806BCADB…63DD. Generator-only fixes; the package, skill, infra and scripts have no diff since v1.0.0,
   so v1.0.1 ships the **identical zip** (same SHA). In `policy/build_policies.py` the existenceCondition:
   - **B1 (P70, P76):** never reads `contentUri` (Azure returns null in both modes); storage mode checks
     `contentManagedIdentity equals system`, GitHub mode `notEquals system`.
@@ -26,22 +29,19 @@ teardowns and lab builds for approved work are the vezir's call; ask before anyt
 - **P84 (REPO-VM1):** the repo keeps `vm1` for the template's web member; its real name stays on the denylist.
 - **P85 closed:** the portal's "0 out of 0" for pbb-arc-storage was the portal scope filter; no playbook change.
 
-## Parked: the v1.0.1 release edits (named stash)
+## The named stash is spent
 
-`git stash list` shows **"v1.0.1 release edits — apply at release after T22b"** (stash commit `bbbcac906be2…`; the
-stack is shared with other worktrees, so find it by that message, never by `stash@{n}` alone, and never bare `git stash
-pop`). It holds: README status v1.0.1, the "As of v1.0.1" banners (architecture, cost, analysis, operations, deploy,
-parameters, security; analysis "manual in v1.0.x"), deploy.md (clone the tag, asset URL `perfmon-blackbox%2Fv1.0.1`,
-`--version 1.0.1`). **It must not land on `main` before the tag and asset exist** (main is public; deploy.md would point
-at a missing asset). Apply with `git stash apply <sha>` only in the release step below, then drop that entry (found by
-its message).
+"v1.0.1 release edits — apply at release after T22b" (`bbbcac9…`) was applied in the release commit (P86) and dropped
+from the shared stash list (found by its message).
 
 ## Next (fresh session, 2026-10-15 morning; every lab step ends before 21:45Z)
+
+lab20 is kept running for this (nightly stop as usual).
 
 1. **Start lab20's VMs:** `az vm start -g rg-lab20 -n dc`, the web member (its real name: `files/private-refs.md`; the
    template's first IIS member) and `-n arc1` (the Azure VM that hosts the Arc agent; the Arc machine reconnects by
    itself, check `az connectedmachine show -g rg-lab20 -n arc1 --query status`). Do **not** touch anything else first.
-2. **T22b (P83 null check), before any remediation:**
+2. **T22b (P83 null check), now a post-release check of v1.0.1 (P86), before any remediation:**
    - Right after the start, record each guest assignment (vm1, dc, arc1: `complianceStatus`, `assignmentType`,
      `lastComplianceStatusChecked`; script pattern in `.lab/lab20-logs/v101/p80/watch2.sh`). A null `assignmentType` here
      is exactly the case under test: note it.
@@ -49,19 +49,17 @@ its message).
      pbb-arc-storage: **expect all Compliant**.
    - Remediate both with `--resource-discovery-mode ReEvaluateCompliance` (`--policy-assignment <name> -g rg-lab20`):
      **expect 0 deployments** each. Script pattern: `.lab/lab20-logs/v101/p83/run.sh`.
-   - Green → T22b row in `docs/tests.md` green (with whether null was actually seen), decisions entry, CHANGELOG: drop
-     "measurement pending" (say what was measured).
+   - Green → T22b row in `docs/tests.md` green (with whether null was actually seen), decisions entry, CHANGELOG v1.0.1
+     entry: replace "measurement pending" with what was measured (a doc fix on main, no new release).
    - **If T22b fails** (NonCompliant on a null assignmentType, or a deployment): STOP, write it into decisions and bring
-     it to the vezir before changing anything. The prepared fallback (P83): replace the `notIn` term by two terms,
+     it to the vezir. The fix ships as **v1.0.2** (P86): the P83 fallback, replace the `notIn` term by two terms,
      `assignmentType notEquals Audit` and `notEquals ApplyAndMonitor` (null passing `notEquals` is measured: P76 GitHub
      mode). Generator only; zip/SHA unchanged; L08 updated; re-create the two storage definitions as in P80/P83 (command
-     pattern in decisions P80 "measured"), scan, remediate, expect 0. Release only after that is green.
+     pattern in decisions P80 "measured"), scan, remediate, expect 0. Then a v1.0.2 release commit; the vezir tags.
 3. **Portal check:** Policy → Compliance with the **correct scope** (subscription VezirLabs / rg-lab20; P85): pbb-vm-storage
    2 of 2, pbb-arc-storage 1 of 1, both Compliant.
-4. **Release commit** (bring it to the vezir first, P73): apply the named stash; CHANGELOG "Unreleased" becomes
-   `perfmon-blackbox/v1.0.1 (2026-10-15)`; SHA unchanged in decisions (P31: the zip is the v1.0.0 asset, every file
-   already scrub-checked for v1.0.0); commit, push. Then **the vezir** tags `perfmon-blackbox/v1.0.1` and attaches the
-   **identical** `PerfmonBlackbox.zip` (SHA-256 806BCADB…63DD); check the asset URL in deploy.md resolves.
+4. If the vezir has not yet confirmed: the tag `perfmon-blackbox/v1.0.1` exists, its only asset hashes to 806BCADB…63DD,
+   and the deploy.md asset URL resolves.
 5. **lab20 teardown** on the vezir's GO (P73), P65 order, then register DOWN in the private lab template's `docs/labs.md`
    (same commit as the teardown) and lab-audit. Remove explicitly first:
    - **Emre's user Blob Data Reader on `perfmon`** (lab-scoped), dc identity Blob Data Contributor on `packages` and Blob
