@@ -1035,3 +1035,20 @@ must pass on vm1. Green → v1.0.1 goes to the vezir for the release (P73).
 (template layout, same `scripts/vmssh`). `common.sh` now reads the lab folder from `BB_LAB` (default unchanged), and the
 package hash from `PKG_SHA256` when no `pbb-package.env` exists (as before). Tests that derive the lab18 account name
 (`stbb…`) are not run on lab20; T18 does not use it.
+
+## P75: GitHub mode's Policy view is measured on lab20 before v1.0.1 (the vezir, 2026-10-14 ~03:00Z, decision A)
+
+**Why.** P70's "GitHub mode is not affected" was never measured, and a lab result argues against it: in T18c (lab18,
+2026-10-12, commit 7db0e9f) the guest assignment GET returned no `contentUri` in GitHub mode either, while the GitHub-mode
+existenceCondition still compares `contentUri` with the release URL. If the policy engine sees that null too, GitHub mode
+has B1 as well (Policy view NonCompliant, every remediation redeploys). The v1.0.1 storage-mode check itself is green
+(P74: Policy view Compliant, 0 deployments in two remediations, T18 vm1 storage PASS).
+**What.** On lab20, vm1 only, by the P48 rule (never both modes over one machine): vm1 is excluded from `pbb-vm-storage`
+(`notScopes`), a GitHub-mode assignment `pbb-vm` (definition `perfmon-blackbox-vm`, v1.0.1 generator, the v1.0.0 asset
+URL and hash, label 1.0.1) is created on vm1 with the four roles of deploy.md step 3, then scan → remediation
+(ReEvaluateCompliance) → wait for the guest assignment Compliant from GitHub → scan → record the Policy view and a second
+remediation's deployment count. Then back: `pbb-vm` and its role assignments removed, vm1's exclusion removed, scan,
+remediation, vm1 Compliant in storage mode again (T18 vm1 storage). dc stays in storage mode throughout. Ends before 21:45Z.
+**Then.** Clean → P70's claim is measured; the release commit is prepared and pushed, the tag waits for the vezir's
+publish decision. B1 in GitHub mode too → the fix (both modes check `contentHash` and the identity, not `contentUri`) is
+written here first and brought to the vezir **before** it is applied; if the zip SHA would have to change: stop.
