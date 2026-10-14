@@ -55,7 +55,7 @@
     <text x="368" y="292">• Hedef storage + container</text>
     <text x="368" y="314">• MaxSizeMB = 512</text>
     <text x="368" y="336">• Örnekleme = 10 sn</text>
-    <text x="368" y="358">• Export = 4 saatte bir</text>
+    <text x="368" y="358">• Export = saatte bir</text>
     <text x="368" y="396" font-weight="700">Makineye ne gider</text>
     <text x="368" y="420">• Guest assignment</text>
     <text x="368" y="442">  "PerfmonBlackbox"</text>
@@ -81,7 +81,7 @@
     <text x="678" y="376">• Boot: eskiyi sakla + başlat</text>
     <text x="678" y="398">• Roll: 15 dk'da bir dosyayı</text>
     <text x="678" y="420">  kapat → pending\</text>
-    <text x="678" y="442">• Export: 4 saatte bir</text>
+    <text x="678" y="442">• Export: saatte bir</text>
     <text x="678" y="464">  relog -q ile yokla</text>
     <text x="678" y="486">  → relog ile birleştir → CSV (UTC)</text>
     <text x="678" y="508">  + manifest (boşluklar) → zip</text>

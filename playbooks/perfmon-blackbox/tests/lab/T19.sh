@@ -1,7 +1,7 @@
 #!/bin/sh
 # T19 [vm1|arc1] (P62): the Roll task closes a piece into pending\ every 15 min; the next export relogs every piece into
 # ONE zip with one CSV (sources[] lists the pieces), no gap beyond a named export_roll, no overlap; the pieces are gone
-# after the upload. Waits for 3 scheduled rolls after its start (up to 50 min), so start it right after a 4-hourly export.
+# after the upload. Waits for 3 scheduled rolls after its start (up to 50 min), so start it right after a scheduled export.
 . "$(dirname "$0")/common.sh"
 m="${1:-vm1}"
 t0=$(date -u +%s)
