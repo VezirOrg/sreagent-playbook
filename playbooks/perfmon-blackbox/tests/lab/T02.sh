@@ -13,7 +13,7 @@ gc = d["policyRule"]["then"]["details"]["deployment"]["properties"]["template"][
 p = d["parameters"]
 checks = [("type", t, want), ("contentUri", gc["contentUri"], os.environ["PKG_URI"]), ("contentHash", gc["contentHash"].upper(), os.environ["PKG_SHA256"].upper()),
           ("version", gc["version"], os.environ["PKG_VERSION"]), ("MaxSizeMB default", p["MaxSizeMB"].get("defaultValue"), "512"),
-          ("SampleIntervalSeconds default", p["SampleIntervalSeconds"].get("defaultValue"), "10"), ("ExportEveryHours default", p["ExportEveryHours"].get("defaultValue"), "4"),
+          ("SampleIntervalSeconds default", p["SampleIntervalSeconds"].get("defaultValue"), "10"), ("ExportEveryHours default", p["ExportEveryHours"].get("defaultValue"), "1"),
           ("parameters", ",".join(sorted(p)), "ContainerName,ExportEveryHours,LocalKeepMB,MaxSizeMB,SampleIntervalSeconds,StorageAccountResourceId,WriterRoleDefinitionId,effect")]
 bad = 0
 for n, a, e in checks:

@@ -21,7 +21,7 @@ test builds; do not use them.
 - An **Azure Machine Configuration** package (`PerfmonBlackbox`, AuditAndSet) keeps a PerfMon Data Collector Set
   running on every targeted server, as a **binary circular log** (default 512 MB, sampled every 10 s), and restarts it
   after every reboot. The last `MaxSizeMB` of data is always on the disk.
-- Every `ExportEveryHours` (default 4) a scheduled task exports the window **since the last successful export** (no
+- Every `ExportEveryHours` (default 1; 4 up to v1.0.1) a scheduled task exports the window **since the last successful export** (no
   gap, no overlap) to CSV, zips it with a `manifest.json`, and uploads it with the **server's own managed identity**
   into **its own folder** of **your private storage account**. A server cannot write anywhere else, and cannot read the captures.
 - Any loss (the ring overwrote data before an export, the machine was off, the collector restarted, the local cap
@@ -61,8 +61,9 @@ counted on real captures (decisions P27): **bytes per sample ≈ 4.5 KB + 0.53 K
 | 400 | ≈ 216 | ≈ 6.9 h |
 | 500 | ≈ 270 | ≈ 5.5 h |
 
-With the default 4-hour export the guest assignment stays Compliant up to about 460 processes (it needs ≥ 1.5 × the
-export window). Above that, raise `MaxSizeMB`, lengthen the interval or export more often.
+The ring only has to hold 1.5 × 15 minutes (it is closed every 15 minutes) and `LocalKeepMB` (1024 MB, twice the column
+above) 1.5 × the export window. With the defaults (10 s, hourly export) both hold well past 500 processes. Otherwise
+raise `LocalKeepMB` or `MaxSizeMB`, lengthen the interval or export more often ([parameters.md](docs/parameters.md)).
 
 ## Prerequisites
 

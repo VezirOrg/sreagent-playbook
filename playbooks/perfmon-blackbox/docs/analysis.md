@@ -77,7 +77,7 @@ time it caused).
   without IIS/ASP.NET the web counters (G3) are absent, so request rates and app queues are "not checked".
 - Process instance names are reused by Windows (`svchost#3`); the skill follows PIDs, but a report about a short-lived
   process can still name the instance only.
-- The analysis is as fresh as the latest export (default every 4 hours); a problem happening now is in the next zip.
+- The analysis is as fresh as the latest export (default every hour; every 4 hours up to v1.0.1); a problem happening now is in the next zip.
 - **Range mode across a DST fall-back.** When the boundary between two zips of a range lies inside the repeated hour
   of a fall-back, the skill drops the later zip's rows whose local time is not after the earlier zip's last row. Those
   rows are only missing from the *analysis*: the zips in storage hold them, with UTC times (P63). A skill fix (ordering

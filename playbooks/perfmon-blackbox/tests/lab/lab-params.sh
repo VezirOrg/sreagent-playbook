@@ -8,7 +8,7 @@ for a in "$@"; do case "$a" in machine=*) m="${a#machine=}" ;; *) kv="$kv $a" ;;
 kind=vm; [ "$m" = arc1 ] && kind=arc   # only the machine's own assignment changes
 KINDS=$kind REMEDIATION_MODE=ReEvaluateCompliance ARC_VM=$(az vm show -g "$rg" -n arc1 --query name -o tsv 2>/dev/null || true) \
   sh "$here/lab-policy.sh" "$PKG_URI" "$PKG_SHA256" "$PKG_VERSION" $kv | mask | tail -3
-want=$(python3 -c 'import sys, json; d={"MaxSizeMB":"512","SampleIntervalSeconds":"10","ExportEveryHours":"4"}; [d.update([a.split("=",1)]) for a in sys.argv[1:]]; print(" ".join(f"{k}={d[k]}" for k in ("MaxSizeMB","SampleIntervalSeconds","ExportEveryHours")))' $kv)
+want=$(python3 -c 'import sys, json; d={"MaxSizeMB":"512","SampleIntervalSeconds":"10","ExportEveryHours":"1"}; [d.update([a.split("=",1)]) for a in sys.argv[1:]]; print(" ".join(f"{k}={d[k]}" for k in ("MaxSizeMB","SampleIntervalSeconds","ExportEveryHours")))' $kv)
 echo "waiting until $m has: $want"
 for i in $(seq 1 90); do
   got=$(v "$m" '$c = Get-Content C:\ProgramData\PerfmonBlackbox\config.json -Raw | ConvertFrom-Json; "MaxSizeMB=$($c.MaxSizeMB) SampleIntervalSeconds=$($c.SampleIntervalSeconds) ExportEveryHours=$($c.ExportEveryHours)"' | tr -d '\r' | tail -1)

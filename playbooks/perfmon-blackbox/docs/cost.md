@@ -13,7 +13,7 @@
 | Machine Configuration on an **Azure VM** | included | 0 |
 | Machine Configuration on an **Arc-enabled server** ("Guest Configuration Policy/Server") | 6.00 USD / server / month | **6.00 USD** |
 | Blob storage, Hot LRS | 0.0184 USD / GB / month | ≈ 0.01 USD (100 processes) … ≈ 0.03 USD (350 processes) |
-| Write operations | 0.05 USD / 10,000 | < 0.01 USD (6 exports a day; one Put Blob each, or a few Put Block calls) |
+| Write operations | 0.05 USD / 10,000 | < 0.01 USD (24 exports a day at the default `ExportEveryHours` 1; one Put Blob each, or a few Put Block calls) |
 | Private endpoint data processed | 0.01 USD / GB | < 0.01 USD |
 | Private endpoint | 0.01 USD / hour | **≈ 7.30 USD per deployment** (shared by all servers) |
 

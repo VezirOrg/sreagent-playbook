@@ -2,6 +2,14 @@
 
 Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Release asset.
 
+## Unreleased: perfmon-blackbox/v1.0.2 (cut after T22b, 2026-10-15)
+
+- **Default `ExportEveryHours` is 1** (was 4; decisions P90). Exports carry only the data since the last one, so there
+  is no overlap: a finer grain for range queries and less unexported data at risk if a server dies. Only the policy
+  definitions' default changes; the package zip is meant to stay the v1.0.1 zip (same SHA-256). **Upgrading:** an
+  assignment that sets `ExportEveryHours` keeps it; one that relied on the default moves to 1 at its next remediation.
+  To keep 4, pass `{"ExportEveryHours":{"value":"4"}}`.
+
 ## Docs after v1.0.1 (2026-10-14, no release)
 
 Lessons of a first install outside the lab (decisions P89); the package, policies and skill are unchanged.

@@ -55,7 +55,7 @@
     <text x="368" y="292">• Target storage + container</text>
     <text x="368" y="314">• MaxSizeMB = 512</text>
     <text x="368" y="336">• Sample interval = 10 s</text>
-    <text x="368" y="358">• Export every 4 h</text>
+    <text x="368" y="358">• Export every 1 h</text>
     <text x="368" y="396" font-weight="700">What reaches the server</text>
     <text x="368" y="420">• Guest assignment</text>
     <text x="368" y="442">  "PerfmonBlackbox"</text>
@@ -81,7 +81,7 @@
     <text x="678" y="376">• Boot: keep the old file, restart</text>
     <text x="678" y="398">• Roll: every 15 min close the</text>
     <text x="678" y="420">  file → pending\</text>
-    <text x="678" y="442">• Export: every 4 h</text>
+    <text x="678" y="442">• Export: every 1 h</text>
     <text x="678" y="464">  probe with relog -q</text>
     <text x="678" y="486">  → merge with relog → CSV (UTC)</text>
     <text x="678" y="508">  + manifest (gaps) → zip</text>

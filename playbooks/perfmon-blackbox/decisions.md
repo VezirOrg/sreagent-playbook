@@ -1336,7 +1336,7 @@ T22b (2026-10-15 morning), so both land in one release; if T22b passes, v1.0.2 c
 more and smaller zips (24 Put Blob calls a day instead of 6; still < 0.01 USD a month, cost.md). The skill's range
 queries get a 1-hour grain instead of 4, and a machine that dies loses at most about an hour of not-yet-exported data
 (the pieces in `pending\`) instead of up to 4. R6 is easier to meet (LocalKeepMB must hold 1.5 h, not 6 h). The lab ran
-1 on arc1 and vm1 (P71, P82) and the first install outside the lab runs 1 (P89).
+1 in the second lab (P67, P82) and the first install outside the lab runs 1 (P89).
 **Where.** Only the definitions' `defaultValue` (`policy/build_policies.py`), the docs and the tests that read the
 default. **The package is not changed**: the `'4'` in `package/PerfmonBlackbox.config.ps1`, the DSC class and
 `New-BbTaskXml` are fallbacks that never apply, because every definition passes all six parameters to the guest

@@ -379,7 +379,7 @@ class L08Policies(unittest.TestCase):
         for p in ('MaxSizeMB', 'SampleIntervalSeconds', 'ExportEveryHours', 'StorageAccountResourceId', 'ContainerName', 'LocalKeepMB'):
             self.assertIn(p, pv)
         self.assertEqual((pv['MaxSizeMB']['defaultValue'], pv['SampleIntervalSeconds']['defaultValue'],
-                          pv['ExportEveryHours']['defaultValue']), ('512', '10', '4'))
+                          pv['ExportEveryHours']['defaultValue']), ('512', '10', '1'))
 
     def test_assignment_and_hash(self):
         for d in self.d.values():

@@ -71,7 +71,7 @@ def reader_template():
 PARAMS = [
     ('MaxSizeMB', '512', 'Maximum size of the circular .blg in MB (16..8192).'),
     ('SampleIntervalSeconds', '10', 'Sample interval of the collector in seconds (1..300).'),
-    ('ExportEveryHours', '4', 'Export every N hours; N divides 24 (1, 2, 3, 4, 6, 8, 12, 24).'),
+    ('ExportEveryHours', '1', 'Export every N hours; N divides 24 (1, 2, 3, 4, 6, 8, 12, 24).'),
     ('StorageAccountResourceId', None, 'Resource ID of the private storage account that receives the captures.'),
     ('ContainerName', 'perfmon', 'Container for all machines.'),
     ('LocalKeepMB', '1024', 'Cap for pending buffers and not yet uploaded zips on the machine, in MB.'),

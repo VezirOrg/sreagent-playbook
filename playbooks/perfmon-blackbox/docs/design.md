@@ -47,7 +47,7 @@ package as Machine Configuration configuration parameters:
 |---|---|---|
 | `MaxSizeMB` | **512** | maximum size of the circular `.blg` (P13, P14) |
 | `SampleIntervalSeconds` | **10** (P19) | collector interval (P17) |
-| `ExportEveryHours` | **4** (P19; a fixed parameter, guarded by R6) | how often the export runs |
+| `ExportEveryHours` | **1** (P90; 4 up to v1.0.1, P19; a fixed parameter, guarded by R6) | how often the export runs |
 | `StorageAccountName` | — (required) | the private storage account |
 | `ContainerName` | `perfmon` | container for all machines |
 | `LocalKeepMB` | `1024` | cap for pending buffers + not-yet-uploaded zips on the disk (oldest go first, and that loss is reported) |
