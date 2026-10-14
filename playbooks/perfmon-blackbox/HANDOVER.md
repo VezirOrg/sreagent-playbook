@@ -1,4 +1,16 @@
-# perfmon-blackbox: lab20 KEPT for v1.0.1 (P72); B1 fix + doc fixes committed, not yet lab-tested; next: start VMs → T18 + Policy view Compliant → v1.0.1 to the vezir (P73).
+# perfmon-blackbox: v1.0.1 B1 fix GREEN on lab20 (Policy view Compliant, 0 redeploys, T18 PASS); release STOPPED: GitHub-mode contentUri question reported to the vezir (2026-10-14).
+
+## Session 6 (2026-10-14, in progress): v1.0.1 lab check (P74)
+
+- 02:10:35Z v1.0.1 storage definition applied (zip/hash unchanged, label 1.0.1); scan 02:10:41–02:18:22Z → the Policy
+  view of pbb-vm-storage **Compliant** on dc and vm1 at 02:11:57Z (was NonCompliant: B1 fixed); remediation 1
+  (ReEvaluateCompliance) 0 deployments; T18 vm1 storage **PASS** 02:33–02:35Z (`BB_LAB=.lab/lab20`, `T18.sh` directly:
+  `run.sh` passes only one argument). Evidence: `.lab/lab20-logs/v101/`.
+- **STOP (brief's rule: a doc contradicts a test result):** P70 and the CHANGELOG say "GitHub mode is not affected", but
+  GitHub mode's existenceCondition still compares `contentUri`, and lab18 (T18c, 2026-10-12, commit 7db0e9f) recorded
+  that the guest assignment GET hides `contentUri` in GitHub mode too. If the policy engine sees it the same way, GitHub
+  mode has B1 as well. Never measured (no Policy-view state of pbb-vm was recorded). Reported to the vezir; not fixed.
+- AAU 73 vs 35: "first-run setup" **not proven** (see the report to the vezir; traces in `.lab/lab20-logs/v101/aau/`).
 
 Playbook: **perfmon-blackbox**. Read `../../CLAUDE.md`, `CLAUDE.md`, this file, then `decisions.md` (P1–P73; the latest
 are P67–P73). Every `az`/`azd` call runs as `direnv exec . <command>` from the repo root.
