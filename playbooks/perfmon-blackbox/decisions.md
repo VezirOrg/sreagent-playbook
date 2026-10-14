@@ -1087,3 +1087,8 @@ Compliant, a ReEvaluateCompliance remediation deploys 0, T18 arc1 storage PASS (
 The vm1 steps (P76 test, back to storage, T18) finish as planned. Everything ends before 21:45Z; if it does not fit
 today, lab20 stays up tonight (KEEP) and the work goes on tomorrow, said to the vezir early. **Stop:** Arc onboarding
 blocked by a subscription policy or quota. The release commit carries the Arc results; no tag.
+**Addendum (the vezir for Emre, 2026-10-14 07:24–07:35 +03, ARC-ABC):** Emre takes three Arc screenshots, so arc1 **ends in
+storage mode**, Compliant, with at least one export uploaded, and stays until his shots are taken (teardown on the vezir's
+GO). No agent analysis on arc1. Order on arc1 therefore: **GitHub mode first** (`pbb-arc`, measured), then storage mode
+(`pbb-arc-storage`, measured: it is also the final state). A first `pbb-arc-storage` (04:24Z) was removed with its role
+assignments before any remediation deployed (its remediation cancelled) when this order was set (04:28Z).
