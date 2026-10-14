@@ -1163,6 +1163,16 @@ last check time, i.e. the service filled it in, not the agent. Under P80's `equa
 window marks the machine NonCompliant and a remediation then redeploys it once (needless, harmless: same content). That
 is a small B1 relapse, not flapping. Proposed follow-up: P83.
 
+**P82 done (lab20 arc1, 2026-10-14).** Idle question 08:17–08:23Z (the 08:05Z start failed before reaching the agent: the
+timer ran direnv in the lab folder, which has no az login), on the zip 07:07–08:06Z: verdict "not hard to use" (a
+Windows Update burst ~07:45 that resolved within ~5 min; the Machine Configuration worker as background). Plant started
+08:25:03Z (5 min late; the first start attempt at 08:23Z silently did nothing because the helper's guest-script path
+resolved from `$0` under `sh -c`): leak 08:25–08:47Z, CPU 08:30–08:36Z. Hourly export 09:07Z covered it
+(08:07–09:06Z, complete, 0 gaps). Second question 09:10–09:17Z: "hard to use for ~6 minutes (08:30–08:36)", both
+problems found, **95/100 PASS** (R1 0: a causal word without a LINK line). No P83 scan or remediation fell inside the
+plant window (P83's ended 08:16:50Z; P85's scan 08:42–08:50Z is evaluation only). Evidence (masked) in the local lab
+logs; thread IDs to the vezir.
+
 ## P83: P80's condition checks "not Audit/ApplyAndMonitor" instead of "equals ApplyAndAutoCorrect" (lab20, 2026-10-14; PROPOSED, NOT applied, awaits the vezir)
 
 **Why.** P80 measured: `assignmentType` can be **null** on a healthy existing assignment for hours (02:10Z evidence above),
