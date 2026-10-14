@@ -1296,3 +1296,7 @@ it; the guide creates the definitions in Cloud Shell (the lab-tested CLI) or by 
 non-compliant resources), which includes Role Based Access Control Administrator **without** the delegation condition, at
 RG scope: broader than security.md. The guide adds the conditioned one on the storage account and removes the RG-scope
 one. A later repo change could drop RBAC Administrator from `roleDefinitionIds` or document this; not decided here.
+**Plan change (the vezir, same session):** the full portal guide was dropped. The customer already has its storage
+account with private endpoints, so main.bicep is not used, and the vezir walks Emre through the install live. The
+session delivered the role JSONs, the two definitions, one combined ARM wrapper (`definitions-arm.json`) and the
+condition text into `portal-json/`. The per-kind ARM files were folded into that one file.
