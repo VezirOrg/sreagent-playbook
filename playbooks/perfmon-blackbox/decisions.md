@@ -1100,3 +1100,15 @@ rule: they may appear as they are in the public repo, the blog and screenshots. 
 keep `vm1`); new text does not have to translate either way. Still masked: subscription and tenant IDs, admin accounts,
 and all third-party data. Note: the scrub denylist (private, shared, outside this playbook) still lists the IIS member's
 name, so until the vezir changes the denylist this playbook keeps writing `vm1` in committed files.
+
+## P79: the B1 checks become tests of their own, in v1.0.1 (Emre via the vezir, 2026-10-14 ~08:40 +03)
+
+- **T20 Policy view agrees with the machine**: after a compliance scan, the policy state of a server whose guest
+  assignment is Compliant (with the expected identity) is **Compliant**. T20a storage mode on the Azure VM, T20b GitHub
+  mode on the Azure VM, T20c storage mode on Arc, T20d GitHub mode on Arc.
+- **T21 No needless redeploy**: a remediation with `--resource-discovery-mode ReEvaluateCompliance` on a scope whose
+  servers are Compliant deploys **0** (T21a–d, the same four cases).
+- **L08** (extended): no definition's existenceCondition reads `contentUri`; storage mode checks `contentManagedIdentity
+  equals system`, GitHub mode `notEquals system` (both kinds, both modes).
+T20/T21 are lab steps (scan, `az policy state list`, `az policy remediation create … show`), recorded with times in
+tests.md; the lab results of 2026-10-14 (lab20: vm1, arc1) go into the v1.0.1 release commit.
