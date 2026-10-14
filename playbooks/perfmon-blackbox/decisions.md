@@ -1112,3 +1112,19 @@ name, so until the vezir changes the denylist this playbook keeps writing `vm1` 
   equals system`, GitHub mode `notEquals system` (both kinds, both modes).
 T20/T21 are lab steps (scan, `az policy state list`, `az policy remediation create … show`), recorded with times in
 tests.md; the lab results of 2026-10-14 (lab20: vm1, arc1) go into the v1.0.1 release commit.
+
+## P80: an `Audit` guest assignment is no longer repaired once B1 is fixed; proposed fix (lab20, 2026-10-14; NOT applied, awaits the vezir)
+
+**Seen.** vm1 went back from GitHub to storage mode by the service re-sync (04:45–05:11Z). Its guest assignment is
+Compliant with identity `system` but `assignmentType` **Audit** (05:11Z, 05:37Z, still at 06:39Z: past Learn's "may
+temporarily appear … typically resolves within one hour", Learn: machine configuration assignments). dc and arc1 are
+ApplyAndAutoCorrect. On lab18 (tests.md "rc.11 on lab18") an Audit assignment meant the agent **only tests, never
+applies** (no auto-correct), and it was cured only by a remediation that rewrote the assignment, i.e. by B1's needless
+redeploy. With B1 fixed (P76) the existenceCondition does not look at `assignmentType`, so a Compliant Audit assignment
+counts as present: **T21 now prevents the cure**. The recording itself is not affected (the package is applied; vm1
+records and uploads: T18 PASS 05:11Z, last upload 06:17Z).
+**Proposed fix (generator only; the zip and its SHA do not change):** add
+`guestConfiguration.assignmentType equals ApplyAndAutoCorrect` to the existenceCondition in both modes and both kinds; L08
+asserts it. Then an Audit assignment is NonCompliant in the Policy view and the next remediation writes
+ApplyAndAutoCorrect (one deployment, a needed one). Test: re-create the definitions, scan: vm1 NonCompliant (Audit);
+remediation deploys 1 (vm1 only); after it, vm1 ApplyAndAutoCorrect and Compliant, T20/T21 green again on all three.
