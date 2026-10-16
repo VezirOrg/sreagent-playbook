@@ -1360,3 +1360,24 @@ English and Turkish (`sreagent.emreguclu.io/posts/perfmon-blackbox-part-1/`, `�
 both answered 200 on 2026-10-14). The blog site itself is already public in the root README. Docs only, no release.
 The root README's playbook row is not changed here: that is a root change (root CLAUDE.md rule 4), asked of the vezir
 separately if wanted.
+
+## P92: T22b ran (lab20, 2026-10-16): Compliant and 0 deployments, but the null window did not occur; v1.0.2 is cut (the vezir under P73, 2026-10-16, "BAŞLA")
+
+**Run.** lab20's VMs had been deallocated since 2026-10-14 ~21:45Z (they were not started on 2026-10-15). Before the
+start (05:24:29Z) the three guest assignments read Compliant/**ApplyAndAutoCorrect** (last agent reports 10-14
+21:19–21:45Z). Start issued 05:24:46Z (dc, vm1, arc1); arc1 Connected 05:27:34Z; first agent reports 05:41:48Z (arc1)
+and 05:42:37Z (vm1, dc). Sampled every minute from 05:24Z to 06:04Z: every sample on all three was
+Compliant/ApplyAndAutoCorrect, **never null**. Scan 05:43:38–05:51:25Z: pbb-vm-storage vm1 and dc Compliant,
+pbb-arc-storage arc1 Compliant (evaluated 05:44:59–05:45:02Z). Remediations with `ReEvaluateCompliance`:
+pbb-vm-storage **0** deployments, pbb-arc-storage **0** (both Succeeded, 06:04:58Z / 06:05:00Z). vm1 stayed
+Compliant/ApplyAndAutoCorrect/system after them.
+**Reading.** T22b's pass criteria (Compliant, 0 deployments after an overnight stop) are met. The null case itself was
+**not reproduced**: on 2026-10-14 (P80) null was seen on assignments written by v1.0.0, while the VMs were stopped;
+today's assignments were written by the P83 definitions and stayed ApplyAndAutoCorrect through a 32-hour stop. So the
+P83 null branch is still verified by logic (and by `notEquals` letting null pass, P76), not by a measurement. This is
+stated in the CHANGELOG and tests.md as it is. No definition change: the P83 fallback (two `notEquals`) is not needed.
+**v1.0.2.** As planned (P90, PAKET-AYNI): only the default `ExportEveryHours` 1; the v1.0.1 zip unchanged (SHA-256
+`806BCADB69F556401DE19754AEB649B7611EB1AE18AA106A5BF0A537A99363DD`); the release commit dates the CHANGELOG heading and
+moves README, deploy.md (clone tag, asset URL, `--version 1.0.2`) and the "As of" banners to v1.0.2. The vezir tags
+`perfmon-blackbox/v1.0.2` on that commit and publishes (P73), attaching the same zip; the public asset SHA is then
+checked (P31). Between the push and the tag, deploy.md names an asset URL that does not exist yet (as in P86).
