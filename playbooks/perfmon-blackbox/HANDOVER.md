@@ -1,10 +1,22 @@
-# perfmon-blackbox: v1.0.1 is Latest; v1.0.2 (default ExportEveryHours 1, same zip, P90) is cut 2026-10-15 after T22b on lab20, then lab20 teardown.
+# perfmon-blackbox: T22b green 2026-10-16 (null not reproduced, P92); v1.0.2 release commit on main, awaiting the vezir's tag; lab20 still up.
 
 Playbook: **perfmon-blackbox**. Read `../../CLAUDE.md`, this file, then `decisions.md` (P1–P91; session 8 added P87–P91).
 Every `az`/`azd` call runs as `direnv exec . <command>` from the repo root. The owner is the vezir (P73): releases,
 teardowns and lab builds for approved work are the vezir's call; ask before anything outward-facing.
 
-## Where it stands (session 8 close, 2026-10-15 nightly recycle)
+## Session 9 (2026-10-16, opened by the vezir: "BAŞLA")
+
+- **T22b done (P92):** lab20 VMs started 05:24:46Z after a ~32 h stop; guest assignments Compliant/ApplyAndAutoCorrect
+  before and after the start, **never null** (samples every minute 05:24–06:04Z); scan 05:43–05:51Z all three
+  Compliant; remediations pbb-vm-storage 0 and pbb-arc-storage 0 (06:05Z). Null branch stays verified by logic only.
+  Logs: `.lab/lab20-logs/v102/t22b/`.
+- **v1.0.2 release commit** (CHANGELOG dated 2026-10-16, README/deploy.md/banners to v1.0.2, tests.md T22b row);
+  local L01–L04, L06–L09 green. Notes and the (unchanged) zip: `files/perfmon-blackbox/release-v1.0.2/`. The vezir tags
+  `perfmon-blackbox/v1.0.2` and publishes (P73), then checks the public asset SHA (P31).
+- **Not done (not asked this session):** portal-json regen for v1.0.2 (Next 4), portal check (Next 5), lab20 teardown
+  (Next 6, a separate step on the vezir's GO). lab20 VMs are **running**; nightly auto-shutdown stops them.
+
+## Where it stands before session 9 (session 8 close, 2026-10-15)
 
 - **Released:** v1.0.0 (P66) and **v1.0.1 (P86, Latest)**: tag `perfmon-blackbox/v1.0.1` on 63040d9, only asset
   `PerfmonBlackbox.zip`, SHA-256 `806BCADB69F556401DE19754AEB649B7611EB1AE18AA106A5BF0A537A99363DD` (the v1.0.0 zip,
