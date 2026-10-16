@@ -1381,3 +1381,18 @@ stated in the CHANGELOG and tests.md as it is. No definition change: the P83 fal
 moves README, deploy.md (clone tag, asset URL, `--version 1.0.2`) and the "As of" banners to v1.0.2. The vezir tags
 `perfmon-blackbox/v1.0.2` on that commit and publishes (P73), attaching the same zip; the public asset SHA is then
 checked (P31). Between the push and the tag, deploy.md names an asset URL that does not exist yet (as in P86).
+
+## P93: v1.0.2 is published; Drive files regenerated for it and the portal check run on lab20 (the vezir under P73, 2026-10-16)
+
+**Published (the vezir, 2026-10-16 09:07 +03 = 06:07Z):** tag `perfmon-blackbox/v1.0.2` on 0a2f0bd (main), release
+https://github.com/VezirOrg/sreagent-playbook/releases/tag/perfmon-blackbox/v1.0.2 (Latest), asset `PerfmonBlackbox.zip`;
+the vezir downloaded the public asset: SHA-256 `806BCADB…63DD`, matches (P31). The vezir counted T22b as a pass with the
+P92 caveat (null not reproduced) recorded.
+**Asked next (same message):** (a) Drive, not the repo (as P87/P88): `files/perfmon-blackbox/quick-install-v1.0.2.md`
+and `portal-json/` for v1.0.2 (the two storage definitions with `--version 1.0.2`, the v1.0.2 asset URL, the same SHA
+and the placeholder container ID; `definitions-arm.json` with policy expressions escaped `[[`, 0 unescaped; role JSONs
+and the condition unchanged). The v1.0.1 copies are kept and marked superseded: the old guide gets a banner at its
+top; the old `portal-json/` moves to `portal-json-v1.0.1-SUPERSEDED/` with a note, so `portal-json/` always holds the
+current release. Every file scrub-checked. (b) Portal Policy → Compliance on lab20 with the scope checked (P85):
+expect pbb-vm-storage 2 of 2, pbb-arc-storage 1 of 1. lab20 is not torn down and its VMs are not stopped (a separate
+step after this session closes).
