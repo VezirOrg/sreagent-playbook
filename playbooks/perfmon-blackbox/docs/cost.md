@@ -6,7 +6,7 @@
 >
 > Prices: Azure Retail Prices API (`prices.azure.com`), retail USD, queried 2026-10-11 (storage in Sweden Central;
 > the SRE Agent Unit 2026-10-14).
-> As of v1.0.1.
+> As of v1.0.2.
 
 | Item | Price | Per server per month |
 |---|---|---|

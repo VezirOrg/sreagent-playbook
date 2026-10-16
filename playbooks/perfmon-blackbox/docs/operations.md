@@ -5,7 +5,7 @@
 > per-resource reasons (R1–R7) and the manifest's `complete` and `gaps[]`. Removal: assignments first, then the server side,
 > storage last.
 >
-> As of v1.0.1.
+> As of v1.0.2.
 
 ## Upgrade to a new release
 

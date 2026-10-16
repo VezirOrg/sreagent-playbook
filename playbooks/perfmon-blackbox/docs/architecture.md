@@ -6,7 +6,7 @@
 > that keeps a binary circular PerfMon log running on every targeted Windows server and exports it every few hours to
 > private storage, with the server's own identity, into its own folder. Nothing is installed on the servers.
 >
-> As of v1.0.1.
+> As of v1.0.2.
 
 ![The end-to-end loop: setup, Azure Policy and Machine Configuration, the server, private storage, the SRE Agent](img/perfmon-blackbox-flow.svg)
 

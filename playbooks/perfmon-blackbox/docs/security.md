@@ -4,7 +4,7 @@
 > and no public network access; the policy identity can grant only the one Writer role. Nothing is installed on the
 > servers and nothing secret is in the package. The SRE Agent reads with a data-reader role on the container only.
 >
-> As of v1.0.1 (agent roles: Author + Standard User, tested; decisions P64).
+> As of v1.0.2 (agent roles: Author + Standard User, tested; decisions P64).
 
 ## Identities and rights
 

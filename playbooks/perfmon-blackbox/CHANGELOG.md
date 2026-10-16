@@ -2,13 +2,18 @@
 
 Tags: `perfmon-blackbox/vX.Y.Z`. The package zip of each release is a GitHub Release asset.
 
-## Unreleased: perfmon-blackbox/v1.0.2 (cut after T22b, 2026-10-15)
+## perfmon-blackbox/v1.0.2 (2026-10-16)
 
 - **Default `ExportEveryHours` is 1** (was 4; decisions P90). Exports carry only the data since the last one, so there
   is no overlap: a finer grain for range queries and less unexported data at risk if a server dies. Only the policy
-  definitions' default changes; the package zip is meant to stay the v1.0.1 zip (same SHA-256). **Upgrading:** an
+  definitions' default changes; the package is the v1.0.1 zip, **unchanged** (SHA-256
+  `806BCADB69F556401DE19754AEB649B7611EB1AE18AA106A5BF0A537A99363DD`). Pass `--version 1.0.2` to the policy generator. **Upgrading:** an
   assignment that sets `ExportEveryHours` keeps it; one that relied on the default moves to 1 at its next remediation.
   To keep 4, pass `{"ExportEveryHours":{"value":"4"}}`.
+- **T22b (post-release check of v1.0.1, decisions P92):** after an overnight stop (2026-10-16, Azure VMs and an
+  Arc-enabled server) the Policy view was Compliant and a re-evaluating remediation deployed nothing. The null
+  `assignmentType` window did **not** occur in that run, so its handling is still verified by logic only; no definition
+  change was needed.
 
 ## Docs after v1.0.1 (2026-10-14, no release)
 
@@ -41,15 +46,16 @@ remediate.
   so one remediation restores `ApplyAndAutoCorrect` (lab: one deployment, then 0).
   **Known window:** `assignmentType` can read **null** on a healthy assignment, e.g. after the VMs were stopped
   overnight, until the service fills it in (seen for hours in the lab, before this fix). The condition lets null pass,
-  so this window should cause no redeploy: **tolerated by P83 by logic; measurement pending** (T22b, 2026-10-15
-  morning). If that measurement fails, the fix ships as v1.0.2 (same zip).
+  so this window should cause no redeploy: **tolerated by P83 by logic.** T22b (2026-10-16, P92): Compliant and 0
+  deployments after an overnight stop, but null did not occur in that run, so the null case is still not measured.
 - **New tests for B1 (decisions P79, P80, P83; [docs/tests.md](docs/tests.md), lab of 2026-10-14):**
   - T20 Policy view agrees with the machine: **green** on all four, T20a storage / T20b GitHub on an Azure VM, T20c
     storage / T20d GitHub on an Arc-enabled server (v1.0.0 stayed NonCompliant in both modes).
   - T21 no needless redeploy (`ReEvaluateCompliance` on Compliant servers): **green**, 0 deployments on all four, T21a–d
     (v1.0.0 redeployed every time).
   - T22a a guest assignment left in `Audit` is repaired once: **green** (one deployment, then Compliant and 0).
-  - T22b null `assignmentType` after the nightly stop: **pending**, a post-release check (2026-10-15 morning).
+  - T22b null `assignmentType` after the nightly stop: post-release check, **green** on its criteria (2026-10-16,
+    Compliant and 0 deployments on all three), null not reproduced (P92).
   - L08 (local) asserts the existenceCondition: no `contentUri`, the identity term per mode, the `assignmentType notIn`
     term.
 - **deploy.md:** step 2 passes the definition's metadata and display name (storage mode needs the metadata); remediations

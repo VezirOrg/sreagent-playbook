@@ -84,7 +84,7 @@ The tests fall into two groups: **collection** (the input: the recorder, the pol
 | T21c no needless redeploy, storage, Arc | | — | **green** (0, 06:18–06:37Z) |
 | T21d no needless redeploy, GitHub, Arc | | — | **green** (0, 05:21–05:35Z) |
 | T22a Audit repaired once (P80) | vm1 left in `Audit` by the service re-sync | **green** (2026-10-14: NonCompliant 06:43Z; 1 deployment 07:04Z; ApplyAndAutoCorrect and Compliant 07:17Z; next scan Compliant, remediations 0 at 07:42Z) | arc1 0 deployments (was ApplyAndAutoCorrect) |
-| T22b null after the nightly stop (P83) | `notIn` term on lab20 | **pending**, post-release check (P86; 2026-10-15 morning: scan, expect Compliant and 0 deployments; null seen 2026-10-14 02:10Z on dc and vm1, before P83; if it fails, v1.0.2) | pending |
+| T22b null after the nightly stop (P83, P92) | `notIn` term on lab20, VMs started after an overnight stop | **green** on its criteria (2026-10-16: vm1 and dc Compliant after the scan 05:43–05:51Z, remediation 0 deployments 06:04Z); **null not reproduced**: every sample 05:24–06:04Z read ApplyAndAutoCorrect, so the null branch stays verified by logic (null seen 2026-10-14 02:10Z on v1.0.0-written assignments) | **green** (arc1 Compliant, remediation 0 deployments 06:05Z; never null) |
 | T13 lifecycle rule | | green | — |
 | T14 storage private | | green | — |
 

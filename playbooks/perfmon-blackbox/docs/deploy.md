@@ -4,7 +4,7 @@
 > release's package, (3) the assignments with the rights their identity needs, then remediation, (4) the skill on your
 > SRE Agent. Prerequisites first: servers and agent must both reach the storage's private endpoint.
 >
-> As of v1.0.1. Every numbered step was run in the lab on an Azure VM and an Arc-enabled server ([tests.md](tests.md)).
+> As of v1.0.2. Every numbered step was run in the lab on an Azure VM and an Arc-enabled server ([tests.md](tests.md)).
 > 1b (an existing storage account) and 3b (the portal route) come from a first install outside the lab; what was not
 > verified is marked.
 
@@ -39,7 +39,7 @@ All commands run from `playbooks/perfmon-blackbox` in a clone of this repository
 signed in to the right subscription:
 
 ```sh
-git clone --branch perfmon-blackbox/v1.0.1 https://github.com/VezirOrg/sreagent-playbook.git
+git clone --branch perfmon-blackbox/v1.0.2 https://github.com/VezirOrg/sreagent-playbook.git
 cd sreagent-playbook/playbooks/perfmon-blackbox
 ```
 
@@ -159,13 +159,13 @@ and `<account ID>/blobServices/default/containers/packages` as `packageContainer
 
 ## 2. Policy definitions
 
-Pick a release; its notes give the asset URL of `PerfmonBlackbox.zip` and its SHA-256. For **v1.0.1**:
+Pick a release; its notes give the asset URL of `PerfmonBlackbox.zip` and its SHA-256. For **v1.0.2**:
 
 | | |
 |---|---|
-| asset URL | `https://github.com/VezirOrg/sreagent-playbook/releases/download/perfmon-blackbox%2Fv1.0.1/PerfmonBlackbox.zip` |
+| asset URL | `https://github.com/VezirOrg/sreagent-playbook/releases/download/perfmon-blackbox%2Fv1.0.2/PerfmonBlackbox.zip` |
 | SHA-256 | `806BCADB69F556401DE19754AEB649B7611EB1AE18AA106A5BF0A537A99363DD` |
-| `--version` | `1.0.1` (the guest assignment's label; a later release passes a higher one) |
+| `--version` | `1.0.2` (the guest assignment's label; a later release passes a higher one) |
 
 ```sh
 python3 policy/build_policies.py --content-uri <asset URL> --content-hash <sha256> --version <x.y.z> --out policy/out
