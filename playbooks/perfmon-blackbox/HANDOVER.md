@@ -1,4 +1,4 @@
-# perfmon-blackbox: T22b green 2026-10-16 (null not reproduced, P92); v1.0.2 release commit on main, awaiting the vezir's tag; lab20 still up.
+# perfmon-blackbox: v1.0.2 is Latest (2026-10-16, same zip); Drive quick-install + portal-json regenerated for v1.0.2; lab20 up, teardown pending.
 
 Playbook: **perfmon-blackbox**. Read `../../CLAUDE.md`, this file, then `decisions.md` (P1–P91; session 8 added P87–P91).
 Every `az`/`azd` call runs as `direnv exec . <command>` from the repo root. The owner is the vezir (P73): releases,
@@ -13,8 +13,13 @@ teardowns and lab builds for approved work are the vezir's call; ask before anyt
 - **v1.0.2 release commit** (CHANGELOG dated 2026-10-16, README/deploy.md/banners to v1.0.2, tests.md T22b row);
   local L01–L04, L06–L09 green. Notes and the (unchanged) zip: `files/perfmon-blackbox/release-v1.0.2/`. The vezir tags
   `perfmon-blackbox/v1.0.2` and publishes (P73), then checks the public asset SHA (P31).
-- **Not done (not asked this session):** portal-json regen for v1.0.2 (Next 4), portal check (Next 5), lab20 teardown
-  (Next 6, a separate step on the vezir's GO). lab20 VMs are **running**; nightly auto-shutdown stops them.
+- **v1.0.2 published by the vezir (P93):** 06:07Z, target 0a2f0bd, Latest; public asset SHA checked by the vezir.
+- **Drive regenerated (P93):** `quick-install-v1.0.2.md`, `portal-json/` (v1.0.2, README.txt); v1.0.1 copies kept and
+  marked: banner on `quick-install-v1.0.1.md`, `portal-json-v1.0.1-SUPERSEDED/`.
+- **Portal check (Next 5):** backend only (summarize 2 of 2 and 1 of 1, Resource Graph Compliant, 06:08Z); the portal
+  blade was not viewed (no browser in this session). A person can still look while lab20 is up.
+- **Open:** lab20 teardown (Next 6, a separate step after this session, on the vezir's GO). lab20 VMs are **running**;
+  the vezir said not to stop them.
 
 ## Where it stands before session 9 (session 8 close, 2026-10-15)
 

@@ -1396,3 +1396,14 @@ top; the old `portal-json/` moves to `portal-json-v1.0.1-SUPERSEDED/` with a not
 current release. Every file scrub-checked. (b) Portal Policy → Compliance on lab20 with the scope checked (P85):
 expect pbb-vm-storage 2 of 2, pbb-arc-storage 1 of 1. lab20 is not torn down and its VMs are not stopped (a separate
 step after this session closes).
+**P93 done (2026-10-16 ~06:11Z).** (a) `files/perfmon-blackbox/quick-install-v1.0.2.md` (Turkish, from the docs at the
+v1.0.2 tag: P89's rights, 1b existing storage, 3b portal route, event table, upgrade from v1.0.1, Remove; the gaps
+still open are listed at its top: az CLI version, private DNS zone setup, portal route not lab-run, null window not
+measured). `portal-json/` regenerated: the two storage definitions differ from v1.0.1 only in the three version fields
+(1.0.2) and `ExportEveryHours` default (1); same SHA, placeholder container ID; `definitions-arm.json` = the escaped
+definitions, 0 unescaped; roles and condition copied unchanged; a README.txt. v1.0.1 kept: banner on
+`quick-install-v1.0.1.md`, folder `portal-json-v1.0.1-SUPERSEDED/` with SUPERSEDED.txt. All files scrub-check clean.
+(b) **The portal blade itself was not viewed**: this session has no browser and the lab SP cannot sign in to the portal.
+What the blade reads was checked instead (06:08Z): Policy Insights `summarize -g rg-lab20`: pbb-vm-storage compliant 2,
+pbb-arc-storage compliant 1; Resource Graph `policyresources`: vm1, dc (pbb-vm-storage) and arc1 (pbb-arc-storage)
+Compliant, 05:57:45–46Z. The visual check (scope selection, P85) needs a person in the portal while lab20 is up.
