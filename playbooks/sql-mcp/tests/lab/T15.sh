@@ -4,7 +4,7 @@
 # checked by the admin: entra-setup.sh run a second time must print "already assigned" (record it in docs/tests.md).
 . "$(dirname "$0")/common.sh"
 lab_load || exit 1
-a=$(app_id); [ -n "$a" ] || { bad "no app ID (run lab-up.sh --app-id first)"; finish; exit 1; }
+a=$(app_id); [ -n "$a" ] || { bad "no app ID (run lab-up.sh --connect --app-id first)"; finish; exit 1; }
 u="https://management.azure.com$agent_id/connectors/sqlmcp?api-version=2026-01-01"
 check "connector identity" "$(az rest -m GET --url "$u" --query properties.identity -o tsv)" "system"
 # endpoint, type, scope and header read back as null (write-only); what a GET does return:

@@ -1,5 +1,6 @@
 #!/bin/sh
-# T10: the lab is built by lab-up.sh alone (phases A and B; the only hand step is the admin's entra-setup): the four
+# T10: the lab is built by lab-up.sh alone (Lab build, Admin consent, MCP connect; the only hand
+# step is Admin consent, the admin's entra-setup): the four
 # VMs run, the agent egresses through the VNet with remote MCP access off, DAB listens on vm1, the connector exists.
 # (The build time is printed by lab-up.sh and recorded in docs/tests.md.)
 . "$(dirname "$0")/common.sh"
@@ -14,5 +15,5 @@ check "connector sqlmcp" "$(az rest -m GET --url "https://management.azure.com$a
 st=$(guest vm1 host-state.ps1)
 check "DAB task" "$(echo "$st" | kv TASK_STATE)" "Running"
 check "DAB listens" "$(echo "$st" | kv LISTEN)" "0.0.0.0"
-[ -n "$(app_id)" ] && ok "app ID recorded by phase B" || bad "no app ID file: run lab-up.sh --app-id <id>"
+[ -n "$(app_id)" ] && ok "app ID recorded by MCP connect" || bad "no app ID file: run lab-up.sh --connect --app-id <id>"
 finish

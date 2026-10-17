@@ -50,7 +50,7 @@ guest() { # guest <machine> <tests/lab/guest/x.ps1> [args]: run a lab test helpe
    scripts/vmscp "$_vm" "$_f" "C:/sqlmcp/t/$(basename "$_f")" >/dev/null 2>&1 &&
    scripts/vmssh "$_vm" "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\sqlmcp\\t\\$(basename "$_f") $*") 2>&1 | grep -v '^direnv:' | tr -d '\r' | mask; }
 kv() { sed -n "s/^$1 //p" | head -1 | tr -d '\r'; }   # kv KEY < output: the value of a "KEY value" line
-appid_file() { echo "$lab/sqlmcp-$env_name.appid"; }   # written by lab-up.sh phase B (gitignored lab folder)
+appid_file() { echo "$lab/sqlmcp-$env_name.appid"; }   # written by lab-up.sh MCP connect (gitignored lab folder)
 app_id() { cat "$(appid_file)" 2>/dev/null; }
 ask() { # ask "<question>": ask the lab's SRE Agent in a new thread (~2 min, a few AAU); prints the answer, masked
   (cd "$lab" && scripts/ask-agent "$1") 2>&1 | grep -v '^direnv:' | mask; }

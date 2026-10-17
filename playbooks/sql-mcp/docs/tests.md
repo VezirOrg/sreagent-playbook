@@ -21,7 +21,7 @@ configuration (T14, T21, T22, T24) run on a **copy** on `localhost:5001` with an
 
 | ID | What | Hand step | Last result |
 |---|---|---|---|
-| T10 | `lab-up.sh` builds the lab (phase A, admin step, phase B): VMs run, agent egress AzureVNet with remote MCP access off, connector exists, DAB listens | the admin runs `entra-setup.sh` | PASS 2026-10-17 (Lab build: azd up 27 min) |
+| T10 | `lab-up.sh` builds the lab (Lab build = README steps 1–3, Admin consent = step 4, MCP connect = steps 5–6): VMs run, agent egress AzureVNet with remote MCP access off, connector exists, DAB listens | Admin consent: the admin runs `entra-setup.sh` | PASS 2026-10-17 (Lab build: azd up 27 min) |
 | T11 | steps 1–4 rerun change nothing (gMSA, login + role, no new download, same configuration content, task runs) | | PASS 2026-10-17 |
 | T12 | on each SQL Server: the gMSA has exactly `##MS_ServerPerformanceStateReader##`, is not sysadmin, owns no database, has no user in any database | | PASS 2026-10-17 (rerun after a test fix, S17) |
 | T13 | DAB runs as the gMSA (task and process), pinned version, listens on 5000; firewall exactly the agent and VM subnets | | PASS 2026-10-17 (rerun after a test fix, S17) |
