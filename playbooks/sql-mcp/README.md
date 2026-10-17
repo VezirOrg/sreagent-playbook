@@ -9,11 +9,12 @@ stored anywhere, and **no database or object is created on the SQL Servers**.
 > Not an official Microsoft product. Working and versioned, no support promise. See the
 > [repo README](../../README.md).
 
-**Status: in development, not released.** The design was proven end to end in an earlier research lab (2026-10-04:
-DAB 2.1.5, SQL Server 2025, Windows Server 2025). This playbook's own lab run (tests T10–T25,
-[docs/tests.md](docs/tests.md)) is pending; the first release follows it.
+**Status: in development, not released yet.** Tested end to end on 2026-10-17 in this playbook's own lab, built from
+scratch with these scripts (DAB 2.1.5, SQL Server 2025, Windows Server 2025, Azure VMs in the agent's VNet): every lab
+test T10–T25 passed ([docs/tests.md](docs/tests.md)). Why it is built this way: [docs/design.md](docs/design.md).
 
-Legend: ✅ proven in a lab · 📄 documented (Microsoft Learn or the DAB source), not tested.
+Legend: ✅ proven in a lab (test IDs in [docs/tests.md](docs/tests.md)) · 📄 documented (Microsoft Learn or the DAB
+source), not tested.
 
 ## What it does, and what it does not
 
