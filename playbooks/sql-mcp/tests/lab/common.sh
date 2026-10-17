@@ -25,7 +25,7 @@ mask() { # GUIDs, subscription paths and the real host name never reach the term
   SQLMCP_REAL="${real1:-NOREALNAME}" perl -pe 's#/subscriptions/[0-9a-f-]{36}#/subscriptions/<sub>#g; s#[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}#<guid>#gi; s#\Q$ENV{SQLMCP_REAL}\E#vm1#gi'; }
 real_of() { case "$1" in vm1) echo "$real1" ;; *) echo "$1" ;; esac; }
 v() { # v <machine> '<PowerShell command>': run on a lab VM over Bastion + SSH (the default shell is Windows PowerShell 5.1)
-  _vm=$(real_of "$1"); shift; (cd "$lab" && scripts/vmssh "$_vm" "$@") 2>&1 | grep -v '^direnv:' | mask; }
+  _vm=$(real_of "$1"); shift; (cd "$lab" && scripts/vmssh "$_vm" "$@") 2>&1 | grep -v '^direnv:' | tr -d '\r' | mask; }
 push_pkg() { # push_pkg <machine>: copy the package scripts to C:\sqlmcp on a lab VM
   _vm=$(real_of "$1")
   (cd "$lab" && scripts/vmssh "$_vm" 'New-Item -ItemType Directory -Force C:\sqlmcp | Out-Null' >/dev/null 2>&1)
@@ -48,7 +48,7 @@ guest() { # guest <machine> <tests/lab/guest/x.ps1> [args]: run a lab test helpe
   _vm=$(real_of "$1"); _f="$here/guest/$2"; shift 2
   (cd "$lab" && scripts/vmssh "$_vm" 'New-Item -ItemType Directory -Force C:\sqlmcp\t | Out-Null' >/dev/null 2>&1 &&
    scripts/vmscp "$_vm" "$_f" "C:/sqlmcp/t/$(basename "$_f")" >/dev/null 2>&1 &&
-   scripts/vmssh "$_vm" "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\sqlmcp\\t\\$(basename "$_f") $*") 2>&1 | grep -v '^direnv:' | mask; }
+   scripts/vmssh "$_vm" "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\sqlmcp\\t\\$(basename "$_f") $*") 2>&1 | grep -v '^direnv:' | tr -d '\r' | mask; }
 kv() { sed -n "s/^$1 //p" | head -1 | tr -d '\r'; }   # kv KEY < output: the value of a "KEY value" line
 appid_file() { echo "$lab/sqlmcp-$env_name.appid"; }   # written by lab-up.sh phase B (gitignored lab folder)
 app_id() { cat "$(appid_file)" 2>/dev/null; }

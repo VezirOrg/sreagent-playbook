@@ -58,7 +58,9 @@ try {
     Start-Sleep 3
     "EXITED $($proc.HasExited)"
     $log = (Get-Content (Join-Path $t 'dab.log'), (Join-Path $t 'dab.err') -ErrorAction SilentlyContinue) -join "`n"
-    "LOG_NAMES_DEAD $(if ($log -match 'sqlmcp-dead\.invalid') { 'yes' } else { 'no' })"
+    # the log names the failing ENTITY (Cannot obtain Schema for entity <server>_<view>), not the host
+    $m = [regex]::Match($log, 'Cannot obtain Schema for entity (\w+?)_')
+    "LOG_FAILED_SERVER $(if ($m.Success) { $m.Groups[1].Value } else { 'none' })"
     ($log -split "`n" | Select-Object -Last 15) | ForEach-Object { "LOG $_" }
     return
   }

@@ -170,3 +170,22 @@ Entra admin step (S4) is relayed to Emre through the vezir.
 
 The flag for the last phase becomes `--connect --app-id <id>`; `--app-id <id>` alone stays as an alias, since the
 record already refers to it. Done after the first lab21 test run, not during it.
+
+## S17: lab21 run 1: T10–T24 all PASS; what the lab found (2026-10-17)
+
+Run 1 (09:06–09:26Z): 11 of 15 passed at once; T12, T13, T15 and T22 failed on **test-side** expectations only and
+passed after the fixes below (09:26–09:29Z). The playbook itself needed one fix.
+
+- **Product fix (connect-agent):** the egress PATCH puts the agent into `InProgress` for a moment; a connector PUT
+  right after it is refused (`OperationConflict`, "Agent must be in Succeeded state"). `connect-agent.sh/.ps1` now
+  wait for `provisioningState Succeeded` before and after the PATCH (up to 10 min). `lab-up.sh` also printed "done"
+  despite that failure (a pipe hid the exit code); it now stops.
+- **The lab SP's existing rights are enough** for the egress PATCH and the connector PUT: no extra role was needed or
+  granted (the open question of S14 is closed).
+- **Test fixes:** lab command output carries Windows `\r` (now stripped in `common.sh`, T12); the task principal is
+  stored without the domain and the firewall shows ranges as address/mask (T13 compares the account name and the
+  networks); a connector GET returns `type`, `endpoint`, scope and header as null (T15 checks kind, auth type and
+  state); `dab.log` names the failing **entity** (`sql2_…`), not the host (T22).
+- **Facts seen:** the agent used `describe_entities` then `aggregate_records` for the session count (2; sqlcmd 3
+  including itself) and matched sqlcmd's top wait on sql2. azd's cached SP login was stale after the secret rotation
+  (S15).
