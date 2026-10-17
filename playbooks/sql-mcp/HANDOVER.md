@@ -1,6 +1,6 @@
 # sql-mcp: tested end to end (lab21, T10–T25 all PASS, lab torn down 2026-10-17); docs and TR/EN quick install done; v1.0.0 waits for Emre's preview.
 
-Playbook: **sql-mcp**. Read `../../CLAUDE.md`, `CLAUDE.md` here, this file, then `decisions.md` (S1–S17).
+Playbook: **sql-mcp**. Read `../../CLAUDE.md`, `CLAUDE.md` here, this file, then `decisions.md` (S1–S18).
 The owner is the vezir (its session name changes when it respawns: always re-check with ListAgents); every answer
 from Emre comes through it. **Rig rule:** never keep a Bash background task of this session running longer than ~4 min
 (the keepalive may judge the session dead): run long jobs (`lab-up.sh`, lab tests) with `nohup … & disown` and a log
