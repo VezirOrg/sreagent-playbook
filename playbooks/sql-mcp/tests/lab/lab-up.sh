@@ -57,6 +57,7 @@ fi
 
 say "phase B: $env_name"
 lab_load
+echo "$appid" > "$(appid_file)"
 servers=$(echo $sqls | tr ' ' ',')
 say "step 4: configuration on vm1 ($servers), restart"
 push_pkg vm1

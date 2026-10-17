@@ -44,3 +44,17 @@ agent_subnet() { # CIDR of the agent's VNet-integration subnet: delegated to Mic
   echo "$_c"; }
 dab_restart() { # restart Data API builder on vm1 and wait (max 3 min) until it listens
   v vm1 "Stop-ScheduledTask DAB-sqlmcp -ErrorAction SilentlyContinue; Get-Process Microsoft.DataApiBuilder -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep 2; Start-ScheduledTask DAB-sqlmcp; \$i = 0; while (-not (Get-NetTCPConnection -LocalPort 5000 -State Listen -ErrorAction SilentlyContinue) -and \$i -lt 90) { Start-Sleep 2; \$i++ }; if (Get-NetTCPConnection -LocalPort 5000 -State Listen -ErrorAction SilentlyContinue) { 'DAB listening on 5000' } else { 'DAB NOT listening: tail of dab.log:'; Get-Content C:\\dab\\logs\\dab.log -Tail 30 }"; }
+guest() { # guest <machine> <tests/lab/guest/x.ps1> [args]: run a lab test helper under Windows PowerShell 5.1
+  _vm=$(real_of "$1"); _f="$here/guest/$2"; shift 2
+  (cd "$lab" && scripts/vmssh "$_vm" 'New-Item -ItemType Directory -Force C:\sqlmcp\t | Out-Null' >/dev/null 2>&1 &&
+   scripts/vmscp "$_vm" "$_f" "C:/sqlmcp/t/$(basename "$_f")" >/dev/null 2>&1 &&
+   scripts/vmssh "$_vm" "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\sqlmcp\\t\\$(basename "$_f") $*") 2>&1 | grep -v '^direnv:' | mask; }
+kv() { sed -n "s/^$1 //p" | head -1 | tr -d '\r'; }   # kv KEY < output: the value of a "KEY value" line
+appid_file() { echo "$lab/sqlmcp-$env_name.appid"; }   # written by lab-up.sh phase B (gitignored lab folder)
+app_id() { cat "$(appid_file)" 2>/dev/null; }
+ask() { # ask "<question>": ask the lab's SRE Agent in a new thread (~2 min, a few AAU); prints the answer, masked
+  (cd "$lab" && scripts/ask-agent "$1") 2>&1 | grep -v '^direnv:' | mask; }
+evidence() { # evidence <ID>: tee the masked output of a test into the gitignored lab folder
+  mkdir -p "$lab/evidence"; tee "$lab/evidence/$1-$(date -u +%Y%m%dT%H%M%SZ).txt"; }
+sqlq() { # sqlq <server> "<T-SQL>": run one query on a SQL member, -h-1 -W (no headers, trimmed)
+  _s="$1"; shift; v "$_s" "sqlcmd -E -C -h -1 -W -Q \"SET NOCOUNT ON; $*\""; }

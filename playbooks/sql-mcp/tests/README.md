@@ -1,7 +1,7 @@
 # sql-mcp tests
 
 `tests/run.sh <ID>` from the playbook folder, or `tests/run.sh local` for L01–L04. Synthetic values only (IDs are
-made up at run time). The full list, lab tests included, is in `../docs/tests.md` once the lab tests exist.
+made up at run time). The full list, lab tests T10–T25 included, is in `../docs/tests.md`.
 
 | ID | What | Needs |
 |---|---|---|

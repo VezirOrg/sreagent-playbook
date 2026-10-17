@@ -22,8 +22,9 @@ $settings = @{
         'win-8_x64_10.0.17763.0_5.1.17763.316_x64_4.0.30319.42000_framework') }
   }
 }
-# Server-side scripts only: the admin and agent scripts run on an admin's machine (any PowerShell), but are linted too.
-$files = @(Get-ChildItem (Join-Path $Src 'package') -Recurse -Include *.ps1)
+# The package (the admin and agent scripts run on an admin's machine, but are linted too) and the lab test helpers
+# that run on the lab VMs (tests/lab/guest).
+$files = @(Get-ChildItem (Join-Path $Src 'package'), (Join-Path $Src 'tests\lab\guest') -Recurse -Include *.ps1)
 $issues = @()
 foreach ($f in $files) {
   foreach ($rule in 'PSUseCompatibleSyntax', 'PSUseCompatibleCommands', '*') {

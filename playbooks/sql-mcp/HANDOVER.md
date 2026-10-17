@@ -1,4 +1,4 @@
-# sql-mcp: plan v1 approved (S3–S13); package scripts, lab-up/down and local tests L01–L04 green; lab21 NOT cleared yet.
+# sql-mcp: package, lab scripts, lab tests T10–T25 and README guide written; local L01–L04 green; lab21 NOT cleared yet.
 
 Playbook: **sql-mcp**. Read `../../CLAUDE.md`, `CLAUDE.md` here, this file, then `decisions.md` (S1–S13).
 The owner is the vezir; every answer from Emre comes through it.
@@ -13,7 +13,11 @@ The owner is the vezir; every answer from Emre comes through it.
     `04-dab-config.ps1` (placeholder root, production auth only), `tools/mcp-call.ps1` (+ `-Role`),
     `admin/entra-setup.{sh,ps1}`, `agent/connect-agent.{sh,ps1}`, `build.sh` (deterministic `SqlMcp.zip`).
   - `tests/run.sh` with L01–L04 (all PASS on 2026-10-17; L01/L02 need `pwsh`, see below), `tests/lab/common.sh`,
-    `lab-up.sh` (phase A, admin step, phase B with `--app-id`), `lab-down.sh`. **None of the lab scripts has run yet.**
+    `lab-up.sh` (phase A, admin step, phase B with `--app-id`), `lab-down.sh`, lab tests `T10.sh`–`T25.sh` with the
+    guest helpers `guest/dab-copy.ps1` (copy of the live config on localhost:5001) and `guest/host-state.ps1`.
+    **None of the lab scripts has run yet.**
+  - CI (R21) runs L01–L03, plus L01 under Windows PowerShell 5.1.
+  - Docs: `README.md` (adopter guide, status "in development"), `docs/operations.md`, `docs/tests.md`.
 - `pwsh` is not installed on this Mac. This session used PowerShell 7.6.7 unpacked into its scratchpad (SHA-256 checked
   against GitHub's digest). A later session: download it again, or set `PWSH`.
 - `lab-up.sh` reads the private template from `SQLMCP_LAB_TEMPLATE` / `SQLMCP_LAB_TAG` (values in
@@ -21,11 +25,10 @@ The owner is the vezir; every answer from Emre comes through it.
 
 ## Next
 
-1. Root change R21 (CI runs the sql-mcp local tests), its own commit.
-2. Lab tests T10–T25 as `tests/lab/T*.sh`, and `docs/tests.md`.
-3. When the vezir clears lab21: register it in the template's lab register, then `lab-up.sh` (T10), the admin step
+1. When the vezir clears lab21: register it in the template's lab register, then `lab-up.sh` (T10), the admin step
    by Emre (S4), phase B, T11–T24.
-4. Then the README guide, the TR/EN quick install (Drive), rc, fresh-eyes install (S8), teardown (T25), release.
+2. Fix what the lab finds; mark ✅ from lab21 in the README; `docs/design.md` (auth evidence, from the source design note).
+3. The TR/EN quick install (Drive, S9), rc, fresh-eyes install (S8), teardown (T25), release.
 
 ## Not yet done or verified
 
