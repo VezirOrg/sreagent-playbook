@@ -15,7 +15,7 @@ session opened for that playbook (`pj-open PLAYBOOK=<name>`).
 - **Visibility: PUBLIC** (Emre's word; R19). Every commit is published the moment it is pushed; full-history scrub
   clean; hooks and CI run the scrub check.
 - **Rules:** `CLAUDE.md` (one session = one playbook, R12; root changes are separate commits with a decision entry).
-  Decisions `docs/decisions.md` (R1–R15). DoD `docs/definition-of-done.md`.
+  Decisions `docs/decisions.md` (R1–R22). DoD `docs/definition-of-done.md`.
 - **Safety:** `scripts/install-hooks.sh` once per clone (pre-commit, commit-msg, pre-push run
   `scripts/scrub-check.sh`). Denylists merged (R13): `files/source-data/*denylist*.txt` + `files/denylist-extra.txt`.
   Private names are written neutrally; real names and paths are in `files/private-refs.md` (Drive).
@@ -31,4 +31,6 @@ session opened for that playbook (`pj-open PLAYBOOK=<name>`).
 - 2026-10-11: R13: scrub check merges every denylist; private extra denylist in files/.
 - 2026-10-11: R14: playbook lab checkouts in `.lab/` (gitignored), scrub check refuses `.lab/`.
 - 2026-10-11: R15: credentials checked only with `scripts/env-check.sh`.
-- 2026-10-17: R20: second playbook `sql-mcp` added to the index (plan gate open).
+- 2026-10-17: R20: second playbook `sql-mcp` added to the index.
+- 2026-10-17: R21: CI runs the sql-mcp local tests (Ubuntu, and L01 under Windows PowerShell 5.1).
+- 2026-10-17: R22: "Latest" stays where it is; each playbook is found by its own tag (`--latest=false`).

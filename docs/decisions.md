@@ -183,3 +183,10 @@ real adopter need and the blog.
 L03 (the deterministic package); and a `sql-mcp-windows` job on `windows-latest` that runs L01 again under Windows
 PowerShell 5.1 (`powershell.exe`), where the scripts really run. L04 (DAB drift, GitHub API) stays local: a new upstream
 release is a signal for a playbook session, not a broken build. Nothing in CI touches Azure.
+
+## R22: "Latest" stays where it is; each playbook is found by its own tag (Emre via the vezir, 2026-10-17, "LATEST-KALSIN")
+
+GitHub marks one release of the whole repository as "Latest". With several playbooks that badge says nothing about any
+one of them, so it stays where it is (perfmon-blackbox v1.0.2 on 2026-10-17). Each playbook is found by its own tagged
+release (`<playbook>/vX.Y.Z`), linked from its README and CHANGELOG. A new release is published with
+`gh release create … --latest=false` unless Emre says otherwise. First application: sql-mcp v1.0.0 (playbook S19).
