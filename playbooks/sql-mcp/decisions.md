@@ -189,3 +189,10 @@ passed after the fixes below (09:26–09:29Z). The playbook itself needed one fi
 - **Facts seen:** the agent used `describe_entities` then `aggregate_records` for the session count (2; sqlcmd 3
   including itself) and matched sqlcmd's top wait on sql2. azd's cached SP login was stale after the secret rotation
   (S15).
+
+## S18: lab21 is torn down today (Emre via the vezir, 2026-10-17 ~10:00Z, "önerdiğin gibi")
+
+T25 runs now: `lab-down.sh --yes` (role assignments scoped in rg-lab21 first, then `azd down --purge --force`),
+then the template's lab audit and its register row in one commit. The fresh-eyes install (S8) will rebuild a lab with
+`lab-up.sh` when it is due. The Entra app `sql-mcp-api` is kept (no cost; its assignment goes with the agent's
+identity). Other labs and resource groups are untouched.

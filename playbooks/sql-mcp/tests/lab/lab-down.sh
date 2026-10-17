@@ -13,7 +13,8 @@ scope="/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$rg"
 say "resources in the lab resource group"
 az resource list -g "$rg" --query "[].{type:type, name:name}" -o tsv | mask
 say "role assignments scoped in it"
-ids=$(az role assignment list --scope "$scope" --include-inherited false --query "[?starts_with(scope, '$scope')].id" -o tsv 2>/dev/null || true)
+# assignments AT or BELOW the RG (the query drops inherited ones from the subscription or above)
+ids=$(az role assignment list --scope "$scope" --query "[?starts_with(scope, '$scope')].id" -o tsv)
 for id in $ids; do az role assignment delete --ids "$id" && echo "  deleted $(echo "$id" | mask)"; done
 say "azd down (about 15 min)"
 start=$(date +%s)
