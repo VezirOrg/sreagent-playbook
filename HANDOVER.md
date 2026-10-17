@@ -1,4 +1,4 @@
-# sreagent-playbook: repo index. 1 playbook (perfmon-blackbox); repo PUBLIC (Emre's word); safety gates R10–R18 in place.
+# sreagent-playbook: repo index. 2 playbooks (perfmon-blackbox, sql-mcp); repo PUBLIC (Emre's word); safety gates R10–R18 in place.
 
 Index only (R12): repo-level status and links. **No playbook status here**: read the playbook's own HANDOVER, in a
 session opened for that playbook (`pj-open PLAYBOOK=<name>`).
@@ -8,6 +8,7 @@ session opened for that playbook (`pj-open PLAYBOOK=<name>`).
 | Playbook | HANDOVER |
 |---|---|
 | perfmon-blackbox | [playbooks/perfmon-blackbox/HANDOVER.md](playbooks/perfmon-blackbox/HANDOVER.md) |
+| sql-mcp | [playbooks/sql-mcp/HANDOVER.md](playbooks/sql-mcp/HANDOVER.md) |
 
 ## Repo-level status (2026-10-11)
 
@@ -30,3 +31,4 @@ session opened for that playbook (`pj-open PLAYBOOK=<name>`).
 - 2026-10-11: R13: scrub check merges every denylist; private extra denylist in files/.
 - 2026-10-11: R14: playbook lab checkouts in `.lab/` (gitignored), scrub check refuses `.lab/`.
 - 2026-10-11: R15: credentials checked only with `scripts/env-check.sh`.
+- 2026-10-17: R20: second playbook `sql-mcp` added to the index (plan gate open).

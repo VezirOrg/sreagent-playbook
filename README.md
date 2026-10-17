@@ -12,6 +12,7 @@ Each playbook is a working, tested and versioned solution you can deploy and ada
 | Playbook | What it does |
 |---|---|
 | [`perfmon-blackbox`](playbooks/perfmon-blackbox/) | A black-box PerfMon recorder on Windows servers (Azure VMs and Azure Arc-enabled servers), deployed with Azure Machine Configuration; daily exports to a private storage account; an SRE Agent skill analyses the latest capture of a machine. |
+| [`sql-mcp`](playbooks/sql-mcp/) | A read-only MCP server for SQL Server dynamic management views (Data API builder, Windows auth with a gMSA, no object created on the SQL Servers) that Azure SRE Agent calls over the VNet with its managed identity. |
 
 Each playbook has its own README (how to deploy), CHANGELOG and tests; its releases are listed under
 [Releases](../../releases).

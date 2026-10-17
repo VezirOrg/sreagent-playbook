@@ -27,6 +27,7 @@ and commit message as published the moment it is made.
 | Playbook | Path | Purpose | First read |
 |---|---|---|---|
 | perfmon-blackbox | `playbooks/perfmon-blackbox/` | Black-box PerfMon recorder (Machine Configuration on Azure VMs and Arc servers) plus the SRE Agent skill that analyses the latest capture of a machine | `playbooks/perfmon-blackbox/HANDOVER.md` |
+| sql-mcp | `playbooks/sql-mcp/` | Read-only SQL Server DMV MCP server (Data API builder, gMSA) that Azure SRE Agent calls over the VNet with its managed identity | `playbooks/sql-mcp/HANDOVER.md` |
 
 No status here; status lives in each playbook's HANDOVER. Adding a playbook = a root change (rule 4): a row
 here, a link in the root `HANDOVER.md` and the README table, and a decision entry.

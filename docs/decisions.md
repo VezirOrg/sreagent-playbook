@@ -160,3 +160,18 @@ under `powershell.exe`, then the package build (authoring side, PowerShell 7). N
 The repository is **public** by Emre's word (as the opening briefs and CLAUDE.md already treat it). The root
 `HANDOVER.md` said "private, flips public on Emre's word": corrected. Nothing else changes: every commit was already
 written as public.
+
+## R20: second playbook `sql-mcp` (Emre via the vezir, 2026-10-17)
+
+A second playbook, **`sql-mcp`**, is started at `playbooks/sql-mcp/`: a read-only SQL Server DMV MCP server (Data API
+builder's MCP endpoint, Windows auth with a gMSA, no object on the SQL Servers) that Azure SRE Agent calls over the
+VNet with its managed identity, locked by an Entra app role. It turns an earlier private research project into (a) a
+lab that can be rebuilt with one command and (b) a released playbook in the perfmon-blackbox shape (tag
+`sql-mcp/vX.Y.Z`, zip as a release asset, CHANGELOG, quick install in Turkish and English). The audience is both a
+real adopter need and the blog.
+
+- Root changes of this entry: a row in the `CLAUDE.md` index, a link in the root `HANDOVER.md`, a row in the README
+  table. The playbook scaffold is a separate commit (R12).
+- **Plan gate (R11):** no lab, no Azure change and no code beyond the scaffold until Emre approves the playbook's
+  inventory and plan (kept in Drive, not here).
+- Worktrees (R12.5) are still not built: the session works on `main` and writes only under `playbooks/sql-mcp/`.
