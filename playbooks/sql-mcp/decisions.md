@@ -202,3 +202,17 @@ identity). Other labs and resource groups are untouched.
   value) and with `--scope` only, which misses assignments on resources inside the group: it now uses `--all` with a
   scope filter. `azdv` (common.sh) returned azd's error text when a value was gone (azd prints errors on stdout): it
   now uses the exit code. No role assignment was left over.
+
+## S19: release v1.0.0 now (Emre via the vezir, 2026-10-17, "YAYINLA")
+
+- **What:** tag `sql-mcp/v1.0.0` on `main` and a GitHub release (not a pre-release) whose only asset is `SqlMcp.zip`,
+  built by `package/build.sh 1.0.0` from the package files that lab21 tested: no file under `package/` changed after
+  `85dafa8`, the commit the T10–T25 run used. Its SHA-256 is in the CHANGELOG, the README and the release notes.
+- **Before the upload** (release assets bypass the git hooks, as for perfmon-blackbox P29/P66): every file extracted
+  from the zip, and the release notes, pass `scripts/scrub-check.sh`. After it: the asset downloaded from the public
+  URL must hash to the same SHA-256.
+- **Not "Latest":** the repo has no multi-playbook convention yet (only perfmon-blackbox has releases); "Latest" is
+  repo-wide, so sql-mcp is published with `--latest=false` and perfmon-blackbox v1.0.2 keeps the badge. A repo-wide
+  rule for this belongs in `docs/decisions.md` if Emre wants one.
+- **No preview, and the fresh-eyes install (S8) moves to after the release**, as perfmon-blackbox did (P66): its
+  findings go into v1.0.x. The quick installs in Drive are updated to point at the tag.
