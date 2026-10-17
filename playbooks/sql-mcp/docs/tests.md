@@ -36,7 +36,7 @@ configuration (T14, T21, T22, T24) run on a **copy** on `localhost:5001` with an
 | T22 | an unreachable server at start: DAB does not start, the log names it (copy; no SQL Server stopped) | | PASS 2026-10-17 (rerun after a test fix, S17; the log names sql2_…) |
 | T23 | vm1 restarts: DAB comes back as the gMSA by itself | | PASS 2026-10-17 |
 | T24 | the placeholder root starts with the pinned build (root 0 entities, 7 per server); `T24.sh <version> <sha256>` for an upgrade | | PASS 2026-10-17 (2.1.5) |
-| T25 | after `lab-down.sh`: no resource group, no role assignment scoped in it; then the template's lab audit | | — |
+| T25 | after `lab-down.sh`: no resource group, no role assignment scoped in it; then the template's lab audit | | PASS 2026-10-17 (azd down 10m56s, Key Vault purged; rerun after a test fix, S18; lab audit CLEAN) |
 
 T16, T18, T19 and T20 ask the agent (about 2 minutes and a few AAU each). T25 runs at the teardown.
 Run 1 took 20 min for T10–T24 (09:06–09:26Z), plus 3 min for the four reruns.

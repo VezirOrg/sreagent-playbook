@@ -12,7 +12,8 @@ bad() { echo "  FAIL $*"; fails=$((fails + 1)); }
 check() { if [ "$2" = "$3" ]; then ok "$1 = $2"; else bad "$1 = '$2', expected '$3'"; fi; }
 finish() { if [ $fails -eq 0 ]; then return 0; else echo "  $fails check(s) failed"; return 1; fi; }
 say() { echo "== $*"; }
-azdv() { (cd "$lab" && azd env get-value -e "$env_name" "$1" 2>/dev/null); }
+azdv() { # an azd environment value, or nothing (azd prints its errors on stdout, so use the exit code)
+  _o=$(cd "$lab" && azd env get-value -e "$env_name" "$1" 2>/dev/null) && echo "$_o"; }
 lab_load() { # the lab's facts, read from azd and ARM (never written to the repo)
   rg=$(azdv AZURE_RESOURCE_GROUP); [ -n "$rg" ] || { echo "no azd environment $env_name in $lab" >&2; return 1; }
   domain=$(azdv LAB_DOMAIN_NAME); netbios=$(azdv LAB_NETBIOS_NAME); agent_id=$(azdv SRE_AGENT_ID)

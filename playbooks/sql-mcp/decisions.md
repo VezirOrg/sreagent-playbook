@@ -196,3 +196,9 @@ T25 runs now: `lab-down.sh --yes` (role assignments scoped in rg-lab21 first, th
 then the template's lab audit and its register row in one commit. The fresh-eyes install (S8) will rebuild a lab with
 `lab-up.sh` when it is due. The Entra app `sql-mcp-api` is kept (no cost; its assignment goes with the agent's
 identity). Other labs and resource groups are untouched.
+- **Done (2026-10-17 09:46:40Z):** `lab-down.sh` finished (azd down 10m56s, Key Vault purged); T25 PASS (no
+  resource group, 0 role assignments at or below its scope); the template's lab audit CLEAN; register row DOWN.
+  Fixes found on the way: `lab-down.sh` listed role assignments with `--include-inherited false` (that flag takes no
+  value) and with `--scope` only, which misses assignments on resources inside the group: it now uses `--all` with a
+  scope filter. `azdv` (common.sh) returned azd's error text when a value was gone (azd prints errors on stdout): it
+  now uses the exit code. No role assignment was left over.
