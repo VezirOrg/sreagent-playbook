@@ -216,3 +216,10 @@ identity). Other labs and resource groups are untouched.
   rule for this belongs in `docs/decisions.md` if Emre wants one.
 - **No preview, and the fresh-eyes install (S8) moves to after the release**, as perfmon-blackbox did (P66): its
   findings go into v1.0.x. The quick installs in Drive are updated to point at the tag.
+- **Done 2026-10-17 09:54Z:** tag `sql-mcp/v1.0.0` on `62f2db3` (main), release
+  https://github.com/VezirOrg/sreagent-playbook/releases/tag/sql-mcp/v1.0.0 (not a pre-release, **not Latest**:
+  perfmon-blackbox v1.0.2 keeps the badge). Only asset `SqlMcp.zip`, SHA-256
+  `F3B2BD2AFF1F787363C880D7D16A88101B24035E60F249347013032480F909DB`: the 10 extracted files and the notes scrub-checked
+  clean (65 entries); a rebuild from the tagged commit gives the same hash; the asset downloaded from the public URL
+  hashes to it, and so does GitHub's digest; every docs link in the notes resolves at the tag. Quick installs (Drive,
+  TR/EN) point at the tag.

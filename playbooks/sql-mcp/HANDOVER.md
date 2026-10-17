@@ -1,6 +1,6 @@
-# sql-mcp: tested end to end (lab21, T10–T25 all PASS, lab torn down 2026-10-17); docs and TR/EN quick install done; v1.0.0 waits for Emre's preview.
+# sql-mcp: v1.0.0 RELEASED 2026-10-17 (SqlMcp.zip F3B2BD2A…09DB, not Latest); next: fresh-eyes install (S8), then v1.0.x / v1.1.0 skill.
 
-Playbook: **sql-mcp**. Read `../../CLAUDE.md`, `CLAUDE.md` here, this file, then `decisions.md` (S1–S18).
+Playbook: **sql-mcp**. Read `../../CLAUDE.md`, `CLAUDE.md` here, this file, then `decisions.md` (S1–S19).
 The owner is the vezir (its session name changes when it respawns: always re-check with ListAgents); every answer
 from Emre comes through it. **Rig rule:** never keep a Bash background task of this session running longer than ~4 min
 (the keepalive may judge the session dead): run long jobs (`lab-up.sh`, lab tests) with `nohup … & disown` and a log
@@ -19,15 +19,19 @@ file in `.lab/sql-mcp/`, and watch the log with a Monitor.
   row DOWN (template `98219be`, `bb04a59`). The Entra app `sql-mcp-api` is kept (S18).
 - The earlier research lab rg-sqlmcp1 was torn down by the vezir (09:40Z, Emre's word); its register row DOWN
   (`78cf4ac`); its hand-made Entra app deleted.
-- **Drive:** `files/sql-mcp/plan-v1.md`, `quick-install-v1.0.0.tr.md`, `quick-install-v1.0.0.en.md` (drafts, before rc).
+- **Drive:** `files/sql-mcp/plan-v1.md`, `quick-install-v1.0.0.tr.md`, `quick-install-v1.0.0.en.md` (point at the v1.0.0 tag).
 - azd signs in through az (S15; undo `azd config unset auth.useAzCliAuth`).
 
 ## Next
 
-1. **STOP before any release or tag:** the vezir asked Emre whether he wants to preview v1.0.0 first.
-2. Then: `CHANGELOG.md` entry, `v1.0.0-rc.1` (build `SqlMcp.zip`, SHA-256), the fresh-eyes install (S8) on a lab
-   rebuilt with `lab-up.sh` (~30 min plus Admin consent), release `sql-mcp/v1.0.0` (the vezir publishes), the quick
-   install renamed from draft.
+1. **Released:** `sql-mcp/v1.0.0` (S19): https://github.com/VezirOrg/sreagent-playbook/releases/tag/sql-mcp/v1.0.0,
+   `SqlMcp.zip` SHA-256 `F3B2BD2AFF1F787363C880D7D16A88101B24035E60F249347013032480F909DB`, tag on `62f2db3`, not Latest.
+   Quick installs (Drive): `files/sql-mcp/quick-install-v1.0.0.tr.md`, `.en.md`.
+2. Fresh-eyes install (S8), after the release as for perfmon-blackbox: a separate session, README only, on a lab
+   rebuilt with `lab-up.sh` (Lab build ~30 min, Admin consent by Emre, MCP connect). Needs the vezir's go (cost,
+   Emre's admin login). Findings go into v1.0.x.
+3. Later: the agent skill (v1.1.0, S13), the user-assigned identity path (S5), a repo-wide rule for which playbook's
+   release is "Latest" (root decision, Emre's call).
 
 ## Not yet done or verified
 
