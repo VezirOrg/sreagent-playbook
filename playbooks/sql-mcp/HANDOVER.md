@@ -1,4 +1,4 @@
-# sql-mcp: lab21 cleared (S14), phase A building; package, lab tests and README written; local L01–L04 green.
+# sql-mcp: lab21 UP (phase A done 07:57Z); waiting for Emre's Entra admin step, then phase B and T10–T24.
 
 Playbook: **sql-mcp**. Read `../../CLAUDE.md`, `CLAUDE.md` here, this file, then `decisions.md` (S1–S13).
 The owner is the vezir; every answer from Emre comes through it.
@@ -25,8 +25,13 @@ The owner is the vezir; every answer from Emre comes through it.
 
 ## Next
 
-State (2026-10-17 07:20Z): lab21 CLEARED (S14); `lab-up.sh` phase A started. If this session dies mid-build, check
-`.lab/sql-mcp/azd-up-lab21.log` and `az group show -n rg-lab21`, then re-run lab-up.sh (idempotent). Nothing is half done; the tree is clean except perfmon-blackbox's untracked
+State (2026-10-17 07:57Z): **lab21 UP** (rg-lab21, ~32 $/day, registered in the template's lab register, its audit
+CLEAN). Phase A done (azd up 27 min; gMSA; logins on sql1/sql2, not sysadmin; DAB 2.1.5 on vm1, task registered,
+not started). **Waiting for the admin step** (Emre, device code on this Mac in a separate az config folder
+`.lab/sql-mcp/az-admin`, then `az logout` and delete it). Then `lab-up.sh --app-id <APP_ID>` and T10–T24. The lab day
+ends before 21:45Z. Logs: `.lab/sql-mcp/lab-up-A.log`, `azd-up-lab21.log`.
+- azd's cached SP login was stale after the secret rotation (AADSTS7000215); the repo's `.azd-config` now uses az's
+  login (`azd config set auth.useAzCliAuth true`; undo with `azd config unset auth.useAzCliAuth`). Nothing is half done; the tree is clean except perfmon-blackbox's untracked
 `package/files/` (not ours, left alone on the vezir's word).
 
 
