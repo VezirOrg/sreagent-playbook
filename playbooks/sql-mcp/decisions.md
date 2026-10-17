@@ -157,3 +157,16 @@ Entra admin step (S4) is relayed to Emre through the vezir.
 - **Admin logins are never in a repo tree,** not even a gitignored one. Emre's device-code login for the Entra step
   (S4) goes into `$HOME/.azure-sqlmcp-admin` (started by the vezir); the session runs `entra-setup.sh` with
   `AZURE_CONFIG_DIR` set to it, then `az logout` and deletes the folder.
+
+## S16: the lab build reads as a rehearsal of the adopter guide (Emre via the vezir, 2026-10-17)
+
+`lab-up.sh`'s phases are renamed and each one names the README install steps it runs:
+
+| Was | English | Turkish | README install steps |
+|---|---|---|---|
+| phase A | **Lab build** | Lab ortamı + hazırlık | a stand-in adopter environment (the lab), then steps 1–3 |
+| the Entra step | **Admin consent** | Admin onayı | step 4 (an Entra admin runs `entra-setup`) |
+| phase B | **MCP connect** | MCP bağlantısı | steps 5–6 |
+
+The flag for the last phase becomes `--connect --app-id <id>`; `--app-id <id>` alone stays as an alias, since the
+record already refers to it. Done after the first lab21 test run, not during it.
