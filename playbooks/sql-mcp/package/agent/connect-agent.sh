@@ -25,6 +25,15 @@ done
 api=2026-01-01
 url="https://management.azure.com$agent"
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+wait_agent() { # an agent update runs asynchronously: a connector PUT while it is InProgress is refused (OperationConflict)
+  i=0
+  while [ $i -lt 60 ]; do
+    st=$(az rest -m GET --url "$url?api-version=$api" --query properties.provisioningState -o tsv 2>/dev/null || true)
+    [ "$st" = Succeeded ] && return 0
+    case "$st" in Failed|Canceled) echo "the agent is in state $st" >&2; return 1 ;; esac
+    sleep 10; i=$((i + 1))
+  done
+  echo "the agent is still '$st' after 10 min" >&2; return 1; }
 
 # 1. egress: send the whole egress object back (a nested PATCH may replace it), with only the one flag changed
 az rest -m GET --url "$url?api-version=$api" -o json > "$tmp/agent.json"
@@ -37,7 +46,9 @@ if eg.get("mode") != "AzureVNet":
 eg["allowHttpMcpServerNetworkAccess"] = False
 json.dump({"properties": {"sandboxConfiguration": {"egress": eg}}}, open(sys.argv[2], "w"))
 PY
+wait_agent
 az rest -m PATCH --url "$url?api-version=$api" --body "@$tmp/egress.json" -o none
+wait_agent
 echo "remote MCP server access: $(az rest -m GET --url "$url?api-version=$api" --query properties.sandboxConfiguration.egress.allowHttpMcpServerNetworkAccess -o tsv) (expected false)"
 
 # 2. the connector (endpoint, scope and header are write-only: a GET shows them as null, which is normal)

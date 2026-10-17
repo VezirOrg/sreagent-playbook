@@ -16,7 +16,17 @@ $api = '2026-01-01'
 $url = "https://management.azure.com$Agent"
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ('connect-agent-' + [guid]::NewGuid().Guid)
 New-Item -ItemType Directory -Force $tmp | Out-Null
+function Wait-Agent {   # an agent update runs asynchronously: a connector PUT while it is InProgress is refused (OperationConflict)
+  for ($i = 0; $i -lt 60; $i++) {
+    $st = az rest -m GET --url "${url}?api-version=$api" --query properties.provisioningState -o tsv
+    if ($st -eq 'Succeeded') { return }
+    if ($st -in 'Failed', 'Canceled') { throw "the agent is in state $st" }
+    Start-Sleep 10
+  }
+  throw "the agent is still '$st' after 10 min"
+}
 try {
+  Wait-Agent
   # 1. egress: send the whole egress object back, with only the one flag changed
   $a = az rest -m GET --url "${url}?api-version=$api" -o json | Out-String | ConvertFrom-Json
   $eg = $a.properties.sandboxConfiguration.egress
@@ -24,6 +34,7 @@ try {
   $eg | Add-Member -NotePropertyName allowHttpMcpServerNetworkAccess -NotePropertyValue $false -Force
   @{ properties = @{ sandboxConfiguration = @{ egress = $eg } } } | ConvertTo-Json -Depth 10 -Compress | Out-File -Encoding ascii "$tmp\egress.json"
   az rest -m PATCH --url "${url}?api-version=$api" --body "@$tmp\egress.json" -o none
+  Wait-Agent
   "remote MCP server access: $(az rest -m GET --url "${url}?api-version=$api" --query properties.sandboxConfiguration.egress.allowHttpMcpServerNetworkAccess -o tsv) (expected false)"
   # 2. the connector (endpoint, scope and header are write-only: a GET shows them as null, which is normal)
   $tools = @('describe_entities', 'read_records', 'aggregate_records' | ForEach-Object { "${Name}_$_" })

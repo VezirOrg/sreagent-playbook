@@ -64,5 +64,7 @@ push_pkg vm1
 run_ps vm1 04-dab-config.ps1 -Servers "$servers" -Domain "$domain" -TenantId "$tenant" -AppId "$appid"
 dab_restart
 say "step 5: connect the agent"
-sh "$pb/package/agent/connect-agent.sh" --agent "$agent_id" --endpoint "http://$real1.$domain:5000/mcp" --app-id "$appid" 2>&1 | mask
+out=$(sh "$pb/package/agent/connect-agent.sh" --agent "$agent_id" --endpoint "http://$real1.$domain:5000/mcp" --app-id "$appid" 2>&1) || {
+  echo "$out" | mask; echo "connect-agent FAILED"; exit 1; }
+echo "$out" | mask
 say "done. Next: the lab tests (playbooks/sql-mcp/tests/run.sh T11 ... T24)"
