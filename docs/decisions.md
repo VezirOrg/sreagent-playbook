@@ -175,3 +175,11 @@ real adopter need and the blog.
 - **Plan gate (R11):** no lab, no Azure change and no code beyond the scaffold until Emre approves the playbook's
   inventory and plan (kept in Drive, not here).
 - Worktrees (R12.5) are still not built: the session works on `main` and writes only under `playbooks/sql-mcp/`.
+
+## R21: CI runs the sql-mcp local tests (the vezir, 2026-10-17; sql-mcp plan v1, approved by Emre)
+
+`.github/workflows/ci.yml` runs sql-mcp's local tests: in the `checks` job (Ubuntu, PowerShell 7 preinstalled) L01
+(the DAB configuration generator), L02 (the Windows PowerShell 5.1 lint; PSScriptAnalyzer saved to a temp folder) and
+L03 (the deterministic package); and a `sql-mcp-windows` job on `windows-latest` that runs L01 again under Windows
+PowerShell 5.1 (`powershell.exe`), where the scripts really run. L04 (DAB drift, GitHub API) stays local: a new upstream
+release is a signal for a playbook session, not a broken build. Nothing in CI touches Azure.

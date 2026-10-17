@@ -27,6 +27,21 @@ jobs:
         run: for f in $(git ls-files '*.sh' '.githooks/*'); do sh -n "$f" || bash -n "$f"; done
       - name: perfmon-blackbox local tests (synthetic data)
         run: python3 -m unittest discover -s playbooks/perfmon-blackbox/tests/local -t playbooks/perfmon-blackbox
+      - name: sql-mcp local tests L01 L02 L03 (PowerShell 7 on the runner)
+        run: for t in L01 L02 L03; do sh playbooks/sql-mcp/tests/run.sh $t || exit 1; done
+
+  sql-mcp-windows:
+    # L01 under Windows PowerShell 5.1: the configuration generator as it runs on the MCP host.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: L01 under Windows PowerShell 5.1
+        shell: pwsh
+        env:
+          PWSH: powershell.exe
+        run: |
+          cd playbooks/sql-mcp
+          python -m unittest -v tests.local.test_local.L01DabConfig
 
   perfmon-blackbox-windows:
     # Pester (L05) and the PSScriptAnalyzer 5.1 rules under Windows PowerShell 5.1, then the package build (T01's
