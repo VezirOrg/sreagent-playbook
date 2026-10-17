@@ -9,8 +9,9 @@ stored anywhere, and **no database or object is created on the SQL Servers**.
 > Not an official Microsoft product. Working and versioned, no support promise. See the
 > [repo README](../../README.md).
 
-**Status: in development, not released yet.** Tested end to end on 2026-10-17 in this playbook's own lab, built from
-scratch with these scripts (DAB 2.1.5, SQL Server 2025, Windows Server 2025, Azure VMs in the agent's VNet): every lab
+**Status: v1.0.0** ([release](https://github.com/VezirOrg/sreagent-playbook/releases/tag/sql-mcp/v1.0.0), package
+`SqlMcp.zip`, SHA-256 `F3B2BD2AFF1F7873…`, [CHANGELOG](CHANGELOG.md)). Tested end to end on 2026-10-17 in this playbook's own
+lab, built from scratch with these scripts (DAB 2.1.5, SQL Server 2025, Windows Server 2025, Azure VMs in the agent's VNet): every lab
 test T10–T25 passed ([docs/tests.md](docs/tests.md)). Why it is built this way: [docs/design.md](docs/design.md).
 
 Legend: ✅ proven in a lab (test IDs in [docs/tests.md](docs/tests.md)) · 📄 documented (Microsoft Learn or the DAB
@@ -90,7 +91,7 @@ sql2 ── SELECT … FROM sys.dm_os_wait_stats   (login + ##MS_ServerPerforman
 
 ## Install
 
-The release package `SqlMcp.zip` holds every script below (plus `README.txt`). Copy it to `C:\sqlmcp` on the machines
+The release package `SqlMcp.zip` ([v1.0.0](https://github.com/VezirOrg/sreagent-playbook/releases/tag/sql-mcp/v1.0.0); check its SHA-256 against the CHANGELOG) holds every script below (plus `README.txt`). Copy it to `C:\sqlmcp` on the machines
 named in each step. Names in this guide: domain `CONTOSO` / `contoso.local`, MCP host `vm1`, SQL Servers `sql1`,
 `sql2`; replace them with yours.
 
