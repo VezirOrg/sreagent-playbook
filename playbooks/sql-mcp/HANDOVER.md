@@ -25,9 +25,15 @@ The owner is the vezir; every answer from Emre comes through it.
 
 ## Next
 
+State at the end of session 1 (2026-10-17): idle, waiting for the vezir to clear lab21 (after Emre's admin login
+for the lab SP secret rotation). Nothing is half done; the tree is clean except perfmon-blackbox's untracked
+`package/files/` (not ours, left alone on the vezir's word).
+
+
 1. When the vezir clears lab21: register it in the template's lab register, then `lab-up.sh` (T10), the admin step
    by Emre (S4), phase B, T11–T24.
-2. Fix what the lab finds; mark ✅ from lab21 in the README; `docs/design.md` (auth evidence, from the source design note).
+2. Fix what the lab finds; mark ✅ from lab21 in the README; then `docs/design.md` (auth evidence, from the source design
+   note). The vezir agreed (2026-10-17): design.md and the quick install wait for the lab, so they carry lab21 results.
 3. The TR/EN quick install (Drive, S9), rc, fresh-eyes install (S8), teardown (T25), release.
 
 ## Not yet done or verified
