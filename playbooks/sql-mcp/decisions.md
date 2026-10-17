@@ -146,3 +146,14 @@ and two SQL members, in the gitignored `.lab/sql-mcp/`. It is registered in the 
 commit as the build. Rules: every other lab and resource group is untouched; every lab run ends before 21:45Z (the
 nightly stop); the lab SP gets no extra role without asking first (the connector PUT is the open question). The
 Entra admin step (S4) is relayed to Emre through the vezir.
+
+## S15: azd signs in through az; admin logins live outside the repo tree (the vezir, 2026-10-17)
+
+- **azd uses az's login.** After the lab SP secret rotation, azd's own cached SP login was stale (`azd up` failed at
+  once with AADSTS7000215; nothing was created). Instead of a new `azd auth login` (which would pass the secret on the
+  command line), the repo's local azd config (`.azd-config`, shared with perfmon-blackbox sessions) is set to
+  `auth.useAzCliAuth true`: azd takes its tokens from the az login of the same folder set (`.azure-cli`), which
+  `cr-azlogin` keeps current. Undo: `direnv exec . azd config unset auth.useAzCliAuth`, then an SP `azd auth login`.
+- **Admin logins are never in a repo tree,** not even a gitignored one. Emre's device-code login for the Entra step
+  (S4) goes into `$HOME/.azure-sqlmcp-admin` (started by the vezir); the session runs `entra-setup.sh` with
+  `AZURE_CONFIG_DIR` set to it, then `az logout` and deletes the folder.

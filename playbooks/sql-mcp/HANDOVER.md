@@ -27,11 +27,12 @@ The owner is the vezir; every answer from Emre comes through it.
 
 State (2026-10-17 07:57Z): **lab21 UP** (rg-lab21, ~32 $/day, registered in the template's lab register, its audit
 CLEAN). Phase A done (azd up 27 min; gMSA; logins on sql1/sql2, not sysadmin; DAB 2.1.5 on vm1, task registered,
-not started). **Waiting for the admin step** (Emre, device code on this Mac in a separate az config folder
-`.lab/sql-mcp/az-admin`, then `az logout` and delete it). Then `lab-up.sh --app-id <APP_ID>` and T10–T24. The lab day
+not started). **Waiting for the admin step** (Emre, device code on this Mac, started by the vezir into
+`$HOME/.azure-sqlmcp-admin` (S15): after the vezir's "giriş tamam", run entra-setup.sh with that AZURE_CONFIG_DIR, then
+`az logout` and `rm -rf` it). Then `lab-up.sh --app-id <APP_ID>` and T10–T24. The lab day
 ends before 21:45Z. Logs: `.lab/sql-mcp/lab-up-A.log`, `azd-up-lab21.log`.
 - azd's cached SP login was stale after the secret rotation (AADSTS7000215); the repo's `.azd-config` now uses az's
-  login (`azd config set auth.useAzCliAuth true`; undo with `azd config unset auth.useAzCliAuth`). Nothing is half done; the tree is clean except perfmon-blackbox's untracked
+  login (`azd config set auth.useAzCliAuth true`; undo with `azd config unset auth.useAzCliAuth`; S15). Nothing is half done; the tree is clean except perfmon-blackbox's untracked
 `package/files/` (not ours, left alone on the vezir's word).
 
 
