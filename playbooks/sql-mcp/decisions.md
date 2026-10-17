@@ -86,7 +86,55 @@ Drive (`files/sql-mcp/`), as for perfmon-blackbox.
 v1.0.0 says: tested on Azure VMs in the agent's VNet; on-premises (VPN or ExpressRoute, outbound 443 to Entra) is
 documented and untested.
 
-## S11: an agent skill in v1.0.0? OPEN (plan question 5)
+## S11: an agent skill in v1.0.0? (plan question 5; answered in S13)
 
 Recommendation: no, a skill comes in v1.1.0 with its own tests. Emre asked what the skill would be; his answer is
 pending through the vezir. Nothing skill-related is built until he answers.
+
+## S12: repo-side rewrite of the source scripts (this session, 2026-10-17, under S3)
+
+**Provenance.** Copied from the earlier private research project at commit `2153d05` (2026-10-04), then changed as
+listed below. SHA-256 of each source file as copied:
+
+| Source file | SHA-256 (as copied) | Becomes |
+|---|---|---|
+| `scripts/01-ad-prep.ps1` | `94bd412638e6f2ae50ee7cffeee8a47cec5d06b8123d5bcbd51125c6e16029d9` | `package/01-ad-prep.ps1` |
+| `scripts/02-sql-login.sql` | `0eafa7019678120b2870e34812e1d83b2db4ecc27842085c031de3f63c11e2c8` | `package/02-sql-login.sql` |
+| `scripts/03-dab-install.ps1` | `09ffb8caf6cc0cf22996d2b3f8b1cd571eb39c7904b0d5ff368d7f85feaf89ae` | `package/03-dab-install.ps1` |
+| `scripts/04-dab-config.ps1` | `27d0a1e5ae0891c923593830309a0aeeb449d36afd6695575e1d1b923ba803b0` | `package/04-dab-config.ps1` |
+| `scripts/mcp-call.ps1` | `3a21425c5eb833e718904d47514d63bee25502eb69f1911e433cab9ea01988c5` | `package/tools/mcp-call.ps1` |
+| `docs/install-guide.en.md` (§7 Entra block and agent steps) | `883eb72b5c94596bb4848f93c68fa0c32920b35ad80369a1b422d6fb69001407` | `package/admin/entra-setup.{sh,ps1}`, `package/agent/connect-agent.{sh,ps1}` |
+
+**Changes (the mask table of the plan applied):**
+
+- **01-ad-prep.ps1:** the MCP host and gMSA names are parameters (`-McpHost` is required: the host's computer name).
+  The KDS root key is created effective immediately (wait 10 h before step 3), or back-dated only with
+  `-LabBackdateKdsKey`. The test user `mcp-tester` is **dropped**: in the production auth shape the host's own
+  identity is refused a token (V5), so a Windows client user on the host has nothing to test.
+- **02-sql-login.sql:** the login is the sqlcmd variable `$(GmsaLogin)` (`-v GmsaLogin=DOMAIN\gmsa-sqlmcp$`).
+- **03-dab-install.ps1:** `-From` (the agent and VM subnets) is **required**, with no default range. The gMSA's
+  domain is read from Active Directory. Port, task name and install root are parameters. The DAB zip is checked
+  against a **pinned SHA-256** per version (2.1.5: the digest GitHub publishes for `dab_net10.0_win-x64-2.1.5.zip`);
+  another version needs `-Sha256`.
+- **04-dab-config.ps1:** production shape only: `-TenantId` and `-AppId` are required (v2 issuer, audience = app ID,
+  only the app role may read). `-Servers`, `-Domain`, `-Role`, `-ConfigDir`, `-AllowedHosts` are parameters (the
+  tenant is no longer patched in with `sed`). Existing JSON files are copied to a timestamped backup folder before
+  they are overwritten. `-Anonymous` and `-Aliases` are **not** in the package (S7). The placeholder-root layout and
+  the 7 views with all their columns and descriptions are unchanged.
+- **entra-setup / connect-agent:** the guide's idempotent blocks as scripts. Inputs are the agent's resource ID, the
+  app ID, the endpoint; the agent's identity is read from ARM, never written. `entra-setup` prints the app ID for the
+  next step; it is run by an admin (S4). `connect-agent` keeps the agent's egress object and sets only
+  `allowHttpMcpServerNetworkAccess = false`, then PUTs the connector.
+- **Local tests** need PowerShell 7 on the authoring machine (`pwsh` on the PATH or `$PWSH`) for L01 and L02; the
+  GitHub Ubuntu runner has it. Nothing is installed on a server for a test.
+- **Found by L01 (2026-10-17):** under `powershell.exe -File`, a list parameter such as `-Servers sql1,sql2` arrives as
+  ONE string. `03-dab-install.ps1` (`-From`) and `04-dab-config.ps1` (`-Servers`, `-AllowedHosts`) now split every
+  list parameter on commas, so both `-File` and an interactive call work.
+- **L02 lint profiles:** Windows Server 2016 and 2019 (PowerShell 5.1) only, no Windows 10 client profile: the MCP host
+  is a Windows Server, and step 3 uses Server-only cmdlets (`Get-WindowsFeature`, `Install-WindowsFeature`).
+
+## S13: the agent skill comes in v1.1.0 (Emre via the vezir, 2026-10-17; closes S11)
+
+v1.0.0 ships without an agent skill: the entity and column descriptions in the DAB configuration are what the agent
+reads. A skill (how to read the DMVs: drop benign waits, take two samples of cumulative counters, …) comes in
+v1.1.0 with its own tests.

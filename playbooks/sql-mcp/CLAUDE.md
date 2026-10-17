@@ -2,8 +2,8 @@
 
 Shared rules: `../../CLAUDE.md`. Read `HANDOVER.md`, then `decisions.md`, before any work here.
 
-- **Plan gate (R11, R20).** Until Emre approves the inventory and plan (Drive, `files/sql-mcp/`), this folder holds
-  only the scaffold: no code, no lab, no Azure call.
+- **Plan gate (R11, R20).** Plan v1 is approved (S3). **No lab and no Azure call until the vezir says lab21 is
+  cleared** (S3). Anything outside the approved plan goes back to Emre first.
 - **Source is read-only.** The earlier SQL MCP research project is private and lives outside this repo. Copy from it,
   never write to it, and never name it here; every copied file gets a provenance line in `decisions.md` (source
   commit, SHA-256 as copied).
@@ -18,3 +18,5 @@ Shared rules: `../../CLAUDE.md`. Read `HANDOVER.md`, then `decisions.md`, before
   adopter.
 - **Windows PowerShell 5.1 on servers.** Every script that runs on an adopter's server is 5.1 compatible and installs
   no other runtime (Data API builder's self-contained build is the product itself, not a runtime).
+- **Secret guard.** The rig's Bash guard refuses commands whose text holds a secret-like variable name, even inside a
+  heredoc that only writes a script (e.g. `$Token` in `mcp-call.ps1`). Edit such files with the Edit/Write tools.
