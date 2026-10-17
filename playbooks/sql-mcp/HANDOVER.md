@@ -1,7 +1,10 @@
 # sql-mcp: lab21 UP (phase A done 07:57Z); waiting for Emre's Entra admin step, then phase B and T10–T24.
 
 Playbook: **sql-mcp**. Read `../../CLAUDE.md`, `CLAUDE.md` here, this file, then `decisions.md` (S1–S13).
-The owner is the vezir; every answer from Emre comes through it.
+The owner is the vezir (its session name changes when it respawns: always re-check with ListAgents); every answer
+from Emre comes through it. **Rig rule:** never keep a Bash background task of this session running longer than ~4 min
+(the keepalive may judge the session dead): run long jobs (`lab-up.sh`, lab tests) with `nohup … & disown` and a log
+file in `.lab/sql-mcp/`.
 
 ## Where it stands (2026-10-17, session 1)
 
