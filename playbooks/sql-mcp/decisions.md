@@ -138,3 +138,11 @@ listed below. SHA-256 of each source file as copied:
 v1.0.0 ships without an agent skill: the entity and column descriptions in the DAB configuration are what the agent
 reads. A skill (how to read the DMVs: drop benign waits, take two samples of cumulative counters, …) comes in
 v1.1.0 with its own tests.
+
+## S14: lab21 cleared (the vezir, 2026-10-17 07:20Z, on Emre's approval; lab SP secret rotated first)
+
+lab21 is built now with `tests/lab/lab-up.sh` from the private lab template (latest tag v1.4.1), one web member (`vm1`)
+and two SQL members, in the gitignored `.lab/sql-mcp/`. It is registered in the template's lab register in the same
+commit as the build. Rules: every other lab and resource group is untouched; every lab run ends before 21:45Z (the
+nightly stop); the lab SP gets no extra role without asking first (the connector PUT is the open question). The
+Entra admin step (S4) is relayed to Emre through the vezir.

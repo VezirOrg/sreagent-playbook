@@ -1,4 +1,4 @@
-# sql-mcp: package, lab scripts, lab tests T10–T25 and README guide written; local L01–L04 green; lab21 NOT cleared yet.
+# sql-mcp: lab21 cleared (S14), phase A building; package, lab tests and README written; local L01–L04 green.
 
 Playbook: **sql-mcp**. Read `../../CLAUDE.md`, `CLAUDE.md` here, this file, then `decisions.md` (S1–S13).
 The owner is the vezir; every answer from Emre comes through it.
@@ -25,8 +25,8 @@ The owner is the vezir; every answer from Emre comes through it.
 
 ## Next
 
-State at the end of session 1 (2026-10-17): idle, waiting for the vezir to clear lab21 (after Emre's admin login
-for the lab SP secret rotation). Nothing is half done; the tree is clean except perfmon-blackbox's untracked
+State (2026-10-17 07:20Z): lab21 CLEARED (S14); `lab-up.sh` phase A started. If this session dies mid-build, check
+`.lab/sql-mcp/azd-up-lab21.log` and `az group show -n rg-lab21`, then re-run lab-up.sh (idempotent). Nothing is half done; the tree is clean except perfmon-blackbox's untracked
 `package/files/` (not ours, left alone on the vezir's word).
 
 
